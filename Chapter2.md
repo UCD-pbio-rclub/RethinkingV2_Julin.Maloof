@@ -53,23 +53,6 @@ _Recall the globe tossing model from the chapter. Compute and plot the grid appr
 library(tidyverse)
 ```
 
-```
-## ── Attaching packages ─────────────────────────────────────────────────────────────── tidyverse 1.2.1 ──
-```
-
-```
-## ✔ ggplot2 3.0.0     ✔ purrr   0.2.5
-## ✔ tibble  1.4.2     ✔ dplyr   0.7.6
-## ✔ tidyr   0.8.1     ✔ stringr 1.3.1
-## ✔ readr   1.1.1     ✔ forcats 0.3.0
-```
-
-```
-## ── Conflicts ────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
-## ✖ dplyr::filter() masks stats::filter()
-## ✖ dplyr::lag()    masks stats::lag()
-```
-
 
 ```r
 grid_binom <- function(w,n,grid.size=1000) {
@@ -195,5 +178,75 @@ _Imagine that black ink is heavy, and so cards with black sides are heavier than
 | B/B  | 1                     | 2                     | 2       | .5   |
 
 
-##2M7. 
-Assume again the original card problem, with a single card showing a blackside face up. Before looking at the other side, we draw another card from the bag and lay it face up on the table. The face that is shown on the new card is white. Show that the probability that the first card, the one showing a black side, has black on its other side is now 0.75. Use the counting method, if you can. Hint: Treat this like the sequence of globe tosses, counting all the ways to see each observation, for each possible first card.
+## 2M7. 
+_Assume again the original card problem, with a single card showing a blackside face up. Before looking at the other side, we draw another card from the bag and lay it face up on the table. The face that is shown on the new card is white. Show that the probability that the first card, the one showing a black side, has black on its other side is now 0.75. Use the counting method, if you can. Hint: Treat this like the sequence of globe tosses, counting all the ways to see each observation, for each possible first card._
+
+| first card | ways to pull B first  | way to pull W second  | product | prob |
+|:-----|:----------------------|:----------------------|:--------|:-----|
+| W/W  | 0                     | 1                     | 0       | 0    |
+| B/W  | 1                     | 2                     | 2       | .25   |
+| B/B  | 2                     | 3                     | 6       | .75   |
+
+## 2H1. 
+_Suppose there are two species of panda bear. Both are equally common in the wild and live in the same places. They look exactly alike and eat the same food, and there is yet no genetic assay capable of telling them apart. They differ however in their family sizes. Species A gives birth to twins 10% of the time, otherwise birthing a single infant. Species B births twins 20% of the time, otherwise birthing singleton infants. Assume these numbers are known with certainty, from many years of field research._
+
+_Now suppose you are managing a captive panda breeding program. You have a new female panda of unknown species, and she has just given birth to twins. What is the probability that her next birth will also be twins?_
+
+
+```r
+prior.species.prob <- c(0.5, 0.5) %>% setNames(c("A","B"))
+prob.twins <- c(0.1, 0.2)
+post.species.prob.given.twins <- prior.species.prob * prob.twins
+(post.species.prob.given.twins <- post.species.prob.given.twins / sum(post.species.prob.given.twins) )
+```
+
+```
+##         A         B 
+## 0.3333333 0.6666667
+```
+
+```r
+twins.prob.given.twins <- post.species.prob.given.twins * prob.twins
+sum(twins.prob.given.twins)
+```
+
+```
+## [1] 0.1666667
+```
+
+## 2H2. 
+_Recall all the facts from the problem above. Now compute the probability that the panda we have is from species A, assuming we have observed only the first birth and that it was twins._
+
+
+```r
+# this was already calculated
+post.species.prob.given.twins["A"]
+```
+
+```
+##         A 
+## 0.3333333
+```
+
+## 2H3. 
+_Continuing on from the previous problem, suppose the same panda mother has asecond birth and that it is not twins, but a singleton infant. Compute the posterior probability that this panda is species A._
+
+
+```r
+post.species.prob.given.twins.single <- post.species.prob.given.twins * (1-prob.twins)
+(post.species.prob.given.twins.single / sum(post.species.prob.given.twins.single))
+```
+
+```
+##    A    B 
+## 0.36 0.64
+```
+
+
+## 2H4. 
+_A common boast of Bayesian statisticians is that Bayesian inference makes it easy to use all of the data, even if the data are of different types._
+_So suppose now that a veterinarian comes along who has a new genetic test that she claims can identify the species of our mother panda. But the test, like all tests, is imperfect. This is the information you have about the test:_
+
+• TheprobabilityitcorrectlyidentifiesaspeciesApandais0.8. • TheprobabilityitcorrectlyidentifiesaspeciesBpandais0.65.
+The vet administers the test to your panda and tells you that the test is positive for species A. First ignore your previous information from the births and compute the posterior probability that your panda is species A. Then redo your calculation, now using the birth data as well.
+
