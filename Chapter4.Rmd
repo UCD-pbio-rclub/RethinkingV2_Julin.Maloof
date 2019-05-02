@@ -513,6 +513,9 @@ m4.5 <- quap(
 ## R code 4.66
 precis( m4.5 )
 
+```
+
+```{r}
 ## R code 4.67
 weight.seq <- seq( from=-2.2 , to=2 , length.out=30 )
 pred_dat <- list( weight_s=weight.seq , weight_s2=weight.seq^2 )
@@ -527,7 +530,9 @@ plot( height ~ weight_s , d , col=col.alpha(rangi2,0.5) )
 lines( weight.seq , mu.mean )
 shade( mu.PI , weight.seq )
 shade( height.PI , weight.seq )
+```
 
+```{r}
 ## R code 4.69
 d$weight_s3 <- d$weight_s^3
 m4.6 <- quap(
@@ -550,6 +555,9 @@ at <- c(-2,-1,0,1,2)
 labels <- at*sd(d$weight) + mean(d$weight)
 axis( side=1 , at=at , labels=round(labels,1) )
 
+```
+
+```{r}
 ## R code 4.72
 library(rethinking)
 data(cherry_blossoms)
