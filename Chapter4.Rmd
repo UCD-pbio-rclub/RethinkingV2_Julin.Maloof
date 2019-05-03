@@ -236,7 +236,7 @@ _(b) Plot the raw data, with height on the vertical axis and weight on the horiz
 
 ```{r}
 post <- extract.samples(m4H2)
-weight.seq <- seq.int(from=min(d3$weight), to=max(d3$weight), by=1)
+weight.seq <- seq.int(from=min(d3$weight)-1, to=max(d3$weight)+1, by=1)
 mu <- link(m4H2, data=data.frame(weight=weight.seq))
 mu.mean <- apply( mu , 2 , mean )
 mu.HPDI <- apply( mu , 2 , HPDI , prob=0.89 )
@@ -256,8 +256,27 @@ shade( mu.HPDI , weight.seq, col = col.alpha("black",
 
 ```
 
+try to plot with ggplot...
+```{r}
+plot.data <- as_tibble(cbind(weight.seq, mu.mean, t(mu.HPDI), t(sim.HPDI))) %>%
+  rename(weight=weight.seq, mu.89l=`|0.89`, mu.89u=`0.89|`, sim.89l=V5, sim.89u=V6)
+plot.data
+```
+
+```{r}
+plot.data %>%
+  ggplot(aes(x=weight)) +
+  geom_line(aes(y=mu.mean)) +
+  geom_ribbon(aes(ymin=sim.89l, ymax=sim.89u), fill="gray80") +
+  geom_ribbon(aes(ymin=mu.89l, ymax=mu.89u), fill="gray60") +
+  geom_point(aes(y=height), data=d3,color="blue", alpha=.3) +
+  ylab("height")
+```
+
 
 _(c) What aspects of the model fit concern you? Describe the kinds of assumptions you would change, if any, to improve the model. You don’t have to write any new code. Just explain what the model appears to be doing a bad job of, and what you hypothesize would be a better model._
+
+The model is trying to fit a straight line to curved data. This results in a poor fit, especially at the ends.  I would fit either a polynomial or spline regression to try to correct this.
 
 
             
