@@ -89,6 +89,179 @@ mu_i = \alpha + \beta x_i \\
 \sigma \sim Uniform(0, 50)
 $$
 
+# Week 2 problems
+
+4M4, 4M5, 4M6, 4H1, 4H2
+
+## 4M4
+_A sample of students is measured for height each year for 3 years. After the third year, you want to fit a linear regression predicting height using year as a predictor. Write down the mathematical model definition for this regression, using any variable names and priors you choose. Be prepared to defend your choice of priors._
+
+$$
+y_i \sim Normal (\mu_i, \sigma) \\
+mu_i = \alpha + \beta*year_i \\
+\alpha \sim Normal(100, 50) \\
+\beta \sim Log-Normal(0, 1) \\
+\sigma \sim Uniform(0, 50)\\
+$$
+Really we should fit each student as a random effect, but we aren't there yet.
+
+Assume height measured in cm.  We don't know the age of the students but I am assuming elementary age.  100cm with a broad SD.
+
+Choose log-normal for Beta because students should shrink with time.
+
+how much can a student grow in a year? 10cm?
+
+```{r}
+betas <- seq(0,20,by=.1)
+plot(betas,dlnorm(betas,2,1),type="l")
+```
+
+not entirely happy with this...
+
+## 4M5
+_Now suppose I tell you that the average height in the first year was 120 cm and that every student got taller each year. Does this information lead you to change your choice of priors? How?_
+
+Not so different, but I would go with:
+
+$$
+y_i \sim Normal (\mu_i, \sigma) \\
+mu_i = \alpha + \beta*year_i \\
+\alpha \sim Normal(120, 50) \\
+\beta \sim Log-Normal(0, 1) \\
+\sigma \sim Uniform(0, 50)\\
+$$
+
+## 4M6
+_Now suppose I tell you that the variance among heights for students of the same age is never more than 64cm. How does this lead you to revise your priors?_
+
+$$
+y_i \sim Normal (\mu_i, \sigma) \\
+mu_i = \alpha + \beta*year_i \\
+\alpha \sim Normal(120, 50) \\
+\beta \sim Log-Normal(0, 1) \\
+\sigma \sim Uniform(0, 8)\\
+$$
+
+## 4H1
+ _The weights listed below were recorded in the !Kung census, but heights were not recorded for these individuals. Provide predicted heights and 89% intervals (either HPDI or PI) for each of these individuals. That is, fill in the table below, using model-based predictions._
+
+```{r}
+weights <- c(46.95,43.72,64.78,32.59,54.63)
+```
+
+These all seem to be adult weights, so I am going to use the simple regression model on adults
+
+```{r}
+#4.42
+data(Howell1)
+d <- Howell1
+d2 <- d[ d$age >= 18 , ]
+
+# define the average weight, x-bar
+xbar <- mean(d2$weight)
+
+# fit model
+m4.3 <- quap(
+    alist(
+        height ~ dnorm( mu , sigma ) ,
+        mu <- a + b*( weight - xbar ) ,
+        a ~ dnorm( 178 , 20 ) ,
+        b ~ dlnorm( 0 , 1 ) ,
+        sigma ~ dunif( 0 , 50 )
+    ) ,
+    data=d2 )
+
+```
+
+
+```{r}
+sim.heights <- sim(fit = m4.3,
+                   data = data.frame(weight=weights),
+                   n=1e4)
+dim(sim.heights)
+head(sim.heights)
+```
+
+```{r}
+results <- tibble(
+  individual=1:5,
+  weight=weights,
+  predicted.height=apply(sim.heights,2,mean)
+  )
+results <- cbind(results,t(apply(sim.heights, 2, HPDI)))
+knitr::kable(results,digits=2)
+```
+
+## 4H2. 
+_Select out all the rows in the Howell1 data with ages below 18 years of age. If you do it right, you should end up with a new data frame with 192 rows in it._
+
+```{r}
+d3 <- Howell1 %>% as_tibble() %>% filter(age < 18)
+d3
+```
+
+
+_(a) Fit a linear regression to these data, using quap. Present and interpret the estimates. For every 10 units of increase in weight, how much taller does the model predict a child gets?_
+
+first let's take a look
+```{r}
+qplot(weight, height, data = d3)
+```
+
+so not linear here, but based on problem I think we fit a simple regression model
+
+```{r}
+# define the average weight, x-bar
+xbar <- mean(d3$weight)
+
+# fit model
+m4H2 <- quap(
+    alist(
+        height ~ dnorm( mu , sigma ) ,
+        mu <- a + b*( weight - xbar ) ,
+        a ~ dnorm( 100 , 20 ) ,
+        b ~ dlnorm( 0 , 1 ) ,
+        sigma ~ dunif( 0 , 50 )
+    ) ,
+    data=d3 )
+```
+
+```{r}
+precis(m4H2)
+```
+
+For every 10 units increase in weight, the model predicts an increase of 27.2 height
+
+_(b) Plot the raw data, with height on the vertical axis and weight on the horizontal axis. Super- impose the MAP regression line and 89% HPDI for the mean. Also superimpose the 89% HPDI for predicted heights._
+
+```{r}
+post <- extract.samples(m4H2)
+weight.seq <- seq.int(from=min(d3$weight), to=max(d3$weight), by=1)
+mu <- link(m4H2, data=data.frame(weight=weight.seq))
+mu.mean <- apply( mu , 2 , mean )
+mu.HPDI <- apply( mu , 2 , HPDI , prob=0.89 )
+sim <- sim(m4H2, data=data.frame(weight=weight.seq))
+sim.HPDI <- apply(sim, 2, HPDI, prob=0.89)
+```
+
+```{r}
+plot( height ~ weight , data=d3 , col=rangi2 )
+# plot the MAP line, aka the mean mu for each weight
+lines( weight.seq , mu.mean )
+shade( sim.HPDI , weight.seq, col = col.alpha("black",
+                 0.15 ))
+# plot a shaded region for 89% HPDI
+shade( mu.HPDI , weight.seq, col = col.alpha("black",
+                 0.30) )
+
+```
+
+
+_(c) What aspects of the model fit concern you? Describe the kinds of assumptions you would change, if any, to improve the model. You don’t have to write any new code. Just explain what the model appears to be doing a bad job of, and what you hypothesize would be a better model._
+
+
+            
+
 # Code from Book
 
 ```{r}
