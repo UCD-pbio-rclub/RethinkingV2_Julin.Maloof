@@ -5,11 +5,9 @@
 
 *In the model definition below, which line is the likelihood?*
 
-![
-y\_i \\sim Normal(\\mu, \\sigma)
-](https://latex.codecogs.com/png.latex?%0Ay_i%20%5Csim%20Normal%28%5Cmu%2C%20%5Csigma%29%0A "
-y_i \sim Normal(\mu, \sigma)
-")
+\[ y\_i \\sim Normal(\\mu,
+\\sigma)\](https://latex.codecogs.com/png.latex?%0Ay\_i%20%5Csim%20Normal%28%5Cmu%2C%20%5Csigma%29%0A
+\" y\_i \sim Normal(\mu, \sigma) \")
 
 4E2.
 ----
@@ -17,8 +15,8 @@ y_i \sim Normal(\mu, \sigma)
 *In the model definition just above, how many parameters are in the
 posterior distribution?*
 
-Two,
-![\\mu, \\sigma](https://latex.codecogs.com/png.latex?%5Cmu%2C%20%5Csigma "\mu, \sigma")
+Two, ![\\mu,
+\\sigma](https://latex.codecogs.com/png.latex?%5Cmu%2C%20%5Csigma "\mu, \sigma")
 
 4E3.
 ----
@@ -31,11 +29,9 @@ Bayes' theorem that includes the proper likelihood and priors.*
 
 *In the model definition below, which line is the linear model?*
 
-![
-\\mu\_i = \\alpha + \\beta x\_i
-](https://latex.codecogs.com/png.latex?%0A%5Cmu_i%20%3D%20%5Calpha%20%2B%20%5Cbeta%20x_i%0A "
-\mu_i = \alpha + \beta x_i
-")
+\[ \\mu\_i = \\alpha + \\beta
+x\_i\](https://latex.codecogs.com/png.latex?%0A%5Cmu\_i%20%3D%20%5Calpha%20%2B%20%5Cbeta%20x\_i%0A
+\" \mu\_i = \alpha + \beta x\_i \")
 
 4E5.
 ----
@@ -43,8 +39,8 @@ Bayes' theorem that includes the proper likelihood and priors.*
 *In the model definition just above, how many parameters are in the
 posterior distribution?*
 
-Three,
-![\\alpha, \\beta, \\sigma](https://latex.codecogs.com/png.latex?%5Calpha%2C%20%5Cbeta%2C%20%5Csigma "\alpha, \beta, \sigma")
+Three, ![\\alpha, \\beta,
+\\sigma](https://latex.codecogs.com/png.latex?%5Calpha%2C%20%5Cbeta%2C%20%5Csigma "\alpha, \beta, \sigma")
 
 4M1.
 ----
@@ -90,19 +86,13 @@ flist <- alist(
 )
 ```
 
-![
-y\_i \\sim Normal (\\mu\_i, \\sigma) \\\\
-mu\_i = \\alpha + \\beta x\_i \\\\
-\\alpha \\sim Normal(0, 50) \\\\
-\\beta \\sim Uniform(0, 10) \\\\
-\\sigma \\sim Uniform(0, 50)
-](https://latex.codecogs.com/png.latex?%0Ay_i%20%5Csim%20Normal%20%28%5Cmu_i%2C%20%5Csigma%29%20%5C%5C%0Amu_i%20%3D%20%5Calpha%20%2B%20%5Cbeta%20x_i%20%5C%5C%0A%5Calpha%20%5Csim%20Normal%280%2C%2050%29%20%5C%5C%0A%5Cbeta%20%5Csim%20Uniform%280%2C%2010%29%20%5C%5C%0A%5Csigma%20%5Csim%20Uniform%280%2C%2050%29%0A "
-y_i \sim Normal (\mu_i, \sigma) \\
-mu_i = \alpha + \beta x_i \\
-\alpha \sim Normal(0, 50) \\
-\beta \sim Uniform(0, 10) \\
-\sigma \sim Uniform(0, 50)
-")
+\[ y\_i \\sim Normal (\\mu\_i, \\sigma) \\\\ mu\_i = \\alpha + \\beta
+x\_i \\\\ \\alpha \\sim Normal(0, 50) \\\\ \\beta \\sim Uniform(0, 10)
+\\\\ \\sigma \\sim Uniform(0,
+50)\](https://latex.codecogs.com/png.latex?%0Ay\_i%20%5Csim%20Normal%20%28%5Cmu\_i%2C%20%5Csigma%29%20%5C%5C%0Amu\_i%20%3D%20%5Calpha%20%2B%20%5Cbeta%20x\_i%20%5C%5C%0A%5Calpha%20%5Csim%20Normal%280%2C%2050%29%20%5C%5C%0A%5Cbeta%20%5Csim%20Uniform%280%2C%2010%29%20%5C%5C%0A%5Csigma%20%5Csim%20Uniform%280%2C%2050%29%0A
+\" y\_i \sim Normal (\mu\_i, \sigma) \\ mu\_i = \alpha + \beta x\_i \\
+\alpha \sim Normal(0, 50) \\ \beta \sim Uniform(0, 10) \\
+\sigma \sim Uniform(0, 50) \")
 
 Week 2 problems
 ===============
@@ -118,21 +108,15 @@ height using year as a predictor. Write down the mathematical model
 definition for this regression, using any variable names and priors you
 choose. Be prepared to defend your choice of priors.*
 
-![
-y\_i \\sim Normal (\\mu\_i, \\sigma) \\\\
-mu\_i = \\alpha + \\beta\*year\_i \\\\
-\\alpha \\sim Normal(100, 50) \\\\
-\\beta \\sim Log-Normal(0, 1) \\\\
-\\sigma \\sim Uniform(0, 50)\\\\
-](https://latex.codecogs.com/png.latex?%0Ay_i%20%5Csim%20Normal%20%28%5Cmu_i%2C%20%5Csigma%29%20%5C%5C%0Amu_i%20%3D%20%5Calpha%20%2B%20%5Cbeta%2Ayear_i%20%5C%5C%0A%5Calpha%20%5Csim%20Normal%28100%2C%2050%29%20%5C%5C%0A%5Cbeta%20%5Csim%20Log-Normal%280%2C%201%29%20%5C%5C%0A%5Csigma%20%5Csim%20Uniform%280%2C%2050%29%5C%5C%0A "
-y_i \sim Normal (\mu_i, \sigma) \\
-mu_i = \alpha + \beta*year_i \\
-\alpha \sim Normal(100, 50) \\
-\beta \sim Log-Normal(0, 1) \\
-\sigma \sim Uniform(0, 50)\\
-")
+\[ y\_i \\sim Normal (\\mu\_i, \\sigma) \\\\ mu\_i = \\alpha +
+\\beta\*year\_i \\\\ \\alpha \\sim Normal(100, 50) \\\\ \\beta \\sim
+Log-Normal(0, 1) \\\\ \\sigma \\sim Uniform(0,
+50)\\\\\](https://latex.codecogs.com/png.latex?%0Ay\_i%20%5Csim%20Normal%20%28%5Cmu\_i%2C%20%5Csigma%29%20%5C%5C%0Amu\_i%20%3D%20%5Calpha%20%2B%20%5Cbeta%2Ayear\_i%20%5C%5C%0A%5Calpha%20%5Csim%20Normal%28100%2C%2050%29%20%5C%5C%0A%5Cbeta%20%5Csim%20Log-Normal%280%2C%201%29%20%5C%5C%0A%5Csigma%20%5Csim%20Uniform%280%2C%2050%29%5C%5C%0A
+\" y\_i \sim Normal (\mu\_i, \sigma) \\ mu\_i = \alpha + \beta*year\_i
+\\ \alpha \sim Normal(100, 50) \\ \beta \sim Log-Normal(0, 1) \\
+\sigma \sim Uniform(0, 50)\\ \")
 
- Really we should fit each student as a random effect, but we aren't
+Really we should fit each student as a random effect, but we aren't
 there yet.
 
 Assume height measured in cm. We don't know the age of the students but
@@ -160,19 +144,13 @@ information lead you to change your choice of priors? How?*
 
 Not so different, but I would go with:
 
-![
-y\_i \\sim Normal (\\mu\_i, \\sigma) \\\\
-mu\_i = \\alpha + \\beta\*year\_i \\\\
-\\alpha \\sim Normal(120, 50) \\\\
-\\beta \\sim Log-Normal(0, 1) \\\\
-\\sigma \\sim Uniform(0, 50)\\\\
-](https://latex.codecogs.com/png.latex?%0Ay_i%20%5Csim%20Normal%20%28%5Cmu_i%2C%20%5Csigma%29%20%5C%5C%0Amu_i%20%3D%20%5Calpha%20%2B%20%5Cbeta%2Ayear_i%20%5C%5C%0A%5Calpha%20%5Csim%20Normal%28120%2C%2050%29%20%5C%5C%0A%5Cbeta%20%5Csim%20Log-Normal%280%2C%201%29%20%5C%5C%0A%5Csigma%20%5Csim%20Uniform%280%2C%2050%29%5C%5C%0A "
-y_i \sim Normal (\mu_i, \sigma) \\
-mu_i = \alpha + \beta*year_i \\
-\alpha \sim Normal(120, 50) \\
-\beta \sim Log-Normal(0, 1) \\
-\sigma \sim Uniform(0, 50)\\
-")
+\[ y\_i \\sim Normal (\\mu\_i, \\sigma) \\\\ mu\_i = \\alpha +
+\\beta\*year\_i \\\\ \\alpha \\sim Normal(120, 50) \\\\ \\beta \\sim
+Log-Normal(0, 1) \\\\ \\sigma \\sim Uniform(0,
+50)\\\\\](https://latex.codecogs.com/png.latex?%0Ay\_i%20%5Csim%20Normal%20%28%5Cmu\_i%2C%20%5Csigma%29%20%5C%5C%0Amu\_i%20%3D%20%5Calpha%20%2B%20%5Cbeta%2Ayear\_i%20%5C%5C%0A%5Calpha%20%5Csim%20Normal%28120%2C%2050%29%20%5C%5C%0A%5Cbeta%20%5Csim%20Log-Normal%280%2C%201%29%20%5C%5C%0A%5Csigma%20%5Csim%20Uniform%280%2C%2050%29%5C%5C%0A
+\" y\_i \sim Normal (\mu\_i, \sigma) \\ mu\_i = \alpha + \beta*year\_i
+\\ \alpha \sim Normal(120, 50) \\ \beta \sim Log-Normal(0, 1) \\
+\sigma \sim Uniform(0, 50)\\ \")
 
 4M6
 ---
@@ -181,19 +159,13 @@ mu_i = \alpha + \beta*year_i \\
 the same age is never more than 64cm. How does this lead you to revise
 your priors?*
 
-![
-y\_i \\sim Normal (\\mu\_i, \\sigma) \\\\
-mu\_i = \\alpha + \\beta\*year\_i \\\\
-\\alpha \\sim Normal(120, 50) \\\\
-\\beta \\sim Log-Normal(0, 1) \\\\
-\\sigma \\sim Uniform(0, 8)\\\\
-](https://latex.codecogs.com/png.latex?%0Ay_i%20%5Csim%20Normal%20%28%5Cmu_i%2C%20%5Csigma%29%20%5C%5C%0Amu_i%20%3D%20%5Calpha%20%2B%20%5Cbeta%2Ayear_i%20%5C%5C%0A%5Calpha%20%5Csim%20Normal%28120%2C%2050%29%20%5C%5C%0A%5Cbeta%20%5Csim%20Log-Normal%280%2C%201%29%20%5C%5C%0A%5Csigma%20%5Csim%20Uniform%280%2C%208%29%5C%5C%0A "
-y_i \sim Normal (\mu_i, \sigma) \\
-mu_i = \alpha + \beta*year_i \\
-\alpha \sim Normal(120, 50) \\
-\beta \sim Log-Normal(0, 1) \\
-\sigma \sim Uniform(0, 8)\\
-")
+\[ y\_i \\sim Normal (\\mu\_i, \\sigma) \\\\ mu\_i = \\alpha +
+\\beta\*year\_i \\\\ \\alpha \\sim Normal(120, 50) \\\\ \\beta \\sim
+Log-Normal(0, 1) \\\\ \\sigma \\sim Uniform(0,
+8)\\\\\](https://latex.codecogs.com/png.latex?%0Ay\_i%20%5Csim%20Normal%20%28%5Cmu\_i%2C%20%5Csigma%29%20%5C%5C%0Amu\_i%20%3D%20%5Calpha%20%2B%20%5Cbeta%2Ayear\_i%20%5C%5C%0A%5Calpha%20%5Csim%20Normal%28120%2C%2050%29%20%5C%5C%0A%5Cbeta%20%5Csim%20Log-Normal%280%2C%201%29%20%5C%5C%0A%5Csigma%20%5Csim%20Uniform%280%2C%208%29%5C%5C%0A
+\" y\_i \sim Normal (\mu\_i, \sigma) \\ mu\_i = \alpha + \beta*year\_i
+\\ \alpha \sim Normal(120, 50) \\ \beta \sim Log-Normal(0, 1) \\
+\sigma \sim Uniform(0, 8)\\ \")
 
 4H1
 ---
