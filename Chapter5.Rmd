@@ -14,6 +14,134 @@ library(tidyverse)
 ```
 # homework problems
 
+## 5E1
+
+2 and 4
+
+## 5E3
+
+_Write down a multiple regression to evaluate the claim: Neither amount of funding nor size of laboratory is by itself a good predictor of time to PhD degree; but together these variables are both positively associated with time to degree. Write down the model definition and indicate which side of zero each slope parameter should be on._
+
+$$
+time_i \sim (\mu_i, \sigma) \\
+mu_i = \alpha + \beta Fund*F_i + \beta Size*S_i\\
+alpha \sim Norm(5,1)\\
+\beta Fund \sim Norm(0,1)\\
+\beta Size \sim Norm(0,1)\\
+\sigma \sim exp(1)\\
+$$
+
+Both slope parameters will be positive
+
+## 5M2 
+_5M2. Invent your own example of a masked relationship. An outcome variable should be correlated with both predictor variables, but in opposite directions. And the two predictor variables should be correlated with one another._
+
+Backcounty ski ascent speed influenced by Altitude and AirTemp.
+
+Higher altitude decreases speed because of reduced oxygen
+
+Higher temp increases speed because snow is denser and therfore do not sink as deep.  Also less icey.
+
+But temp increases with altitude.
+
+## 5M3
+_It is sometimes observed that the best predictor of fire risk is the presence of firefighters— States and localities with many firefighters also have more fires. Presumably firefighters do not cause fires. Nevertheless, this is not a spurious correlation. Instead fires cause firefighters. Consider the same reversal of causal inference in the context of the divorce and marriage data. How might a high divorce rate cause a higher marriage rate? Can you think of a way to evaluate this relationship, using multiple regression?_
+
+high divorce rate means that there are more single people availble for marriage.
+
+Mr ~ Ma + Dr
+
+## 5M4
+_In the divorce data, States with high numbers of Mormons (members of The Church of Jesus Christ of Latter-day Saints, LDS) have much lower divorce rates than the regression models expected. Find a list of LDS population by State and use those numbers as a predictor variable, predicting divorce rate using marriage rate, median age at marriage, and percent LDS population (possibly stan- dardized). You may want to consider transformations of the raw percent LDS variable._
+
+```{r}
+library(rethinking)
+library(tidyverse)
+data("WaffleDivorce")
+library(rvest)
+```
+
+get the data into R.  Use rvest to web scrape the table
+
+```{r}
+LDS <- read_html("https://en.wikipedia.org/wiki/The_Church_of_Jesus_Christ_of_Latter-day_Saints_membership_statistics_(United_States)")
+LDS_table <- LDS %>% html_nodes(".wikitable") %>% magrittr::extract2(1) %>% html_table()
+LDS_table
+LDS_table <- LDS_table %>% mutate(LDS_pct = {str_remove(LDS, "%") %>% as.numeric()}) %>%
+  select(State,LDS_pct)
+LDS_table
+```
+
+Combine the data
+```{r}
+# what is missing in WaffleDivorce?
+anti_join(LDS_table, WaffleDivorce, by = c("State" = "Location"))
+# Nevada!
+
+# do the join
+divorce <- inner_join(WaffleDivorce, LDS_table, by = c("Location" = "State"))
+divorce
+```
+
+```{r}
+hist(divorce$LDS_pct, breaks = 30)
+hist(log(divorce$LDS_pct), breaks = 30)
+divorce <- divorce %>% mutate(LDS_log = log(LDS_pct))
+```
+
+```{r}
+divorce <- divorce %>%
+  mutate(StdAge = scale(MedianAgeMarriage),
+         StdMarriage = scale(Marriage),
+         StdDivorce = scale(Divorce),
+         StdLDS = scale(LDS_pct),
+         StdLDS_log = scale(LDS_log))
+divorce
+```
+
+```{r}
+m5m4.1 <- quap(
+  flist = alist(
+    StdDivorce ~ dnorm(mu, sigma),
+    mu <- a + bA*StdAge + bM*StdMarriage + bL*StdLDS_log,
+    a ~ dnorm(0, 0.2),
+    bA ~ dnorm(0, 0.5),
+    bM ~ dnorm(0, 0.5),
+    bL ~ dnorm(0, 1),
+    sigma ~ dexp(1)),
+  data = divorce)
+precis(m5m4.1)
+```
+
+```{r}
+m5m4.2 <- quap(
+  flist = alist(
+    StdDivorce ~ dnorm(mu, sigma),
+    mu <- a + bA*StdAge + bM*StdMarriage + bL*StdLDS,
+    a ~ dnorm(0, 0.2),
+    bA ~ dnorm(0, 0.5),
+    bM ~ dnorm(0, 0.5),
+    bL ~ dnorm(0, 1),
+    sigma ~ dexp(1)),
+  data = divorce)
+precis(m5m4.2)
+```
+
+Non-transformed seems slightly better (narrower credible intervals)
+
+plot predicted vs observed
+```{r}
+predicted <- sim(m5m4.2)
+dim(predicted)
+divorce$pred.mu <- predicted %>% apply(2, mean)
+predicted %>% apply(2,HPDI,.95) %>% t()
+```
+
+
+5H1
+5H2
+
+
 # book code and notes
 
 ```{r}
