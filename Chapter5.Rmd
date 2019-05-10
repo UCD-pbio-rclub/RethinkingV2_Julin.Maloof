@@ -66,10 +66,10 @@ get the data into R.  Use rvest to web scrape the table
 ```{r}
 LDS <- read_html("https://en.wikipedia.org/wiki/The_Church_of_Jesus_Christ_of_Latter-day_Saints_membership_statistics_(United_States)")
 LDS_table <- LDS %>% html_nodes(".wikitable") %>% magrittr::extract2(1) %>% html_table()
-LDS_table
+head(LDS_table)
 LDS_table <- LDS_table %>% mutate(LDS_pct = {str_remove(LDS, "%") %>% as.numeric()}) %>%
   select(State,LDS_pct)
-LDS_table
+head(LDS_table)
 ```
 
 Combine the data
@@ -80,7 +80,7 @@ anti_join(LDS_table, WaffleDivorce, by = c("State" = "Location"))
 
 # do the join
 divorce <- inner_join(WaffleDivorce, LDS_table, by = c("Location" = "State"))
-divorce
+head(divorce)
 ```
 
 ```{r}
@@ -96,7 +96,7 @@ divorce <- divorce %>%
          StdDivorce = scale(Divorce),
          StdLDS = scale(LDS_pct),
          StdLDS_log = scale(LDS_log))
-divorce
+head(divorce)
 ```
 
 ```{r}
@@ -111,6 +111,24 @@ m5m4.1 <- quap(
     sigma ~ dexp(1)),
   data = divorce)
 precis(m5m4.1)
+```
+
+plot predicted vs observed
+```{r}
+predicted <- sim(m5m4.1)
+divorce$pred.mu <- predicted %>% apply(2, mean)
+pred.HPDI <- predicted %>% apply(2,HPDI,.95) %>% t()
+divorce$pred.hpdi.low <- pred.HPDI[,1]
+divorce$pred.hpdi.high <- pred.HPDI[,2]
+```
+
+
+```{r}
+divorce %>%
+  ggplot(aes(x=StdDivorce, y = pred.mu, ymin=pred.hpdi.low, ymax=pred.hpdi.high)) +
+  geom_abline(slope=1,intercept=0, color="gray50") +
+  geom_linerange(color="red", alpha=.5)  +
+  geom_point() 
 ```
 
 ```{r}
@@ -132,16 +150,200 @@ Non-transformed seems slightly better (narrower credible intervals)
 plot predicted vs observed
 ```{r}
 predicted <- sim(m5m4.2)
-dim(predicted)
 divorce$pred.mu <- predicted %>% apply(2, mean)
-predicted %>% apply(2,HPDI,.95) %>% t()
+pred.HPDI <- predicted %>% apply(2,HPDI,.95) %>% t()
+divorce$pred.hpdi.low <- pred.HPDI[,1]
+divorce$pred.hpdi.high <- pred.HPDI[,2]
 ```
 
 
-5H1
-5H2
+```{r}
+divorce %>%
+  ggplot(aes(x=StdDivorce, y = pred.mu, ymin=pred.hpdi.low, ymax=pred.hpdi.high)) +
+  geom_abline(slope=1,intercept=0, color="gray50") +
+  geom_linerange(color="red", alpha=.5)  +
+  geom_point() 
+```
+
+## 5H1
+
+_The urban fox (Vulpes vulpes) is a successful exploiter of human habitat. Since urban foxes move in packs and defend territories, data on habitat quality and population density is also included. The data frame has five columns:_
+
+(1) group: Number of the social group the individual fox belongs to  
+(2) avgfood: The average amount of food available in the territory   
+(3) groupsize: The number of foxes in the social group  
+(4) area: Size of the territory  
+(5) weight: Body weight of the individual fox  
+
+_Fit two bivariate Gaussian regressions, using quap: (1) body weight as a linear function of territory size (area), and (2) body weight as a linear function of groupsize. Plot the results of these regressions, displaying the MAP regression line and the 95% interval of the mean. Is either variable important for predicting fox body weight?_
+
+```{r}
+data("foxes")
+head(foxes)
+```
+
+```{r}
+m5h1.1 <- quap(
+  flist = alist(
+    weight ~ dnorm(mu, sigma),
+    mu <- a + bA*area,
+    a ~ dnorm(5,2),
+    bA ~ dnorm(0,1),
+    sigma ~ dexp(1)),
+  data=foxes)
+precis(m5h1.1)
+```
+
+```{r}
+m5h1pred1 <- data.frame(
+  area=seq(min(foxes$area)*.95, max(foxes$area)*1.05, length.out = 100))
+
+m5h1.1.link <- link(m5h1.1, data = m5h1pred1)
+
+m5h1pred1 <- m5h1pred1 %>%
+  mutate(mu = apply(m5h1.1.link, 2, mean),
+         hpdi.low = {apply(m5h1.1.link, 2, HPDI, .95) %>% 
+             t() %>% 
+             magrittr::extract(,1)},
+         hpdi.high = {apply(m5h1.1.link, 2, HPDI, .95) %>% 
+             t() %>% 
+             magrittr::extract(,2)})
+head(m5h1pred1)
+```
+
+```{r}
+m5h1pred1 %>%
+  ggplot(aes(x=area,y=mu,ymin=hpdi.low,ymax=hpdi.high)) +
+  geom_line() +
+  geom_ribbon(alpha=.2) +
+  geom_point(aes(x=area, y=weight), color="blue", alpha=0.3,data=foxes, inherit.aes = FALSE)
+```
+
+```{r}
+m5h1.2 <- quap(
+  flist = alist(
+    weight ~ dnorm(mu, sigma),
+    mu <- a + bG*groupsize,
+    a ~ dnorm(5,2),
+    bG ~ dnorm(0,1),
+    sigma ~ dexp(1)),
+  data=foxes)
+precis(m5h1.2)
+```
+
+```{r}
+m5h1pred2 <- data.frame(
+  groupsize=seq(min(foxes$groupsize)*.95, max(foxes$groupsize)*1.05, length.out = 100))
+
+m5h1.2.link <- link(m5h1.2, data = m5h1pred2)
+
+m5h1pred2 <- m5h1pred2 %>%
+  mutate(mu = apply(m5h1.2.link, 2, mean),
+         hpdi.low = {apply(m5h1.2.link, 2, HPDI, .95) %>% 
+             t() %>% 
+             magrittr::extract(,1)},
+         hpdi.high = {apply(m5h1.2.link, 2, HPDI, .95) %>% 
+             t() %>% 
+             magrittr::extract(,2)})
+head(m5h1pred2)
+```
+
+```{r}
+m5h1pred2 %>%
+  ggplot(aes(x=groupsize,y=mu,ymin=hpdi.low,ymax=hpdi.high)) +
+  geom_line() +
+  geom_ribbon(alpha=.2) +
+  geom_point(aes(x=groupsize, y=weight), color="blue", alpha=0.3,data=foxes, inherit.aes = FALSE)
+```
+some evidence for groupsize having an influence
+
+## 5H2
+_ Now fit a multiple linear regression with weight as the outcome and both area and groupsize as predictor variables. Plot the predictions of the model for each predictor, holding the other predictor constant at its mean. What does this model say about the importance of each variable? Why do you get different results than you got in the exercise just above?_
+
+```{r}
+plot(foxes$groupsize, foxes$area)
+```
 
 
+```{r}
+m5h2 <- quap(
+  flist = alist(
+    weight ~ dnorm(mu, sigma),
+    mu <- a + bA*area + bG*groupsize,
+    a ~ dnorm(5,2),
+    bA ~ dnorm(0,1),
+    bG ~ dnorm(0,1),
+    sigma ~ dexp(1)),
+  data=foxes)
+precis(m5h2)
+```
+
+counterfactual...
+
+```{r}
+pred5h2area <- data.frame(
+  area=seq(min(foxes$area)*.95, max(foxes$area)*1.05, length.out = 100),
+  groupsize=mean(foxes$groupsize))
+link5h2area <- link(m5h2, data = pred5h2area)
+sim5h2area <- sim(m5h2, data=pred5h2area)
+```
+
+```{r}
+pred5h2area <- pred5h2area %>%
+  mutate(weight = apply(link5h2area, 2, mean),
+         mu.low = {apply(link5h2area, 2, HPDI, .95) %>% 
+             t() %>% 
+             magrittr::extract(,1)},
+         mu.high = {apply(link5h2area, 2, HPDI, .95) %>% 
+             t() %>% 
+             magrittr::extract(,2)},
+         sim.low = {apply(sim5h2area, 2, HPDI, .95) %>% 
+             t() %>% 
+             magrittr::extract(,1)},
+         sim.high = {apply(sim5h2area, 2, HPDI, .95) %>% 
+             t() %>% 
+             magrittr::extract(,2)})
+```
+
+```{r}
+pred5h2area %>% ggplot(aes(x=area,y=weight)) +
+  geom_line() +
+  geom_ribbon(aes(ymin=sim.low, ymax=sim.high),alpha=.2) +
+  geom_ribbon(aes(ymin=mu.low, ymax=mu.high),alpha=.4)
+```
+```{r}
+pred5h2groupsize <- data.frame(
+  groupsize=seq(min(foxes$groupsize)*.95, max(foxes$groupsize)*1.05, length.out = 100),
+  area=mean(foxes$area))
+link5h2groupsize <- link(m5h2, data = pred5h2groupsize)
+sim5h2groupsize <- sim(m5h2, data=pred5h2groupsize)
+```
+
+```{r}
+pred5h2groupsize <- pred5h2groupsize %>%
+  mutate(weight = apply(link5h2groupsize, 2, mean),
+         mu.low = {apply(link5h2groupsize, 2, HPDI, .95) %>% 
+             t() %>% 
+             magrittr::extract(,1)},
+         mu.high = {apply(link5h2groupsize, 2, HPDI, .95) %>% 
+             t() %>% 
+             magrittr::extract(,2)},
+         sim.low = {apply(sim5h2groupsize, 2, HPDI, .95) %>% 
+             t() %>% 
+             magrittr::extract(,1)},
+         sim.high = {apply(sim5h2groupsize, 2, HPDI, .95) %>% 
+             t() %>% 
+             magrittr::extract(,2)})
+```
+
+```{r}
+pred5h2groupsize %>% ggplot(aes(x=groupsize,y=weight)) +
+  geom_line() +
+  geom_ribbon(aes(ymin=sim.low, ymax=sim.high),alpha=.2) +
+  geom_ribbon(aes(ymin=mu.low, ymax=mu.high),alpha=.4)
+```
+
+area increaeses weight, groupsize decreases weight.  area and groupsize are positively correlated so they mask one another.
 # book code and notes
 
 ```{r}
@@ -160,13 +362,13 @@ sd( d$MedianAgeMarriage )
 
 ## R code 5.3
 m5.1 <- quap(
-    alist(
-        D ~ dnorm( mu , sigma ) ,
-        mu <- a + bA * A ,
-        a ~ dnorm( 0 , 0.2 ) ,
-        bA ~ dnorm( 0 , 0.5 ) ,
-        sigma ~ dexp( 1 )
-    ) , data = d )
+  alist(
+    D ~ dnorm( mu , sigma ) ,
+    mu <- a + bA * A ,
+    a ~ dnorm( 0 , 0.2 ) ,
+    bA ~ dnorm( 0 , 0.5 ) ,
+    sigma ~ dexp( 1 )
+  ) , data = d )
 
 ## R code 5.4
 set.seed(10)
@@ -197,16 +399,15 @@ shade( mu.PI , A_seq )
 ## R code 5.6
 d$M <- scale( d$Marriage )
 m5.2 <- quap(
-    alist(
-        D ~ dnorm( mu , sigma ) ,
-        mu <- a + bM * M ,
-        a ~ dnorm( 0 , 0.2 ) ,
-        bM ~ dnorm( 0 , 0.5 ) ,
-        sigma ~ dexp( 1 )
-    ) , data = d )
+  alist(
+    D ~ dnorm( mu , sigma ) ,
+    mu <- a + bM * M ,
+    a ~ dnorm( 0 , 0.2 ) ,
+    bM ~ dnorm( 0 , 0.5 ) ,
+    sigma ~ dexp( 1 )
+  ) , data = d )
 
 ## R code 5.7
-install.packages('dagitty')
 library(dagitty)
 dag5.1 <- dagitty( "dag {
     A -> D
@@ -221,14 +422,14 @@ plot( dag5.1 )
 ```{r}
 ## R code 5.8
 m5.3 <- quap(
-    alist(
-        D ~ dnorm( mu , sigma ) ,
-        mu <- a + bM*M + bA*A ,
-        a ~ dnorm( 0 , 0.2 ) ,
-        bM ~ dnorm( 0 , 0.5 ) ,
-        bA ~ dnorm( 0 , 0.5 ) ,
-        sigma ~ dexp( 1 )
-    ) , data = d )
+  alist(
+    D ~ dnorm( mu , sigma ) ,
+    mu <- a + bM*M + bA*A ,
+    a ~ dnorm( 0 , 0.2 ) ,
+    bM ~ dnorm( 0 , 0.5 ) ,
+    bA ~ dnorm( 0 , 0.5 ) ,
+    sigma ~ dexp( 1 )
+  ) , data = d )
 precis( m5.3 )
 
 ## R code 5.9
@@ -248,13 +449,13 @@ div <- rnorm( N , age )  # sim A -> D
 ```{r}
 ## R code 5.11
 m5.4 <- quap(
-    alist(
-        M ~ dnorm( mu , sigma ) ,
-        mu <- a + bAM * A ,
-        a ~ dnorm( 0 , 0.2 ) ,
-        bAM ~ dnorm( 0 , 0.5 ) ,
-        sigma ~ dexp( 1 )
-    ) , data = d )
+  alist(
+    M ~ dnorm( mu , sigma ) ,
+    mu <- a + bAM * A ,
+    a ~ dnorm( 0 , 0.2 ) ,
+    bAM ~ dnorm( 0 , 0.5 ) ,
+    sigma ~ dexp( 1 )
+  ) , data = d )
 
 ## R code 5.12
 mu <- link(m5.4)
@@ -304,7 +505,7 @@ D_PI <- apply( D_sim , 2 , PI )
 
 ## R code 5.15
 plot( mu_mean ~ d$D , col=rangi2 , ylim=range(mu_PI) ,
-    xlab="Observed divorce" , ylab="Predicted divorce" )
+      xlab="Observed divorce" , ylab="Predicted divorce" )
 abline( a=0 , b=1 , lty=2 )
 for ( i in 1:nrow(d) ) lines( rep(d$D[i],2) , mu_PI[,i] , col=rangi2 )
 
@@ -332,48 +533,48 @@ d$K <- scale( d$kcal.per.g )
 d$N <- scale( d$neocortex.perc )
 d$M <- scale( log(d$mass) )
 
-## R code 5.20
-m5.5_draft <- quap(
-    alist(
-        K ~ dnorm( mu , sigma ) ,
-        mu <- a + bN*N ,
-        a ~ dnorm( 0 , 1 ) ,
-        bN ~ dnorm( 0 , 1 ) ,
-        sigma ~ dexp( 1 )
-    ) , data=d )
-
-## R code 5.21
-d$neocortex.perc
-
+# ## R code 5.20
+# m5.5_draft <- quap(
+#   alist(
+#     K ~ dnorm( mu , sigma ) ,
+#     mu <- a + bN*N ,
+#     a ~ dnorm( 0 , 1 ) ,
+#     bN ~ dnorm( 0 , 1 ) ,
+#     sigma ~ dexp( 1 )
+#   ) , data=d )
+# 
+# ## R code 5.21
+# d$neocortex.perc
+# 
 ## R code 5.22
 dcc <- d[ complete.cases(d$K,d$N,d$M) , ]
 
 ## R code 5.23
 m5.5_draft <- quap(
-    alist(
-        K ~ dnorm( mu , sigma ) ,
-        mu <- a + bN*N ,
-        a ~ dnorm( 0 , 1 ) ,
-        bN ~ dnorm( 0 , 1 ) ,
-        sigma ~ dexp( 1 )
-    ) , data=dcc )
-
-## R code 5.24
-prior <- extract.prior( m5.5_draft )
-xseq <- c(-2,2)
-mu <- link( m5.5_draft , post=prior , data=list(N=xseq) )
-plot( NULL , xlim=xseq , ylim=xseq )
-for ( i in 1:50 ) lines( xseq , mu[i,] , col=col.alpha("black",0.3) )
+alist(
+K ~ dnorm( mu , sigma ) ,
+mu <- a + bN*N ,
+a ~ dnorm( 0 , 1 ) ,
+bN ~ dnorm( 0 , 1 ) ,
+sigma ~ dexp( 1 )
+) , data=dcc )
+#
+# ## R code 5.24
+# prior <- extract.prior( m5.5_draft )
+# xseq <- c(-2,2)
+# mu <- link( m5.5_draft , post=prior , data=list(N=xseq) )
+# plot( NULL , xlim=xseq , ylim=xseq )
+# for ( i in 1:50 ) lines( xseq , mu[i,] , col=col.alpha("black",0.3) )
 
 ## R code 5.25
 m5.5 <- quap(
-    alist(
-        K ~ dnorm( mu , sigma ) ,
-        mu <- a + bN*N ,
-        a ~ dnorm( 0 , 0.2 ) ,
-        bN ~ dnorm( 0 , 0.5 ) ,
-        sigma ~ dexp( 1 )
-    ) , data=dcc )
+  alist(
+    K ~ dnorm( mu , sigma ) ,
+    mu <- a + bN*N ,
+    a ~ dnorm( 0 , 0.2 ) ,
+    bN ~ dnorm( 0 , 0.5 ) ,
+    sigma ~ dexp( 1 )
+  ) , data=dcc )
 
 ## R code 5.26
 precis( m5.5 )
@@ -389,25 +590,25 @@ shade( mu_PI , xseq )
 
 ## R code 5.28
 m5.6 <- quap(
-    alist(
-        K ~ dnorm( mu , sigma ) ,
-        mu <- a + bM*M ,
-        a ~ dnorm( 0 , 0.2 ) ,
-        bM ~ dnorm( 0 , 0.5 ) ,
-        sigma ~ dexp( 1 )
-    ) , data=dcc )
+  alist(
+    K ~ dnorm( mu , sigma ) ,
+    mu <- a + bM*M ,
+    a ~ dnorm( 0 , 0.2 ) ,
+    bM ~ dnorm( 0 , 0.5 ) ,
+    sigma ~ dexp( 1 )
+  ) , data=dcc )
 precis(m5.6)
 
 ## R code 5.29
 m5.7 <- quap(
-    alist(
-        K ~ dnorm( mu , sigma ) ,
-        mu <- a + bN*N + bM*M ,
-        a ~ dnorm( 0 , 0.2 ) ,
-        bN ~ dnorm( 0 , 0.5 ) ,
-        bM ~ dnorm( 0 , 0.5 ) ,
-        sigma ~ dexp( 1 )
-    ) , data=dcc )
+  alist(
+    K ~ dnorm( mu , sigma ) ,
+    mu <- a + bN*N + bM*M ,
+    a ~ dnorm( 0 , 0.2 ) ,
+    bN ~ dnorm( 0 , 0.5 ) ,
+    bM ~ dnorm( 0 , 0.5 ) ,
+    sigma ~ dexp( 1 )
+  ) , data=dcc )
 precis(m5.7)
 
 ## R code 5.30
@@ -465,12 +666,12 @@ str( d$sex )
 
 ## R code 5.37
 m5.8 <- quap(
-    alist(
-        height ~ dnorm( mu , sigma ) ,
-        mu <- a[sex] ,
-        a[sex] ~ dnorm( 178 , 20 ) ,
-        sigma ~ dunif( 0 , 50 )
-    ) , data=d )
+  alist(
+    height ~ dnorm( mu , sigma ) ,
+    mu <- a[sex] ,
+    a[sex] ~ dnorm( 178 , 20 ) ,
+    sigma ~ dunif( 0 , 50 )
+  ) , data=d )
 precis( m5.8 , depth=2 )
 
 ## R code 5.38
@@ -489,15 +690,15 @@ d$clade_id <- as.integer( d$clade )
 ## R code 5.41
 d$K <- scale( d$kcal.per.g )
 m5.9 <- quap(
-    alist(
-        K ~ dnorm( mu , sigma ),
-        mu <- a[clade_id],
-        a[clade_id] ~ dnorm( 0 , 0.5 ),
-        sigma ~ dexp( 1 )
-    ) , data=d )
+  alist(
+    K ~ dnorm( mu , sigma ),
+    mu <- a[clade_id],
+    a[clade_id] ~ dnorm( 0 , 0.5 ),
+    sigma ~ dexp( 1 )
+  ) , data=d )
 labels <- paste( "a[" , 1:4 , "]:" , levels(d$clade) , sep="" )
 plot( precis( m5.9 , depth=2 , pars="a" ) , labels=labels ,
-    xlab="expected kcal (std)" )
+      xlab="expected kcal (std)" )
 
 ## R code 5.42
 set.seed(63)
@@ -505,13 +706,13 @@ d$house <- sample( rep(1:4,each=8) , size=nrow(d) )
 
 ## R code 5.43
 m5.10 <- quap(
-    alist(
-        K ~ dnorm( mu , sigma ),
-        mu <- a[clade_id] + h[house],
-        a[clade_id] ~ dnorm( 0 , 0.5 ),
-        h[house] ~ dnorm( 0 , 0.5 ),
-        sigma ~ dexp( 1 )
-    ) , data=d )
+  alist(
+    K ~ dnorm( mu , sigma ),
+    mu <- a[clade_id] + h[house],
+    a[clade_id] ~ dnorm( 0 , 0.5 ),
+    h[house] ~ dnorm( 0 , 0.5 ),
+    sigma ~ dexp( 1 )
+  ) , data=d )
 
 ```
 
