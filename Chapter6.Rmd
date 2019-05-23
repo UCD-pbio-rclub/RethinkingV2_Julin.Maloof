@@ -25,6 +25,7 @@ s <- nw + tw  # total score
 q <- quantile( s , 1-p ) # top 10% threshold
 selected <- ifelse( s >= q , TRUE , FALSE )
 cor( tw[selected] , nw[selected] )
+cor(tw,nw)
 ```
 
 
