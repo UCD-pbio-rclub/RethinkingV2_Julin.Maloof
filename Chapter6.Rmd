@@ -7,10 +7,249 @@ output:
     keep_md: yes
 ---
 
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(rethinking)
+library(dagitty)
+library(tidyverse)
 ```
+
+## Problems
+
+### 6H1
+_Use the Waffle House data, data(WaffleDivorce), to find the total causal influence of number of Waffle Houses on divorce rate. Justify your model or models with a causal graph._
+
+```{r}
+data(WaffleDivorce)
+WaffleDivorce
+```
+
+The DAG presented in the chapter is:
+```{r}
+waffledag <- dagitty("dag {
+  S -> A
+  S -> M
+  A -> M
+  M -> D
+  A -> D
+  S -> W
+  W -> D
+}")
+
+coordinates(waffledag) <- list(x=c(S=0, W=2, M = 1, A = 0, D = 2),
+                               y=c(S=0, W=0, M = 1, A = 2, D=2))
+  
+plot(waffledag)
+
+```
+
+Now, McElreath would say conditions on S.  I would prefer A and M, since S is only an indicator variable and I am ntos rue that it can account for all the variability in A and M.  Will try both.
+
+First scale and center
+```{r}
+waffle2 <- WaffleDivorce %>%
+  select(A=MedianAgeMarriage, M=Marriage, D=Divorce, W=WaffleHouses, S=South) %>%
+  mutate_at(vars(A, M, D, W), scale)
+waffle2
+```
+
+```{r}
+m6h1.1 <- quap(alist(
+  D ~ dnorm(mu, sigma),
+  mu <- alpha + bA*A + bM*M + bW*W,
+  alpha ~ dnorm(0,0.2),
+  bA ~ dnorm(0, 0.5),
+  bM ~ dnorm(0, 0.5),
+  bW ~ dnorm(0, 0.5),
+  sigma ~ dexp(1)),
+  data=waffle2)
+```
+
+```{r}
+precis(m6h1.1)
+```
+
+```{r}
+plot(precis(m6h1.1))
+```
+
+This implies that wafflehouses may indeed influence divorce rate
+
+Try it conditioning on S
+
+```{r}
+m6h1.2 <- quap(alist(
+  D ~ dnorm(mu, sigma),
+  mu <- alpha + bS*S + bW*W,
+  alpha ~ dnorm(0,0.2),
+  bS ~ dnorm(0, 0.5),
+  bW ~ dnorm(0, 0.5),
+  sigma ~ dexp(1)),
+  data=waffle2)
+```
+
+```{r}
+precis(m6h1.2)
+```
+
+```{r}
+plot(precis(m6h1.2))
+```
+
+Try it conditioning on S and A
+
+```{r}
+m6h1.3 <- quap(alist(
+  D ~ dnorm(mu, sigma),
+  mu <- alpha + bA*A + bS*S + bW*W,
+  alpha ~ dnorm(0,0.2),
+  bA ~ dnorm(0, 0.5),
+  bS ~ dnorm(0, 0.5),
+  bW ~ dnorm(0, 0.5),
+  sigma ~ dexp(1)),
+  data=waffle2)
+```
+
+```{r}
+precis(m6h1.3)
+```
+
+```{r}
+plot(precis(m6h1.3))
+```
+
+```{r}
+m6h1.4 <- quap(alist(
+  D ~ dnorm(mu, sigma),
+  mu <- alpha + bA*A  + bW*W,
+  alpha ~ dnorm(0,0.2),
+  bA ~ dnorm(0, 0.5),
+  bW ~ dnorm(0, 0.5),
+  sigma ~ dexp(1)),
+  data=waffle2)
+```
+
+```{r}
+precis(m6h1.4)
+```
+
+```{r}
+plot(precis(m6h1.4))
+```
+
+So if we do not include State then there is a bit of an influence of wafflehouses on divorce.  I don't really think that wafflehouses cause divorce, rather there is something else influenced by State, not captured in this model.
+
+```{r}
+waffledag2 <- dagitty("dag {
+  S -> A
+  A -> D
+  S -> W
+  S -> U
+  U -> D
+}")
+
+coordinates(waffledag2) <- list(x=c(S=0, W=2, U = 1, A = 0, D = 2),
+                               y=c(S=0, W=0, U = 1, A = 2, D=2))
+  
+plot(waffledag2)
+```
+
+
+### 6H2.
+_Build a series of models to test the implied conditional independencies of the causal graph you used in the previous problem. If any of the tests fail, how do you think the graph needs to be amended? Does the graph need more or fewer arrows? Feel free to nominate variables that aren’t in the data._
+
+```{r}
+impliedConditionalIndependencies(waffledag2)
+```
+
+Well, since U is unobserved I can't test those.
+
+A _||_ W | S
+first, dependence if I don't condition?
+```{r}
+quap(alist(
+  A ~ dnorm(mu, sigma),
+  mu <- alpha +  + bW*W,
+  alpha ~ dnorm(0,0.2),
+  bW ~ dnorm(0, 0.5),
+  sigma ~ dexp(1)),
+  data=waffle2) %>%
+  precis() %>% 
+  plot
+```
+
+No.  Same if conditinon on state?
+
+```{r}
+quap(alist(
+  A ~ dnorm(mu, sigma),
+  mu <- alpha + bS*S  + bW*W,
+  alpha ~ dnorm(0,0.2),
+  bW ~ dnorm(0, 0.5),
+  bS ~ dnorm(0, 0.5),
+  sigma ~ dexp(1)),
+  data=waffle2) %>%
+  precis %>%
+  plot
+```
+
+D _||_ W | S
+without conditioning
+```{r}
+quap(alist(
+  D ~ dnorm(mu, sigma),
+  mu <- alpha + bW*W,
+  alpha ~ dnorm(0,0.2),
+  bW ~ dnorm(0, 0.5),
+  sigma ~ dexp(1)),
+  data=waffle2) %>%
+  precis %>%
+  plot
+```
+
+with conditioning
+```{r}
+quap(alist(
+  D ~ dnorm(mu, sigma),
+  mu <- alpha + bS*S  + bW*W,
+  alpha ~ dnorm(0,0.2),
+  bW ~ dnorm(0, 0.5),
+  bS ~ dnorm(0, 0.5),
+  sigma ~ dexp(1)),
+  data=waffle2) %>%
+  precis %>%
+  plot
+```
+
+## From github:
+
+```{r}
+foxdag <- dagitty("dag {
+area -> avgfood
+avgfood -> groupsize
+avgfood -> weight
+groupsize -> weight
+}")
+
+coordinates(foxdag) <- list(
+  x=c(area=1, avgfood=0, groupsize=2, weight=1),
+  y=c(area=0, avgfood=1, groupsize=1, weight=2))
+
+plot(foxdag)
+  
+```
+
+
+### 1. 
+_Use a model to infer the total causal influence of area on weight. Would increasing the area available to each fox make it heavier (healthier)? You might want to standardize the variables. Regardless, use prior predictive simulation to show that your model’s prior predictions stay within the possible outcome range._
+
+
+2. Now infer the causal impact of adding food to a territory. Would this make foxes heavier? Which covariates do you need to adjust for to estimate the total causal influence of food?
+
+3. Now infer the causal impact of group size.  Which covariates do you need to adjust for? Looking at the posterior distribution of the resulting model, what do you think explains these data? That is, can you explain the estimates for all three problems? How do they go together?
+
+## Book Code
 
 ```{r}
 ## R code 6.1
