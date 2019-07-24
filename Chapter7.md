@@ -2,28 +2,14 @@
 library(tidyverse)
 ```
 
-    ## ── Attaching packages ────────────────────────────────────── tidyverse 1.2.1 ──
+    ## ── Attaching packages ───────────────────────────────────── tidyverse 1.2.1 ──
 
     ## ✔ ggplot2 3.1.1       ✔ purrr   0.3.2  
     ## ✔ tibble  2.1.1       ✔ dplyr   0.8.0.1
     ## ✔ tidyr   0.8.3       ✔ stringr 1.4.0  
     ## ✔ readr   1.3.1       ✔ forcats 0.4.0
 
-    ## Warning: package 'ggplot2' was built under R version 3.5.2
-
-    ## Warning: package 'tibble' was built under R version 3.5.2
-
-    ## Warning: package 'tidyr' was built under R version 3.5.2
-
-    ## Warning: package 'purrr' was built under R version 3.5.2
-
-    ## Warning: package 'dplyr' was built under R version 3.5.2
-
-    ## Warning: package 'stringr' was built under R version 3.5.2
-
-    ## Warning: package 'forcats' was built under R version 3.5.2
-
-    ## ── Conflicts ───────────────────────────────────────── tidyverse_conflicts() ──
+    ## ── Conflicts ──────────────────────────────────────── tidyverse_conflicts() ──
     ## ✖ dplyr::filter() masks stats::filter()
     ## ✖ dplyr::lag()    masks stats::lag()
 
@@ -34,8 +20,6 @@ library(rethinking)
     ## Loading required package: rstan
 
     ## Loading required package: StanHeaders
-
-    ## Warning: package 'StanHeaders' was built under R version 3.5.2
 
     ## rstan (Version 2.18.2, GitRev: 2e1f913d3ca3)
 
@@ -219,6 +203,287 @@ result in underfitting*
 If too informative, the priors can overwhelm the evidence and force
 coefficients to remain near 0
 
+### 1: Birbs
+
+``` {.r}
+birbs <- tibble(
+  Birb=LETTERS[1:5],
+  Island1=rep(0.2,5),
+  Island2=c(.8,.1,.05,.025,.025),
+  Island3=c(0.05,0.15,0.7,0.05,0.05))
+birbs
+```
+
+    ## # A tibble: 5 x 4
+    ##   Birb  Island1 Island2 Island3
+    ##   <chr>   <dbl>   <dbl>   <dbl>
+    ## 1 A         0.2   0.8      0.05
+    ## 2 B         0.2   0.1      0.15
+    ## 3 C         0.2   0.05     0.7 
+    ## 4 D         0.2   0.025    0.05
+    ## 5 E         0.2   0.025    0.05
+
+``` {.r}
+entropy <- function(x) {
+  -sum(x*log(x))
+}
+(island_entropies <- apply(birbs[,-1],2,entropy))
+```
+
+    ##   Island1   Island2   Island3 
+    ## 1.6094379 0.7430039 0.9836003
+
+There is the highest entropy, that is the highest uncertainity about
+which birb you might see, on Island 1
+
+``` {.r}
+KLdivergence <- function(pname,qname, data=birbs) {
+  print(cat("pname",pname))
+  p=get(pname, data)
+  q=get(qname, data)
+  -sum(p*log(p/q))  # where p is the true distribution and q is what we are using to predict
+}
+
+Islands <- colnames(birbs)[-1]
+
+results.frame <- expand.grid(predictor_q=Islands,
+                             predictee_p=Islands,stringsAsFactors = FALSE) %>% as_tibble()
+
+results.frame <- results.frame %>%
+  mutate(KLdiv = map2_dbl(predictee_p, predictor_q, ~ KLdivergence(.x, .y)))
+```
+
+    ## pname Island1NULL
+    ## pname Island1NULL
+    ## pname Island1NULL
+    ## pname Island2NULL
+    ## pname Island2NULL
+    ## pname Island2NULL
+    ## pname Island3NULL
+    ## pname Island3NULL
+    ## pname Island3NULL
+
+``` {.r}
+results.frame %>% filter(KLdiv!=0) %>% arrange(predictee_p, desc(KLdiv))
+```
+
+    ## # A tibble: 6 x 3
+    ##   predictor_q predictee_p  KLdiv
+    ##   <chr>       <chr>        <dbl>
+    ## 1 Island3     Island1     -0.639
+    ## 2 Island2     Island1     -0.970
+    ## 3 Island1     Island2     -0.866
+    ## 4 Island3     Island2     -2.01 
+    ## 5 Island1     Island3     -0.626
+    ## 6 Island2     Island3     -1.84
+
+For each case, the island with the higher entropy is the better
+predictor, because it is less likely to be surprised
+
+### 2
+
+*Recall the marriage, age, and happiness collider bias example from
+Chapter 6. Run models m6.9 and m6.10 again. Compare these two models
+using WAIC (or LOO, they will produce identical results). Which model is
+expected to make better predictions? Which model provides the correct
+causal inference about the influence of age on happiness? Can you
+explain why the answers to these two questions disagree?*
+
+``` {.r}
+## R code 6.22
+library(rethinking)
+d <- sim_happiness( seed=1977 , N_years=1000 )
+precis(d)
+```
+
+    ##                    mean        sd      5.5%     94.5%     histogram
+    ## age        3.300000e+01 18.768883  4.000000 62.000000 ▇▇▇▇▇▇▇▇▇▇▇▇▇
+    ## married    3.007692e-01  0.458769  0.000000  1.000000    ▇▁▁▁▁▁▁▁▁▃
+    ## happiness -1.000070e-16  1.214421 -1.789474  1.789474      ▇▅▇▅▅▇▅▇
+
+``` {.r}
+## R code 6.23
+d2 <- d[ d$age>17 , ] # only adults
+d2$A <- ( d2$age - 18 ) / ( 65 - 18 )
+```
+
+``` {.r}
+## R code 6.24
+d2$mid <- d2$married + 1
+m6.9 <- quap(
+    alist(
+        happiness ~ dnorm( mu , sigma ),
+        mu <- a[mid] + bA*A,
+        a[mid] ~ dnorm( 0 , 1 ),
+        bA ~ dnorm( 0 , 2 ),
+        sigma ~ dexp(1)
+    ) , data=d2 )
+precis(m6.9,depth=2)
+```
+
+    ##             mean         sd       5.5%      94.5%
+    ## a[1]  -0.2350877 0.06348986 -0.3365568 -0.1336186
+    ## a[2]   1.2585517 0.08495989  1.1227694  1.3943340
+    ## bA    -0.7490274 0.11320112 -0.9299447 -0.5681102
+    ## sigma  0.9897080 0.02255800  0.9536559  1.0257600
+
+``` {.r}
+## R code 6.25
+m6.10 <- quap(
+    alist(
+        happiness ~ dnorm( mu , sigma ),
+        mu <- a + bA*A,
+        a ~ dnorm( 0 , 1 ),
+        bA ~ dnorm( 0 , 2 ),
+        sigma ~ dexp(1)
+    ) , data=d2 )
+precis(m6.10)
+```
+
+    ##                mean         sd       5.5%     94.5%
+    ## a      1.649248e-07 0.07675015 -0.1226614 0.1226617
+    ## bA    -2.728620e-07 0.13225976 -0.2113769 0.2113764
+    ## sigma  1.213188e+00 0.02766080  1.1689803 1.2573949
+
+``` {.r}
+plot(coeftab(m6.9, m6.10))
+```
+
+![](Chapter7_files/figure-html/unnamed-chunk-10-1.png)<!-- -->
+
+``` {.r}
+compare(m6.9, m6.10)
+```
+
+    ##           WAIC    pWAIC    dWAIC       weight       SE      dSE
+    ## m6.9  2713.971 3.738532   0.0000 1.000000e+00 37.54465       NA
+    ## m6.10 3101.906 2.340445 387.9347 5.768312e-85 27.74379 35.40032
+
+model 6.9 is best by WAIC. This is because the generative model has
+marriage as a collider, so marriage relates happiness to age.
+
+### 3
+
+*Reconsider the urban fox analysis from last week's homework. Use WAIC
+or LOO based model comparison on five different models, each using
+weight as the outcome, and containing these sets of predictor
+variables:* (1) avgfood + groupsize + area (2) avgfood + groupsize (3)
+groupsize + area (4) avgfood (5) area *Can you explain the relative
+differences in WAIC scores, using the fox DAG from last week's homework?
+Be sure to pay attention to the standard error of the score differences
+(dSE).*
+
+``` {.r}
+library(dagitty)
+foxdag <- dagitty("dag {
+area -> avgfood
+avgfood -> groupsize
+avgfood -> weight
+groupsize -> weight
+}")
+
+coordinates(foxdag) <- list(
+  x=c(area=1, avgfood=0, groupsize=2, weight=1),
+  y=c(area=0, avgfood=1, groupsize=1, weight=2))
+
+plot(foxdag)
+```
+
+![](Chapter7_files/figure-html/unnamed-chunk-12-1.png)<!-- -->
+
+``` {.r}
+data("foxes")
+head(foxes)
+```
+
+    ##   group avgfood groupsize area weight
+    ## 1     1    0.37         2 1.09   5.02
+    ## 2     1    0.37         2 1.09   2.84
+    ## 3     2    0.53         2 2.05   5.33
+    ## 4     2    0.53         2 2.05   6.07
+    ## 5     3    0.49         2 2.12   5.85
+    ## 6     3    0.49         2 2.12   3.25
+
+``` {.r}
+foxes2 <- foxes %>%
+  mutate_at(vars(-group), scale)
+head(foxes2)
+```
+
+    ##   group   avgfood groupsize      area     weight
+    ## 1     1 -1.924829 -1.524089 -2.239596  0.4141347
+    ## 2     1 -1.924829 -1.524089 -2.239596 -1.4270464
+    ## 3     2 -1.118035 -1.524089 -1.205508  0.6759540
+    ## 4     2 -1.118035 -1.524089 -1.205508  1.3009421
+    ## 5     3 -1.319734 -1.524089 -1.130106  1.1151348
+    ## 6     3 -1.319734 -1.524089 -1.130106 -1.0807692
+
+models
+
+``` {.r}
+m1 <- quap(alist(
+  weight ~ dnorm(mu, sigma),
+  mu <- alpha + bF*avgfood + bG*groupsize + bA*area,
+  alpha ~ dnorm(0,.2),
+  bF ~ dnorm(0,.5),
+  bG ~ dnorm(0,.5),
+  bA ~ dnorm(0,.5),
+  sigma ~ dexp(1)),
+  data=foxes2)
+
+m2 <- quap(alist(
+  weight ~ dnorm(mu, sigma),
+  mu <- alpha + bF*avgfood + bG*groupsize,
+  alpha ~ dnorm(0,.2),
+  bF ~ dnorm(0,.5),
+  bG ~ dnorm(0,.5),
+  sigma ~ dexp(1)),
+  data=foxes2)
+
+m3 <- quap(alist(
+  weight ~ dnorm(mu, sigma),
+  mu <- alpha + bG*groupsize + bA*area,
+  alpha ~ dnorm(0,.2),
+  bG ~ dnorm(0,.5),
+  bA ~ dnorm(0,.5),
+  sigma ~ dexp(1)),
+  data=foxes2)
+
+m4 <- quap(alist(
+  weight ~ dnorm(mu, sigma),
+  mu <- alpha + bF*avgfood,
+  alpha ~ dnorm(0,.2),
+  bF ~ dnorm(0,.5),
+  sigma ~ dexp(1)),
+  data=foxes2)
+
+m5 <- quap(alist(
+  weight ~ dnorm(mu, sigma),
+  mu <- alpha + bA*area,
+  alpha ~ dnorm(0,.2),
+  bA ~ dnorm(0,.5),
+  sigma ~ dexp(1)),
+  data=foxes2)
+```
+
+``` {.r}
+compare(m1, m2, m3, m4, m5)
+```
+
+    ##        WAIC    pWAIC     dWAIC      weight       SE      dSE
+    ## m1 322.8847 4.656959  0.000000 0.465363694 16.27783       NA
+    ## m3 323.8985 3.718565  1.013749 0.280323674 15.68240 2.899417
+    ## m2 324.1284 3.859897  1.243666 0.249881396 16.13964 3.598475
+    ## m4 333.4444 2.426279 10.559695 0.002370193 13.78855 7.193396
+    ## m5 333.7239 2.650636 10.839215 0.002061043 13.79447 7.242069
+
+m1,2,3 are equivalent by weight. Arguallably all the models are the
+same.
+
+I can't really explain this. I would have that that 2 would be better
+than 1, for example since 2 is simple and area doesn't have a direct
+impact on weight...
+
 Code from Book
 --------------
 
@@ -333,7 +598,7 @@ lines( mass_seq , mu )
 shade( ci , mass_seq )
 ```
 
-![](Chapter7_files/figure-html/unnamed-chunk-9-1.png)<!-- -->
+![](Chapter7_files/figure-html/unnamed-chunk-21-1.png)<!-- -->
 
 ``` {.r}
 ## R code 7.10
@@ -367,8 +632,8 @@ set.seed(1)
 lppd( m7.1 , n=1e4 )
 ```
 
-    ## [1]  0.6098668  0.6483438  0.5496093  0.6234934  0.4648143  0.4347605
-    ## [7] -0.8444633
+    ## [1]  0.6098662  0.6483431  0.5496084  0.6234929  0.4648139  0.4347599
+    ## [7] -0.8444621
 
 ``` {.r}
 ## R code 7.15
@@ -378,31 +643,31 @@ head(logprob)
 ```
 
     ##           [,1]      [,2]      [,3]      [,4]      [,5]      [,6]
-    ## [1,] 0.5633621 0.7001153 0.9653883 0.6593739 0.8085217 0.9116709
-    ## [2,] 0.4205890 0.5069911 0.7337400 0.5147648 0.6675700 0.7243340
-    ## [3,] 0.8334094 0.9220778 0.9443597 0.9265669 1.0305151 1.0078592
-    ## [4,] 0.3185760 0.3183601 0.2070566 0.3170018 0.2727489 0.2083464
-    ## [5,] 0.3130858 0.4259733 0.6880982 0.3463324 0.3634272 0.4484071
-    ## [6,] 0.8519019 0.9494457 0.8960931 0.8858421 0.9091614 0.9761491
+    ## [1,] 0.5633620 0.7001151 0.9653876 0.6593738 0.8085213 0.9116704
+    ## [2,] 0.4205889 0.5069908 0.7337391 0.5147644 0.6675693 0.7243332
+    ## [3,] 0.8334092 0.9220774 0.9443591 0.9265666 1.0305145 1.0078584
+    ## [4,] 0.3185748 0.3183588 0.2070552 0.3170005 0.2727475 0.2083451
+    ## [5,] 0.3130858 0.4259730 0.6880972 0.3463322 0.3634269 0.4484065
+    ## [6,] 0.8519016 0.9494452 0.8960925 0.8858418 0.9091610 0.9761487
     ##            [,7]
-    ## [1,] -2.1369500
-    ## [2,] -1.3346477
-    ## [3,] -3.9686352
-    ## [4,] -1.4528397
-    ## [5,] -0.4730228
-    ## [6,] -2.8414707
+    ## [1,] -2.1369468
+    ## [2,] -1.3346455
+    ## [3,] -3.9686313
+    ## [4,] -1.4528380
+    ## [5,] -0.4730215
+    ## [6,] -2.8414672
 
 ``` {.r}
 head(logprob) %>% exp()
 ```
 
     ##          [,1]     [,2]     [,3]     [,4]     [,5]     [,6]       [,7]
-    ## [1,] 1.756568 2.013985 2.625807 1.933581 2.244587 2.488477 0.11801424
-    ## [2,] 1.522858 1.660288 2.082856 1.673245 1.949494 2.063356 0.26325090
-    ## [3,] 2.301151 2.514510 2.571167 2.525823 2.802509 2.739730 0.01889921
-    ## [4,] 1.375168 1.374871 1.230052 1.373005 1.313570 1.231640 0.23390513
-    ## [5,] 1.367639 1.531080 1.989927 1.413873 1.438250 1.565816 0.62311586
-    ## [6,] 2.344101 2.584277 2.450012 2.425026 2.482240 2.654216 0.05833980
+    ## [1,] 1.756568 2.013984 2.625805 1.933581 2.244587 2.488476 0.11801461
+    ## [2,] 1.522858 1.660288 2.082854 1.673244 1.949493 2.063355 0.26325147
+    ## [3,] 2.301150 2.514509 2.571165 2.525822 2.802507 2.739727 0.01889928
+    ## [4,] 1.375166 1.374869 1.230050 1.373003 1.313569 1.231638 0.23390551
+    ## [5,] 1.367639 1.531079 1.989926 1.413872 1.438250 1.565815 0.62311667
+    ## [6,] 2.344100 2.584276 2.450011 2.425025 2.482239 2.654214 0.05834001
 
 ``` {.r}
 dim(logprob)
@@ -417,8 +682,8 @@ f <- function( i ) log_sum_exp( logprob[,i] ) - log(ns)
 ( lppd <- sapply( 1:n , f ) )
 ```
 
-    ## [1]  0.6098668  0.6483438  0.5496093  0.6234934  0.4648143  0.4347605
-    ## [7] -0.8444633
+    ## [1]  0.6098662  0.6483431  0.5496084  0.6234929  0.4648139  0.4347599
+    ## [7] -0.8444621
 
 ``` {.r}
 ## R code 7.16
@@ -426,7 +691,7 @@ set.seed(1)
 sapply( list(m7.1,m7.2,m7.3,m7.4,m7.5,m7.6) , function(m) sum(lppd(m)) )
 ```
 
-    ## [1]  2.490390  2.566165  3.707343  5.333750 14.090061 39.445390
+    ## [1]  2.490387  2.566165  3.707343  5.333750 14.090061 39.445390
 
 ``` {.r}
 ## R code 7.17
@@ -625,3 +890,172 @@ sqrt( n_cases*var(waic_vec) )
 ```
 
     ## [1] 17.81797
+
+``` {.r}
+## R code 7.33
+data(Primates301)
+d <- Primates301
+```
+
+``` {.r}
+## R code 7.34
+d$log_L <- scale( log(d$longevity) )
+d$log_B <- scale( log(d$brain) )
+d$log_M <- scale( log(d$body) )
+```
+
+``` {.r}
+## R code 7.35
+sapply( d[,c("log_L","log_B","log_M")] , function(x) sum(is.na(x)) )
+```
+
+    ## log_L log_B log_M 
+    ##   181   117    63
+
+``` {.r}
+## R code 7.36
+d2 <- d[ complete.cases( d$log_L , d$log_M , d$log_B ) , ]
+nrow(d2)
+```
+
+    ## [1] 112
+
+``` {.r}
+## R code 7.37
+m7.8 <- quap(
+    alist(
+        log_L ~ dnorm( mu , sigma ),
+        mu <- a + bM*log_M + bB*log_B,
+        a ~ dnorm(0,0.1),
+        bM ~ dnorm(0,0.5),
+        bB ~ dnorm(0,0.5),
+        sigma ~ dexp(1)
+    ) , data=d2 )
+```
+
+``` {.r}
+prior <- extract.prior(m7.8)
+mu.prior <- link(m7.8, post=prior)
+dens(exp(mu.prior),xlim=c(-2,10))
+```
+
+![](Chapter7_files/figure-html/unnamed-chunk-40-1.png)<!-- -->
+
+``` {.r}
+dens(exp(d2$log_L))
+```
+
+![](Chapter7_files/figure-html/unnamed-chunk-40-2.png)<!-- -->
+
+``` {.r}
+## R code 7.38
+m7.9 <- quap(
+    alist(
+        log_L ~ dnorm( mu , sigma ),
+        mu <- a + bB*log_B,
+        a ~ dnorm(0,0.1),
+        bB ~ dnorm(0,0.5),
+        sigma ~ dexp(1)
+    ) , data=d2 )
+m7.10 <- quap(
+    alist(
+        log_L ~ dnorm( mu , sigma ),
+        mu <- a + bM*log_M,
+        a ~ dnorm(0,0.1),
+        bM ~ dnorm(0,0.5),
+        sigma ~ dexp(1)
+    ) , data=d2 )
+```
+
+``` {.r}
+## R code 7.39
+set.seed(301)
+compare( m7.8 , m7.9 , m7.10 )
+```
+
+    ##           WAIC    pWAIC      dWAIC       weight       SE      dSE
+    ## m7.8  216.2302 3.472769  0.0000000 0.5329982525 14.72038       NA
+    ## m7.9  216.4977 2.603017  0.2675287 0.4662648452 14.83677 1.502882
+    ## m7.10 229.3979 2.465381 13.1676363 0.0007369023 16.30284 7.001935
+
+``` {.r}
+## R code 7.40
+plot( compare( m7.8 , m7.9 , m7.10 ) )
+```
+
+![](Chapter7_files/figure-html/unnamed-chunk-43-1.png)<!-- -->
+
+``` {.r}
+## R code 7.41
+plot( coeftab( m7.8 , m7.9 , m7.10 ) , pars=c("bM","bB") )
+```
+
+![](Chapter7_files/figure-html/unnamed-chunk-44-1.png)<!-- -->
+
+``` {.r}
+## R code 7.42
+cor( d2$log_B , d2$log_M )
+```
+
+    ##           [,1]
+    ## [1,] 0.9796272
+
+``` {.r}
+## R code 7.43
+waic_m7.8 <- WAIC( m7.8 , pointwise=TRUE )
+waic_m7.9 <- WAIC( m7.9 , pointwise=TRUE )
+```
+
+``` {.r}
+## R code 7.44
+# compute point scaling
+x <- d2$log_B - d2$log_M
+x <- x - min(x)
+x <- x / max(x)
+
+# draw the plot
+plot( waic_m7.8 - waic_m7.9 , d2$log_L ,
+    xlab="pointwise difference in WAIC" , ylab="log longevity (std)" , pch=21 ,
+    col=col.alpha("black",0.8) , cex=1+x , lwd=2 , bg=col.alpha(rangi2,0.4) )
+abline( v=0 , lty=2 )
+abline( h=0 , lty=2 )
+```
+
+![](Chapter7_files/figure-html/unnamed-chunk-46-1.png)<!-- -->
+
+``` {.r}
+## R code 7.45
+m7.11 <- quap(
+    alist(
+        log_B ~ dnorm( mu , sigma ),
+        mu <- a + bM*log_M + bL*log_L,
+        a ~ dnorm(0,0.1),
+        bM ~ dnorm(0,0.5),
+        bL ~ dnorm(0,0.5),
+        sigma ~ dexp(1)
+    ) , data=d2 )
+precis( m7.11 )
+```
+
+    ##              mean         sd        5.5%       94.5%
+    ## a     -0.04506873 0.01795371 -0.07376224 -0.01637523
+    ## bM     0.93842037 0.02602549  0.89682661  0.98001413
+    ## bL     0.11549564 0.02723920  0.07196215  0.15902914
+    ## sigma  0.18997589 0.01267748  0.16971483  0.21023695
+
+``` {.r}
+## R code 7.46
+library(rethinking)
+data(Howell1)
+d <- Howell1
+d$age <- (d$age - mean(d$age))/sd(d$age)
+set.seed( 1000 )
+i <- sample(1:nrow(d),size=nrow(d)/2)
+d1 <- d[ i , ]
+d2 <- d[ -i , ]
+```
+
+``` {.r}
+## R code 7.47
+sum( dnorm( d2$height , mu , sigma , log=TRUE ) )
+```

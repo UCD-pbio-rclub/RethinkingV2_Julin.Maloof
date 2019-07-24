@@ -152,7 +152,148 @@ results.frame %>% filter(KLdiv!=0) %>% arrange(predictee_p, desc(KLdiv))
 
 For each case, the island with the higher entropy is the better predictor, because it is less likely to be surprised
 
+### 2
+_Recall the marriage, age, and happiness collider bias example from Chapter 6. Run models m6.9 and m6.10 again. Compare these two models using WAIC (or LOO, they will produce identical results). Which model is expected to make better predictions? Which model provides the correct causal inference about the influence of age on happiness? Can you explain why the answers to these two questions disagree?_
 
+```{r}
+## R code 6.22
+library(rethinking)
+d <- sim_happiness( seed=1977 , N_years=1000 )
+precis(d)
+
+## R code 6.23
+d2 <- d[ d$age>17 , ] # only adults
+d2$A <- ( d2$age - 18 ) / ( 65 - 18 )
+```
+
+
+```{r}
+## R code 6.24
+d2$mid <- d2$married + 1
+m6.9 <- quap(
+    alist(
+        happiness ~ dnorm( mu , sigma ),
+        mu <- a[mid] + bA*A,
+        a[mid] ~ dnorm( 0 , 1 ),
+        bA ~ dnorm( 0 , 2 ),
+        sigma ~ dexp(1)
+    ) , data=d2 )
+precis(m6.9,depth=2)
+
+## R code 6.25
+m6.10 <- quap(
+    alist(
+        happiness ~ dnorm( mu , sigma ),
+        mu <- a + bA*A,
+        a ~ dnorm( 0 , 1 ),
+        bA ~ dnorm( 0 , 2 ),
+        sigma ~ dexp(1)
+    ) , data=d2 )
+precis(m6.10)
+```
+
+```{r}
+plot(coeftab(m6.9, m6.10))
+```
+
+
+```{r}
+compare(m6.9, m6.10)
+```
+
+model 6.9 is best by WAIC.  This is because the generative model has marriage as a collider, so marriage relates happiness to age.
+
+### 3
+_Reconsider the urban fox analysis from last week’s homework. Use WAIC or LOO based model comparison on five different models, each using weight as the outcome, and containing these sets of predictor variables:_
+(1) avgfood + groupsize + area
+(2) avgfood + groupsize
+(3) groupsize + area
+(4) avgfood
+(5) area
+_Can you explain the relative differences in WAIC scores, using the fox DAG from last week’s homework? Be sure to pay attention to the standard error of the score differences (dSE)._
+
+```{r}
+library(dagitty)
+foxdag <- dagitty("dag {
+area -> avgfood
+avgfood -> groupsize
+avgfood -> weight
+groupsize -> weight
+}")
+
+coordinates(foxdag) <- list(
+  x=c(area=1, avgfood=0, groupsize=2, weight=1),
+  y=c(area=0, avgfood=1, groupsize=1, weight=2))
+
+plot(foxdag)
+```
+
+
+```{r}
+data("foxes")
+head(foxes)
+```
+
+```{r}
+foxes2 <- foxes %>%
+  mutate_at(vars(-group), scale)
+head(foxes2)
+```
+
+models
+```{r}
+m1 <- quap(alist(
+  weight ~ dnorm(mu, sigma),
+  mu <- alpha + bF*avgfood + bG*groupsize + bA*area,
+  alpha ~ dnorm(0,.2),
+  bF ~ dnorm(0,.5),
+  bG ~ dnorm(0,.5),
+  bA ~ dnorm(0,.5),
+  sigma ~ dexp(1)),
+  data=foxes2)
+
+m2 <- quap(alist(
+  weight ~ dnorm(mu, sigma),
+  mu <- alpha + bF*avgfood + bG*groupsize,
+  alpha ~ dnorm(0,.2),
+  bF ~ dnorm(0,.5),
+  bG ~ dnorm(0,.5),
+  sigma ~ dexp(1)),
+  data=foxes2)
+
+m3 <- quap(alist(
+  weight ~ dnorm(mu, sigma),
+  mu <- alpha + bG*groupsize + bA*area,
+  alpha ~ dnorm(0,.2),
+  bG ~ dnorm(0,.5),
+  bA ~ dnorm(0,.5),
+  sigma ~ dexp(1)),
+  data=foxes2)
+
+m4 <- quap(alist(
+  weight ~ dnorm(mu, sigma),
+  mu <- alpha + bF*avgfood,
+  alpha ~ dnorm(0,.2),
+  bF ~ dnorm(0,.5),
+  sigma ~ dexp(1)),
+  data=foxes2)
+
+m5 <- quap(alist(
+  weight ~ dnorm(mu, sigma),
+  mu <- alpha + bA*area,
+  alpha ~ dnorm(0,.2),
+  bA ~ dnorm(0,.5),
+  sigma ~ dexp(1)),
+  data=foxes2)
+```
+
+```{r}
+compare(m1, m2, m3, m4, m5)
+```
+
+m1,2,3 are equivalent by weight.  Arguallably all the models are the same.
+
+I can't really explain this.  I would have that that 2 would be better than 1, for example since 2 is simple and area doesn't have a direct impact on weight...
 
 ## Code from Book
 
@@ -569,7 +710,7 @@ d2 <- d[ -i , ]
 ```
 
 
-```{r}
+```{r, eval=FALSE}
 ## R code 7.47
 sum( dnorm( d2$height , mu , sigma , log=TRUE ) )
 ```
