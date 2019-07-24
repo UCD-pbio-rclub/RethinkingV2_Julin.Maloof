@@ -112,6 +112,48 @@ _Provide an information explanation of why overly informative priors result in u
 
 If too informative, the priors can overwhelm the evidence and force coefficients to remain near 0
 
+### 1: Birbs
+```{r}
+birbs <- tibble(
+  Birb=LETTERS[1:5],
+  Island1=rep(0.2,5),
+  Island2=c(.8,.1,.05,.025,.025),
+  Island3=c(0.05,0.15,0.7,0.05,0.05))
+birbs
+```
+
+```{r}
+entropy <- function(x) {
+  -sum(x*log(x))
+}
+(island_entropies <- apply(birbs[,-1],2,entropy))
+```
+
+There is the highest entropy, that is the highest uncertainity about which birb you might see, on Island 1
+
+```{r}
+KLdivergence <- function(pname,qname, data=birbs) {
+  print(cat("pname",pname))
+  p=get(pname, data)
+  q=get(qname, data)
+  -sum(p*log(p/q))  # where p is the true distribution and q is what we are using to predict
+}
+
+Islands <- colnames(birbs)[-1]
+
+results.frame <- expand.grid(predictor_q=Islands,
+                             predictee_p=Islands,stringsAsFactors = FALSE) %>% as_tibble()
+
+results.frame <- results.frame %>%
+  mutate(KLdiv = map2_dbl(predictee_p, predictor_q, ~ KLdivergence(.x, .y)))
+
+results.frame %>% filter(KLdiv!=0) %>% arrange(predictee_p, desc(KLdiv))
+```
+
+For each case, the island with the higher entropy is the better predictor, because it is less likely to be surprised
+
+
+
 ## Code from Book
 
 ```{r}
@@ -382,5 +424,153 @@ WAIC(m)
 ## R code 7.25
 waic_vec <- -2*( lppd - pWAIC )
 sqrt( n_cases*var(waic_vec) )
+```
+
+```{r}
+## R code 7.33
+data(Primates301)
+d <- Primates301
+```
+
+
+```{r}
+## R code 7.34
+d$log_L <- scale( log(d$longevity) )
+d$log_B <- scale( log(d$brain) )
+d$log_M <- scale( log(d$body) )
+```
+
+
+```{r}
+## R code 7.35
+sapply( d[,c("log_L","log_B","log_M")] , function(x) sum(is.na(x)) )
+```
+
+
+```{r}
+## R code 7.36
+d2 <- d[ complete.cases( d$log_L , d$log_M , d$log_B ) , ]
+nrow(d2)
+```
+
+
+```{r}
+## R code 7.37
+m7.8 <- quap(
+    alist(
+        log_L ~ dnorm( mu , sigma ),
+        mu <- a + bM*log_M + bB*log_B,
+        a ~ dnorm(0,0.1),
+        bM ~ dnorm(0,0.5),
+        bB ~ dnorm(0,0.5),
+        sigma ~ dexp(1)
+    ) , data=d2 )
+```
+
+```{r}
+prior <- extract.prior(m7.8)
+mu.prior <- link(m7.8, post=prior)
+dens(exp(mu.prior),xlim=c(-2,10))
+dens(exp(d2$log_L))
+```
+
+
+```{r}
+## R code 7.38
+m7.9 <- quap(
+    alist(
+        log_L ~ dnorm( mu , sigma ),
+        mu <- a + bB*log_B,
+        a ~ dnorm(0,0.1),
+        bB ~ dnorm(0,0.5),
+        sigma ~ dexp(1)
+    ) , data=d2 )
+m7.10 <- quap(
+    alist(
+        log_L ~ dnorm( mu , sigma ),
+        mu <- a + bM*log_M,
+        a ~ dnorm(0,0.1),
+        bM ~ dnorm(0,0.5),
+        sigma ~ dexp(1)
+    ) , data=d2 )
+```
+
+
+```{r}
+## R code 7.39
+set.seed(301)
+compare( m7.8 , m7.9 , m7.10 )
+```
+
+
+```{r}
+## R code 7.40
+plot( compare( m7.8 , m7.9 , m7.10 ) )
+```
+
+
+```{r}
+## R code 7.41
+plot( coeftab( m7.8 , m7.9 , m7.10 ) , pars=c("bM","bB") )
+```
+
+
+```{r}
+## R code 7.42
+cor( d2$log_B , d2$log_M )
+
+## R code 7.43
+waic_m7.8 <- WAIC( m7.8 , pointwise=TRUE )
+waic_m7.9 <- WAIC( m7.9 , pointwise=TRUE )
+```
+
+
+```{r}
+## R code 7.44
+# compute point scaling
+x <- d2$log_B - d2$log_M
+x <- x - min(x)
+x <- x / max(x)
+
+# draw the plot
+plot( waic_m7.8 - waic_m7.9 , d2$log_L ,
+    xlab="pointwise difference in WAIC" , ylab="log longevity (std)" , pch=21 ,
+    col=col.alpha("black",0.8) , cex=1+x , lwd=2 , bg=col.alpha(rangi2,0.4) )
+abline( v=0 , lty=2 )
+abline( h=0 , lty=2 )
+```
+
+
+```{r}
+## R code 7.45
+m7.11 <- quap(
+    alist(
+        log_B ~ dnorm( mu , sigma ),
+        mu <- a + bM*log_M + bL*log_L,
+        a ~ dnorm(0,0.1),
+        bM ~ dnorm(0,0.5),
+        bL ~ dnorm(0,0.5),
+        sigma ~ dexp(1)
+    ) , data=d2 )
+precis( m7.11 )
+```
+
+
+```{r}
+## R code 7.46
+library(rethinking)
+data(Howell1)
+d <- Howell1
+d$age <- (d$age - mean(d$age))/sd(d$age)
+set.seed( 1000 )
+i <- sample(1:nrow(d),size=nrow(d)/2)
+d1 <- d[ i , ]
+d2 <- d[ -i , ]
+```
+
+
+```{r}
+## R code 7.47
+sum( dnorm( d2$height , mu , sigma , log=TRUE ) )
 ```
 
