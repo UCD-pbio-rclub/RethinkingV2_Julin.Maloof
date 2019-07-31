@@ -1,0 +1,121 @@
+---
+title: "Chapter8"
+author: "Julin N Maloof"
+date: "7/30/2019"
+output: 
+  html_document: 
+    keep_md: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(rethinking)
+library(tidyverse)
+```
+
+## 7E1
+_For each of the causal relationships below, name a hypothetical third variable that would lead to an interaction effect._
+
+_(1) Bread dough rises because of yeast_
+Temperature
+
+_(2) Education leads to higher income._
+Job? Race? Gender?
+
+_(3) Gasoline makes a car go._
+Key? Spark?
+
+## 7M3
+
+_In parts of North America, ravens depend upon wolves for their food. This is because ravens are carnivorous but cannot usually kill or open carcasses of prey. Wolves however can and do kill and tear open animals, and they tolerate ravens co-feeding at their kills. This species relationship is generally described as a “species interaction.” Can you invent a hypothetical set of data on raven population size in which this relationship would manifest as a statistical interaction? Do you think the biological interaction could be linear? Why or why not?_
+
+Ravens ~ Wolves + Prey + Wolves:Prey
+
+## 7H3
+
+_Use the tomato.csv (attached) data set and evaluate whether hypocotyl length ("hyp") is affected by shade ("trt"), species ("species") and their interaction._
+
+```{r}
+d <- read_csv("Tomato.csv") %>%
+  select(hyp, trt, species) %>%
+  na.omit()
+d
+```
+
+Make a plot
+```{r}
+d %>%
+  group_by(species,trt) %>%
+  summarize(mean=mean(hyp), 
+            sem=sd(hyp)/sqrt(n()), 
+            ymax=mean+sem,
+            ymin=mean-sem) %>%
+  ggplot(aes(x=species, y=mean, ymax=ymax, ymin=ymin, fill=trt)) +
+  geom_col(position = "dodge") +
+  geom_errorbar(position = position_dodge(width=.9), width=.5)
+```
+
+make indices for the factors:
+```{r}
+d <- d %>%
+  mutate(species_i = as.numeric(as.factor(species)),
+         trt_i = as.numeric(as.factor(trt))-1)
+```
+
+
+fit non interaction model
+```{r}
+m1 <- quap(flist = alist(
+  hyp ~ dnorm(mu, sigma),
+  mu <- a[species_i] + b*trt_i,
+  a[species_i] ~ dnorm(25, 5),
+  b ~ dnorm(0, 5),
+  sigma ~ dexp(1)),
+  data=d, start=list(b=0, sigma=3))
+```
+
+check the priors
+```{r}
+prior <- extract.prior(m1)
+str(prior)
+d2 <- expand.grid(species_i=1:5, trt_i=0:1)
+prior.pred <- link(m1, post=prior, data=d2)
+colnames(prior.pred) <- str_c("species", d2$species_i, "_trt", d2$trt_i)
+prior.pred %>% as_tibble() %>%
+  gather() %>%
+  ggplot(aes(x=key, y=value)) +
+  geom_violin() +
+  theme(axis.text.x = element_text(angle=90))
+```
+
+
+```{r}
+precis(m1, depth=2)
+```
+
+now the interaction model:
+```{r}
+m2 <- quap(flist = alist(
+  hyp ~ dnorm(mu, sigma),
+  mu <- a[species_i] + b*trt_i + b_int[species_i]*trt_i,
+  a[species_i] ~ dnorm(25, 5),
+  b ~ dnorm(0, 5),
+  b_int[species_i] ~ dnorm(0, 1),
+  sigma ~ dexp(1)),
+  data=d, start=list(b=0, sigma=3), control=list(maxit=500))
+```
+
+```{r}
+precis(m2, depth=2)
+```
+
+```{r}
+compare(m1,m2)
+```
+
+```{r}
+m3 <- lm(hyp ~ species*trt, data=d)
+summary(m3)
+```
+
+
