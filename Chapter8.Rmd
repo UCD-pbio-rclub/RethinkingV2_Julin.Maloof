@@ -67,7 +67,7 @@ fit non interaction model
 ```{r}
 m1 <- quap(flist = alist(
   hyp ~ dnorm(mu, sigma),
-  mu <- a[species_i] + b*trt_i,
+  mu <- a[species_i] + b*trt_i, # one beta coefficient
   a[species_i] ~ dnorm(25, 5),
   b ~ dnorm(0, 5),
   sigma ~ dexp(1)),
@@ -97,7 +97,7 @@ now the interaction model:
 ```{r}
 m2 <- quap(flist = alist(
   hyp ~ dnorm(mu, sigma),
-  mu <- a[species_i] + b*trt_i + b_int[species_i]*trt_i,
+  mu <- a[species_i] + b_int[species_i]*trt_i, # a beta coefficent for each species
   a[species_i] ~ dnorm(25, 5),
   b ~ dnorm(0, 5),
   b_int[species_i] ~ dnorm(0, 1),
@@ -118,4 +118,12 @@ m3 <- lm(hyp ~ species*trt, data=d)
 summary(m3)
 ```
 
+
+## quick dummy variable creation
+
+```{r}
+dummy <- tibble(ID=1:100, trt=sample(LETTERS[1:4], size = 100, replace=TRUE))
+dummy %>% spread(key=trt,value=trt) %>%
+  mutate_at(.vars=vars(-ID), ~ ifelse(is.na(.), 0, 1))
+```
 
