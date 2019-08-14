@@ -25,6 +25,23 @@ Job? Race? Gender?
 _(3) Gasoline makes a car go._
 Key? Spark?
 
+## 7M1
+
+## 7M2
+
+_Recall the tulips example from the chapter. Suppose another set of treatments adjusted the temperature in the greenhouse over two levels: cold and hot. The data in the chapter were collected at the cold temperature. You find none of the plants grown under the hot temperature developed any blooms at all, regardless of the water and shade levels. Can you explain this result in terms of interactions between water, shade, and temperature?_
+
+I am thinking that the way I would do this would be to remove the main effects of water and shade, and have W X temp, S X temp, and W X S X temp terms
+
+## 7M2
+
+_7M2. Can you invent a regression equation that would make the bloom size zero, whenever the temperature is hot?_
+
+$$
+bloom \sim \alpha_{[T]} + \beta_{WT} * W * T + \beta_{ST}*S*T + \beta_{WST}*W*S*T
+$$
+And code $T=1$ for cold and $T=0$ for hot
+
 ## 7M3
 
 _In parts of North America, ravens depend upon wolves for their food. This is because ravens are carnivorous but cannot usually kill or open carcasses of prey. Wolves however can and do kill and tear open animals, and they tolerate ravens co-feeding at their kills. This species relationship is generally described as a “species interaction.” Can you invent a hypothetical set of data on raven population size in which this relationship would manifest as a statistical interaction? Do you think the biological interaction could be linear? Why or why not?_
