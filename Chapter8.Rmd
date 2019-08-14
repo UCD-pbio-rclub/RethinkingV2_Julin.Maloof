@@ -80,31 +80,31 @@ run original model
 ```{r}
 ## R code 8.24
 m8.7 <- quap(
-    alist(
-        blooms_std ~ dnorm( mu , sigma ) ,
-        mu <- a + bw*water_cent + bs*shade_cent + bws*water_cent*shade_cent ,
-        a ~ dnorm( 0.5 , 0.25 ) ,
-        bw ~ dnorm( 0 , 0.25 ) ,
-        bs ~ dnorm( 0 , 0.25 ) ,
-        bws ~ dnorm( 0 , 0.25 ) ,
-        sigma ~ dexp( 1 )
-    ) ,
-    data=d )
+  alist(
+    blooms_std ~ dnorm( mu , sigma ) ,
+    mu <- a + bw*water_cent + bs*shade_cent + bws*water_cent*shade_cent ,
+    a ~ dnorm( 0.5 , 0.25 ) ,
+    bw ~ dnorm( 0 , 0.25 ) ,
+    bs ~ dnorm( 0 , 0.25 ) ,
+    bws ~ dnorm( 0 , 0.25 ) ,
+    sigma ~ dexp( 1 )
+  ) ,
+  data=d )
 ```
 
 modified model with bed
 ```{r}
 m8.7bed <- quap(
-    alist(
-        blooms_std ~ dnorm( mu , sigma ) ,
-        mu <- a[bed_i] + bw*water_cent + bs*shade_cent + bws*water_cent*shade_cent ,
-        a[bed_i] ~ dnorm( 0.5 , 0.25 ) ,
-        bw ~ dnorm( 0 , 0.25 ) ,
-        bs ~ dnorm( 0 , 0.25 ) ,
-        bws ~ dnorm( 0 , 0.25 ) ,
-        sigma ~ dexp( 1 )
-    ) ,
-    data=d )
+  alist(
+    blooms_std ~ dnorm( mu , sigma ) ,
+    mu <- a[bed_i] + bw*water_cent + bs*shade_cent + bws*water_cent*shade_cent ,
+    a[bed_i] ~ dnorm( 0.5 , 0.25 ) ,
+    bw ~ dnorm( 0 , 0.25 ) ,
+    bs ~ dnorm( 0 , 0.25 ) ,
+    bws ~ dnorm( 0 , 0.25 ) ,
+    sigma ~ dexp( 1 )
+  ) ,
+  data=d )
 ```
 
 take a look
@@ -228,8 +228,241 @@ dummy %>% spread(key=trt,value=trt) %>%
 ```
 
 ## 7H4
+_The values in data(nettle) are data on language diversity in 74 nations. The meaning of each column is given below._
+(1) country: Name of the country  
+(2) num.lang: Number of recognized languages spoken  
+(3) area: Area in square kilometers  
+(4) k.pop: Population, in thousands  
+(5) num.stations: Number of weather stations that provided data for the next two columns  
+(6) mean.growing.season: Average length of growing season, in months  
+(7) sd.growing.season: Standard deviation of length of growing season, in months  
 
+_Use these data to evaluate the hypothesis that language diversity is partly a product of food security. The notion is that, in productive ecologies, people don’t need large social networks to buffer them against risk of food shortfalls. This means ethnic groups can be smaller and more self-sufficient, leading to more languages per capita. In contrast, in a poor ecology, there is more subsistence risk, and so human societies have adapted by building larger networks of mutual obligation to provide food insurance. This in turn creates social forces that help prevent languages from diversifying._
+
+_Specifically, you will try to model the number of languages per capita as the outcome variable:_
+
+d$lang.per.cap <- d$num.lang / d$k.pop
+
+_Use the logarithm of this new variable as your regression outcome. (A count model would be better here, but you’ll learn those later, in Chapter 11.)_
+
+_This problem is open ended, allowing you to decide how you address the hypotheses and the uncertain advice the modeling provides. If you think you need to use WAIC anyplace, please do. If you think you need certain priors, argue for them. If you think you need to plot predictions in a certain way, please do. Just try to honestly evaluate the main effects of both mean.growing.season and sd.growing.season, as well as their two-way interaction, as outlined in parts (a), (b), and (c) below. If you are not sure which approach to use, try several._
+
+_(a) Evaluate the hypothesis that language diversity, as measured by log(lang.per.cap), is pos- itively associated with the average length of the growing season, mean.growing.season. Consider log(area) in your regression(s) as a covariate (not an interaction). Interpret your results._
+
+setup
 ```{r}
+library(tidyverse)
+library(rethinking)
+data("nettle")
+d <- nettle
+d$lang.per.cap <- d$num.lang / d$k.pop
+```
+
+
+Standardize the predictors
+```{r}
+d$mean.growing.season.scale <- scale(d$mean.growing.season)
+d$sd.growing.season.scale <- scale(d$sd.growing.season)
+d$area.scale <- scale(d$area)
+```
+
+
+take a look at the relationships
+
+```{r, fig.height=4, fig.width=4}
+qplot(d$mean.growing.season.scale, log(d$lang.per.cap)) + geom_smooth()
+qplot(d$sd.growing.season.scale, log(d$lang.per.cap)) + geom_smooth()
+qplot(d$mean.growing.season.scale, d$sd.growing.season.scale) + geom_smooth()
 
 ```
 
+```{r}
+m7h4a.1 <- quap(flist = alist(
+  log(d$lang.per.cap) ~ dnorm(mu, sigma),
+  mu <- a + bMGS*mean.growing.season.scale,
+  a ~ dnorm(-3.8,2), # encompasses the range of the data
+  bMGS ~ dnorm(0, 1), # allows up to a slope of 2, which would allow 8 units of change in log(lang.per.cap)
+  sigma ~ dexp(1)),
+  data=d)
+```
+
+
+check the priors
+```{r}
+prior <- extract.prior(m7h4a.1)
+prior.pred <- link(m7h4a.1, 
+                   post=prior,
+                   n=100,
+                   data=list(mean.growing.season.scale=range(d$mean.growing.season.scale)))
+
+colnames(prior.pred) <- round(range(d$mean.growing.season.scale),2)
+
+prior.pred %>%
+  as_tibble() %>%
+  mutate(id=1:nrow(.)) %>%
+  gather(key="mean.growing.season", value="log.lang.per.cap", -id) %>%
+  mutate(mean.growing.season = as.numeric(mean.growing.season)) %>%
+  ggplot(aes(x=mean.growing.season, y=log.lang.per.cap, group=id)) +
+  geom_line(alpha=.05)
+```
+
+A little broad, but not ridiculous.
+
+now include area
+
+```{r}
+m7h4a.2 <- quap(flist = alist(
+  log(d$lang.per.cap) ~ dnorm(mu, sigma),
+  mu <- a + bMGS*mean.growing.season.scale + bA*area.scale,
+  a ~ dnorm(-3.8,2), # encompasses the range of the data
+  bMGS ~ dnorm(0, 1), # allows up to a slope of 2, which would allow 8 units of change in log(lang.per.cap),
+  bA ~ dnorm(0,1),
+  sigma ~ dexp(1)),
+  data=d)
+```
+
+```{r}
+precis(m7h4a.1)
+precis(m7h4a.2)
+plot(coeftab(m7h4a.1, m7h4a.2))
+```
+
+```{r}
+#compare(m7h4a.1, m7h4a.2) #getting an error
+```
+
+Although I can't get compare to work, it does not seem that including Area improves model fit, I would stay with the simpler model.  The model supports the hypothesis that longer growing seasons are associated with an increase in the number of languages per capita.
+
+_(b) Now evaluate the hypothesis that language diversity is negatively associated with the standard deviation of length of growing season, sd.growing.season. This hypothesis follows from uncertainty in harvest favoring social insurance through larger social networks and therefore fewer languages. Again, consider log(area) as a covariate (not an interaction). Interpret your results._
+
+```{r}
+m7h4b.1 <- quap(flist = alist(
+  log(d$lang.per.cap) ~ dnorm(mu, sigma),
+  mu <- a + bSDGS*sd.growing.season.scale,
+  a ~ dnorm(-3.8,2), # encompasses the range of the data
+  bSDGS ~ dnorm(0, 1), # allows up to a slope of 2, which would allow 8 units of change in log(lang.per.cap)
+  sigma ~ dexp(1)),
+  data=d)
+```
+
+now include area
+
+```{r}
+m7h4b.2 <- quap(flist = alist(
+  log(d$lang.per.cap) ~ dnorm(mu, sigma),
+  mu <- a + bSDGS*sd.growing.season.scale + bA*area.scale,
+  a ~ dnorm(-3.8,2), # encompasses the range of the data
+  bSDGS ~ dnorm(0, 1), # allows up to a slope of 2, which would allow 8 units of change in log(lang.per.cap),
+  bA ~ dnorm(0, 1),
+  sigma ~ dexp(1)),
+  data=d)
+```
+
+```{r}
+precis(m7h4b.1)
+precis(m7h4b.2)
+plot(coeftab(m7h4b.1, m7h4b.2))
+```
+
+```{r}
+#compare(m7h4b.1, m7h4b.2) #getting an error
+```
+
+Both models support that standard deviation in growing season is negatively associated with the number of languages per capita.  There does not seem to be much area effect.
+
+_(c) Finally, evaluate the hypothesis that mean.growing.season and sd.growing.season interact to synergistically reduce language diversity. The idea is that, in nations with longer average growing seasons, high variance makes storage and redistribution even more important than it would be otherwise. That way, people can cooperate to preserve and protect windfalls to be used during the droughts. These forces in turn may lead to greater social integration and fewer languages._
+
+```{r}
+m7h4c.1 <- quap(flist = alist(
+  log(d$lang.per.cap) ~ dnorm(mu, sigma),
+  mu <- a + 
+    bMGS*mean.growing.season.scale + 
+    bSDGS*sd.growing.season.scale +
+    bInt*mean.growing.season.scale*sd.growing.season.scale,
+  a ~ dnorm(-3.8,2), # encompasses the range of the data
+  bSDGS ~ dnorm(0, 1), # allows up to a slope of 2, which would allow 8 units of change in log(lang.per.cap)
+  bMGS ~ dnorm(0, 1),
+  bInt ~ dnorm(0, 1),
+  sigma ~ dexp(1)),
+  data=d)
+```
+
+now include area
+
+```{r}
+m7h4c.2 <- quap(flist = alist(
+  log(d$lang.per.cap) ~ dnorm(mu, sigma),
+  mu <- a + 
+    bA*area.scale + 
+    bMGS*mean.growing.season.scale + 
+    bSDGS*sd.growing.season.scale +
+    bInt*mean.growing.season.scale*sd.growing.season.scale,
+  a ~ dnorm(-3.8,2), # encompasses the range of the data
+  bSDGS ~ dnorm(0, 1), # allows up to a slope of 2, which would allow 8 units of change in log(lang.per.cap)
+  bMGS ~ dnorm(0, 1),
+  bInt ~ dnorm(0, 1),
+  bA ~ dnorm(0,1),
+  sigma ~ dexp(1)),
+  data=d)
+```
+
+```{r}
+precis(m7h4c.1)
+precis(m7h4c.2)
+plot(coeftab(m7h4c.1, m7h4c.2))
+```
+
+still no area effect.  some evidence for negative interacton term. 
+
+negative interaction term means that if there is a long growing season and high standard deviation, then there are fewer languages than you would otherwise expect.
+
+compare coeftab for the three no-area models.
+
+```{r}
+plot(coeftab(m7h4a.1, m7h4b.1, m7h4c.1))
+```
+
+make some counterfactual plots
+
+First I create a tibble of data frames, one for each level of sd.growing.season.scale that I want to look at
+```{r}
+counterfact.data <-
+  expand.grid(sd.growing.season.scale=c(-1.5, 0, 1.5),
+              mean.growing.season.scale=c(-2,2)) %>%
+  as_tibble() %>%
+  mutate(key=sd.growing.season.scale) %>%
+  group_by(key) %>%
+  nest()
+
+counterfact.data
+
+counterfact.data$data[[1]]
+```
+
+Now I run the link function on each of these data sets
+```{r}
+counterfact.predictions <- counterfact.data %>%
+  mutate(pred = map(data, ~ as_tibble(link(m7h4c.1, n=20, data=.))))
+counterfact.predictions
+```
+
+And finally, make a plot
+
+```{r}
+counterfact.predictions %>% unnest(pred) %>%
+  rename(sd.growing.season.scale=key,
+         `-2` = V1,
+         `2` = V2) %>%
+  mutate(id=1:nrow(.)) %>%
+  gather(key="mean.growing.season.scale", 
+         value="log.lang.per.cap", 
+         -sd.growing.season.scale,-id) %>%
+  mutate(mean.growing.season.scale=as.numeric(mean.growing.season.scale)) %>%
+  
+  ggplot(aes(x=mean.growing.season.scale, y=log.lang.per.cap, group=id)) +
+  facet_wrap(~ sd.growing.season.scale) +
+  geom_line(alpha=.2)
+
+```
+
+So, the model predicts that at low SD of growing season there is a strong positive relationship between growing season length and languages per cap, and this relationshp diminishes with increased SD.
