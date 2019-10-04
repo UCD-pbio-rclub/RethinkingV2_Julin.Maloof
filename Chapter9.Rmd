@@ -377,7 +377,8 @@ m5.1.stan <- ulam(
         sigma ~ dexp( 1 )
     ) , data = dsmall,
     chains=4,
-    cores=4)
+    cores=4,
+    log_lik = TRUE)
 ```
 
 ```{r}
@@ -390,7 +391,8 @@ m5.2.stan <- ulam(
         sigma ~ dexp( 1 )
     ) , data = dsmall ,
     chains=4,
-    cores=4)
+    cores=4,
+    log_lik = TRUE)
 ```
 
 ```{r}
@@ -404,7 +406,8 @@ m5.3.stan <- ulam(
         sigma ~ dexp( 1 )
     ) , data = dsmall ,
     chains=4,
-    cores=4)
+    cores=4,
+    log_lik = TRUE)
 ```
 
 ```{r}
@@ -415,8 +418,6 @@ precis(m5.3.stan)
 
 
 ```{r}
-(m5.1.stan)
-
 compare(m5.1.stan, m5.2.stan, m5.3.stan)
 ```
 
@@ -425,13 +426,26 @@ compare(m5.1.stan, m5.2.stan, m5.3.stan)
 _Modify the Metropolis algorithm code from the chapter to write your own simple MCMC estimator for globe tossing data and model from Chapter 2._
 
 ```{r}
+iter <- 1e5
+samples <- rep(0,iter)
+current <- 0.5
+current_lik 
+for ( i in 1:iter ) {
+    # record current position
+    positions[i] <- current
 
+    # generate proposal
+    proposal <- runif(1, min=0,max=1 )
+
+    # move?
+    prob_move <- proposal/current
+    current <- ifelse( runif(1) < prob_move , proposal , current )
+}
 ```
-
 
 ## Book
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 ## R code 9.1
 num_weeks <- 1e5
 positions <- rep(0,num_weeks)
@@ -453,7 +467,7 @@ for ( i in 1:num_weeks ) {
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 ## R code 9.2
 D <- 10
 T <- 1e3
@@ -464,7 +478,7 @@ dens( Rd )
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 ## R code 9.3
 # U needs to return neg-log-probability
 myU4 <- function( q , a=0 , b=1 , k=0 , d=1 ) {
@@ -477,7 +491,7 @@ myU4 <- function( q , a=0 , b=1 , k=0 , d=1 ) {
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 ## R code 9.4
 # gradient function
 # need vector of partial derivatives of U with respect to vector q
@@ -497,7 +511,7 @@ y <- as.numeric(scale(y))
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 ## R code 9.5
 library(shape) # for fancy arrows
 Q <- list()
@@ -527,7 +541,7 @@ for ( i in 1:n_samples ) {
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 ## R code 9.6
 HMC2 <- function (U, grad_U, epsilon, L, current_q) {
   q = current_q
@@ -543,7 +557,7 @@ HMC2 <- function (U, grad_U, epsilon, L, current_q) {
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 ## R code 9.7
   # Alternate full steps for position and momentum
   for ( i in 1:L ) {
@@ -558,7 +572,7 @@ HMC2 <- function (U, grad_U, epsilon, L, current_q) {
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 ## R code 9.8
   # Make a half step for momentum at the end
   p = p - epsilon * grad_U(q) / 2
@@ -582,7 +596,7 @@ HMC2 <- function (U, grad_U, epsilon, L, current_q) {
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 ## R code 9.9
 library(rethinking)
 data(rugged)
@@ -607,7 +621,7 @@ precis( m8.5 , depth=2 )
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 ## R code 9.11
 dat_slim <- list(
     log_gdp_std = dd$log_gdp_std,
@@ -618,7 +632,7 @@ str(dat_slim)
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 ## R code 9.12
 m9.1 <- ulam(
     alist(
@@ -632,13 +646,13 @@ m9.1 <- ulam(
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 ## R code 9.13
 precis( m9.1 , depth=2 )
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 ## R code 9.14
 m9.1 <- ulam(
     alist(
@@ -652,37 +666,37 @@ m9.1 <- ulam(
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 ## R code 9.15
 show( m9.1 )
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 ## R code 9.16
 precis( m9.1 , 2 )
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 ## R code 9.17
 pairs( m9.1 )
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 ## R code 9.18
 traceplot( m9.1 )
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 ## R code 9.19
 trankplot( m9.1 , n_cols=2 )
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 ## R code 9.20
 y <- c(-1,1)
 set.seed(11)
@@ -697,13 +711,13 @@ m9.2 <- ulam(
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 ## R code 9.21
 precis( m9.2 )
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 ## R code 9.22
 set.seed(11)
 m9.3 <- ulam(
@@ -718,14 +732,14 @@ precis( m9.3 )
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 ## R code 9.23
 set.seed(41)
 y <- rnorm( 100 , mean=0 , sd=1 )
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 ## R code 9.24
 m9.4 <- ulam(
     alist(
@@ -740,7 +754,7 @@ precis( m9.4 )
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 ## R code 9.25
 m9.5 <- ulam(
     alist(
@@ -755,7 +769,7 @@ precis( m9.5 )
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 ## R code 9.26
 mp <- map2stan(
     alist(
@@ -768,7 +782,7 @@ mp <- map2stan(
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 ## R code 9.27
 N <- 100                          # number of individuals
 height <- rnorm(N,10,2)           # sim total height of each
@@ -782,7 +796,7 @@ d <- data.frame(height,leg_left,leg_right)
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 ## R code 9.28
 m5.8s <- map2stan(
     alist(
@@ -798,7 +812,7 @@ m5.8s <- map2stan(
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 ## R code 9.29
 m5.8s2 <- map2stan(
     alist(
