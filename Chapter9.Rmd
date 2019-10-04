@@ -303,7 +303,131 @@ The model simply samples from the normal and cauchy distributions
 
 _Recall the divorce rate example from Chapter 5. Repeat that analysis, using map2stan this time, fitting models m5.1, m5.2, and m5.3. Use compare to compare the models on the basis of WAIC. Explain the results._
 
+```{r}
+# load data and copy
+library(rethinking)
+data(WaffleDivorce)
+d <- WaffleDivorce
+
+# standardize variables
+d$A <- scale( d$MedianAgeMarriage )
+d$D <- scale( d$Divorce )
+
+## R code 5.2
+sd( d$MedianAgeMarriage )
+
+## R code 5.3
+m5.1 <- quap(
+    alist(
+        D ~ dnorm( mu , sigma ) ,
+        mu <- a + bA * A ,
+        a ~ dnorm( 0 , 0.2 ) ,
+        bA ~ dnorm( 0 , 0.5 ) ,
+        sigma ~ dexp( 1 )
+    ) , data = d )
+
+```
+
+```{r}
+d$M <- scale( d$Marriage )
+m5.2 <- quap(
+    alist(
+        D ~ dnorm( mu , sigma ) ,
+        mu <- a + bM * M ,
+        a ~ dnorm( 0 , 0.2 ) ,
+        bM ~ dnorm( 0 , 0.5 ) ,
+        sigma ~ dexp( 1 )
+    ) , data = d )
+```
+
+
+```{r}
+m5.3 <- quap(
+    alist(
+        D ~ dnorm( mu , sigma ) ,
+        mu <- a + bM*M + bA*A ,
+        a ~ dnorm( 0 , 0.2 ) ,
+        bM ~ dnorm( 0 , 0.5 ) ,
+        bA ~ dnorm( 0 , 0.5 ) ,
+        sigma ~ dexp( 1 )
+    ) , data = d )
+precis( m5.3 )
+```
+
+```{r}
+compare(m5.1,m5.2,m5.3)
+```
+
+
+Now with stan
+
+```{r}
+dsmall <- list(D=d$D, A=d$A, M=d$M)
+dsmall
+```
+
+
+```{r}
+m5.1.stan <- ulam(
+    alist(
+        D ~ dnorm( mu , sigma ) ,
+        mu <- a + bA * A ,
+        a ~ dnorm( 0 , 0.2 ) ,
+        bA ~ dnorm( 0 , 0.5 ) ,
+        sigma ~ dexp( 1 )
+    ) , data = dsmall,
+    chains=4,
+    cores=4)
+```
+
+```{r}
+m5.2.stan <- ulam(
+    alist(
+        D ~ dnorm( mu , sigma ) ,
+        mu <- a + bM * M ,
+        a ~ dnorm( 0 , 0.2 ) ,
+        bM ~ dnorm( 0 , 0.5 ) ,
+        sigma ~ dexp( 1 )
+    ) , data = dsmall ,
+    chains=4,
+    cores=4)
+```
+
+```{r}
+m5.3.stan <- ulam(
+    alist(
+        D ~ dnorm( mu , sigma ) ,
+        mu <- a + bM*M + bA*A ,
+        a ~ dnorm( 0 , 0.2 ) ,
+        bM ~ dnorm( 0 , 0.5 ) ,
+        bA ~ dnorm( 0 , 0.5 ) ,
+        sigma ~ dexp( 1 )
+    ) , data = dsmall ,
+    chains=4,
+    cores=4)
+```
+
+```{r}
+precis(m5.1.stan)
+precis(m5.2.stan)
+precis(m5.3.stan)
+```
+
+
+```{r}
+(m5.1.stan)
+
+compare(m5.1.stan, m5.2.stan, m5.3.stan)
+```
+
 ### optional: 8H6
+
+_Modify the Metropolis algorithm code from the chapter to write your own simple MCMC estimator for globe tossing data and model from Chapter 2._
+
+```{r}
+
+```
+
 
 ## Book
 
