@@ -8,7 +8,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, error = TRUE)
 ```
 
 ## Video Notes
@@ -449,6 +449,12 @@ for ( i in 1:iter ) {
 ```{r}
 dens(samples, adj=1)
 ```
+
+plot the chain
+```{r}
+plot(x=1:iter,y=samples, type="l")
+```
+
 
 ## Book
 
