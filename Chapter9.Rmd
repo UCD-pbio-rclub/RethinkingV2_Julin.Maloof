@@ -15,32 +15,32 @@ knitr::opts_chunk$set(echo = TRUE)
 
 * Bayesian is about the posterior but doesn't care how you get there.  It is not about MCMC, that is just one tool to get the posterior.
 * King Markov
-  - Metropolois Archipelago
-  - Must visit each island in proportion to population density.
-  - Flip a coin to choose proposed island on left or right. "proposal"
-  - census population of proposal island and current island
-  - move to proposal with probability of prop  pop / current pop
-  - repeat.  this ensures visiting each island in proportion to its population in the long run.
-  - why would you do this?  useful if you don't know the distribution of population sizes.  Or in this case the distribution of posterior probabilities.  Allow sampling from unknown posterior distribution.
+- Metropolois Archipelago
+- Must visit each island in proportion to population density.
+- Flip a coin to choose proposed island on left or right. "proposal"
+- census population of proposal island and current island
+- move to proposal with probability of prop  pop / current pop
+- repeat.  this ensures visiting each island in proportion to its population in the long run.
+- why would you do this?  useful if you don't know the distribution of population sizes.  Or in this case the distribution of posterior probabilities.  Allow sampling from unknown posterior distribution.
 * Metropolis algorithm
-  - will converge in the long run
-  - as long as proposals are symmetric
-  - not very efficient
-  - Useful to draw samples from posterior distribution
-  - Island: parameter values
-  - Population size: proportional to posterior probability
-  - works for any numbers of dimensions (parameters); continuous or discrete
-  - Markov chain: history doesn't matter, probability only depends on where you are.
+- will converge in the long run
+- as long as proposals are symmetric
+- not very efficient
+- Useful to draw samples from posterior distribution
+- Island: parameter values
+- Population size: proportional to posterior probability
+- works for any numbers of dimensions (parameters); continuous or discrete
+- Markov chain: history doesn't matter, probability only depends on where you are.
 * Why MCMC?
-  - can't write integrated posterior, or can't use it
-  - multilevel models, networks, phylogenies, spatial models are are hard to get integrated
-  - optimization (e.g. quap) not a good strategy in high dimensions -- must have full distributions
-  - MCMC is not fancy.  It is old and essential.
+- can't write integrated posterior, or can't use it
+- multilevel models, networks, phylogenies, spatial models are are hard to get integrated
+- optimization (e.g. quap) not a good strategy in high dimensions -- must have full distributions
+- MCMC is not fancy.  It is old and essential.
 * Many MCMC strategies
-  - Metropolis-Hastings (MH): More general
-  - Gibbs sampling (GS): Efficient version of MH
-  - Metropolis and Givvs are "guess and check" strategies.  so quality proposals are essential.  If making dumb proposals then you don't move, and don't visit potentially important parts of the distribution.
-  - Hamiltonian Monte Carlo (HMC) fundamentally different, does not guess and check.
+- Metropolis-Hastings (MH): More general
+- Gibbs sampling (GS): Efficient version of MH
+- Metropolis and Givvs are "guess and check" strategies.  so quality proposals are essential.  If making dumb proposals then you don't move, and don't visit potentially important parts of the distribution.
+- Hamiltonian Monte Carlo (HMC) fundamentally different, does not guess and check.
 * 
 
 ## Problems
@@ -82,9 +82,9 @@ dd$cid <- ifelse( dd$cont_africa==1 , 1 , 2 )
 
 ## R code 9.11
 dat_slim <- list(
-    log_gdp_std = dd$log_gdp_std,
-    rugged_std = dd$rugged_std,
-    cid = as.integer( dd$cid )
+  log_gdp_std = dd$log_gdp_std,
+  rugged_std = dd$rugged_std,
+  cid = as.integer( dd$cid )
 )
 str(dat_slim)
 ```
@@ -92,14 +92,14 @@ str(dat_slim)
 from chapter
 ```{r}
 m9.1 <- ulam(
-    alist(
-        log_gdp_std ~ dnorm( mu , sigma ) ,
-        mu <- a[cid] + b[cid]*( rugged_std - 0.215 ) ,
-        a[cid] ~ dnorm( 1 , 0.1 ) ,
-        b[cid] ~ dnorm( 0 , 0.3 ) ,
-        sigma ~ dexp( 1 )
-    ) ,
-    data=dat_slim , chains=4 , cores=4 , iter=1000 )
+  alist(
+    log_gdp_std ~ dnorm( mu , sigma ) ,
+    mu <- a[cid] + b[cid]*( rugged_std - 0.215 ) ,
+    a[cid] ~ dnorm( 1 , 0.1 ) ,
+    b[cid] ~ dnorm( 0 , 0.3 ) ,
+    sigma ~ dexp( 1 )
+  ) ,
+  data=dat_slim , chains=4 , cores=4 , iter=1000 )
 ```
 
 ```{r}
@@ -114,26 +114,26 @@ trankplot(m9.1)
 
 ```{r}
 m9.1.unif <- ulam(
-    alist(
-        log_gdp_std ~ dnorm( mu , sigma ) ,
-        mu <- a[cid] + b[cid]*( rugged_std - 0.215 ) ,
-        a[cid] ~ dnorm( 1 , 0.1 ) ,
-        b[cid] ~ dnorm( 0 , 0.3 ) ,
-        sigma ~ dunif( 0,10 )
-    ) ,
-    data=dat_slim , chains=4 , cores=4 , iter=1000 )
+  alist(
+    log_gdp_std ~ dnorm( mu , sigma ) ,
+    mu <- a[cid] + b[cid]*( rugged_std - 0.215 ) ,
+    a[cid] ~ dnorm( 1 , 0.1 ) ,
+    b[cid] ~ dnorm( 0 , 0.3 ) ,
+    sigma ~ dunif( 0,10 )
+  ) ,
+  data=dat_slim , chains=4 , cores=4 , iter=1000 )
 ```
 
 ```{r}
 m9.1.cauchy <- ulam(
-    alist(
-        log_gdp_std ~ dnorm( mu , sigma ) ,
-        mu <- a[cid] + b[cid]*( rugged_std - 0.215 ) ,
-        a[cid] ~ dnorm( 1 , 0.1 ) ,
-        b[cid] ~ dnorm( 0 , 0.3 ) ,
-        sigma ~ dcauchy( 0, 1 )
-    ) ,
-    data=dat_slim , chains=4 , cores=4 , iter=1000 )
+  alist(
+    log_gdp_std ~ dnorm( mu , sigma ) ,
+    mu <- a[cid] + b[cid]*( rugged_std - 0.215 ) ,
+    a[cid] ~ dnorm( 1 , 0.1 ) ,
+    b[cid] ~ dnorm( 0 , 0.3 ) ,
+    sigma ~ dcauchy( 0, 1 )
+  ) ,
+  data=dat_slim , chains=4 , cores=4 , iter=1000 )
 ```
 
 ```{r}
@@ -172,24 +172,24 @@ _The Cauchy and exponential priors from the terrain ruggedness model are very we
 
 ```{r}
 m9.1.exp.1 <- ulam(
-    alist(
-        log_gdp_std ~ dnorm( mu , sigma ) ,
-        mu <- a[cid] + b[cid]*( rugged_std - 0.215 ) ,
-        a[cid] ~ dnorm( 1 , 0.1 ) ,
-        b[cid] ~ dnorm( 0 , 0.3 ) ,
-        sigma ~ dexp( .1 )
-    ) ,
-    data=dat_slim , chains=4 , cores=4 , iter=1000 )
+  alist(
+    log_gdp_std ~ dnorm( mu , sigma ) ,
+    mu <- a[cid] + b[cid]*( rugged_std - 0.215 ) ,
+    a[cid] ~ dnorm( 1 , 0.1 ) ,
+    b[cid] ~ dnorm( 0 , 0.3 ) ,
+    sigma ~ dexp( .1 )
+  ) ,
+  data=dat_slim , chains=4 , cores=4 , iter=1000 )
 
 m9.1.exp.01 <- ulam(
-    alist(
-        log_gdp_std ~ dnorm( mu , sigma ) ,
-        mu <- a[cid] + b[cid]*( rugged_std - 0.215 ) ,
-        a[cid] ~ dnorm( 1 , 0.1 ) ,
-        b[cid] ~ dnorm( 0 , 0.3 ) ,
-        sigma ~ dexp( .01 )
-    ) ,
-    data=dat_slim , chains=4 , cores=4 , iter=1000 )
+  alist(
+    log_gdp_std ~ dnorm( mu , sigma ) ,
+    mu <- a[cid] + b[cid]*( rugged_std - 0.215 ) ,
+    a[cid] ~ dnorm( 1 , 0.1 ) ,
+    b[cid] ~ dnorm( 0 , 0.3 ) ,
+    sigma ~ dexp( .01 )
+  ) ,
+  data=dat_slim , chains=4 , cores=4 , iter=1000 )
 ```
 
 ```{r}
@@ -222,24 +222,24 @@ sigmapl %>%
 
 ```{r}
 m9.1.cauchy.1 <- ulam(
-    alist(
-        log_gdp_std ~ dnorm( mu , sigma ) ,
-        mu <- a[cid] + b[cid]*( rugged_std - 0.215 ) ,
-        a[cid] ~ dnorm( 1 , 0.1 ) ,
-        b[cid] ~ dnorm( 0 , 0.3 ) ,
-        sigma ~ dcauchy(0, .1 )
-    ) ,
-    data=dat_slim , chains=4 , cores=4 , iter=1000 )
+  alist(
+    log_gdp_std ~ dnorm( mu , sigma ) ,
+    mu <- a[cid] + b[cid]*( rugged_std - 0.215 ) ,
+    a[cid] ~ dnorm( 1 , 0.1 ) ,
+    b[cid] ~ dnorm( 0 , 0.3 ) ,
+    sigma ~ dcauchy(0, .1 )
+  ) ,
+  data=dat_slim , chains=4 , cores=4 , iter=1000 )
 
 m9.1.cauchy.01 <- ulam(
-    alist(
-        log_gdp_std ~ dnorm( mu , sigma ) ,
-        mu <- a[cid] + b[cid]*( rugged_std - 0.215 ) ,
-        a[cid] ~ dnorm( 1 , 0.1 ) ,
-        b[cid] ~ dnorm( 0 , 0.3 ) ,
-        sigma ~ dcauchy(0, .01 )
-    ) ,
-    data=dat_slim , chains=4 , cores=4 , iter=1000 )
+  alist(
+    log_gdp_std ~ dnorm( mu , sigma ) ,
+    mu <- a[cid] + b[cid]*( rugged_std - 0.215 ) ,
+    a[cid] ~ dnorm( 1 , 0.1 ) ,
+    b[cid] ~ dnorm( 0 , 0.3 ) ,
+    sigma ~ dcauchy(0, .01 )
+  ) ,
+  data=dat_slim , chains=4 , cores=4 , iter=1000 )
 ```
 
 
@@ -274,13 +274,13 @@ _Run the model below and then inspect the posterior distribution and explain wha
 plishing_
 ```{r}
 mp <- ulam(
-    alist(
-        a ~ dnorm(0,1),
-        b ~ dcauchy(0,1)
-    ),
-    data=list(y=1),
-    start=list(a=0,b=0),
-    iter=1e4, warmup=100 , chains=4 )
+  alist(
+    a ~ dnorm(0,1),
+    b ~ dcauchy(0,1)
+  ),
+  data=list(y=1),
+  start=list(a=0,b=0),
+  iter=1e4, warmup=100 , chains=4 )
 ```
 ```{r}
 traceplot(mp)
@@ -318,39 +318,39 @@ sd( d$MedianAgeMarriage )
 
 ## R code 5.3
 m5.1 <- quap(
-    alist(
-        D ~ dnorm( mu , sigma ) ,
-        mu <- a + bA * A ,
-        a ~ dnorm( 0 , 0.2 ) ,
-        bA ~ dnorm( 0 , 0.5 ) ,
-        sigma ~ dexp( 1 )
-    ) , data = d )
+  alist(
+    D ~ dnorm( mu , sigma ) ,
+    mu <- a + bA * A ,
+    a ~ dnorm( 0 , 0.2 ) ,
+    bA ~ dnorm( 0 , 0.5 ) ,
+    sigma ~ dexp( 1 )
+  ) , data = d )
 
 ```
 
 ```{r}
 d$M <- scale( d$Marriage )
 m5.2 <- quap(
-    alist(
-        D ~ dnorm( mu , sigma ) ,
-        mu <- a + bM * M ,
-        a ~ dnorm( 0 , 0.2 ) ,
-        bM ~ dnorm( 0 , 0.5 ) ,
-        sigma ~ dexp( 1 )
-    ) , data = d )
+  alist(
+    D ~ dnorm( mu , sigma ) ,
+    mu <- a + bM * M ,
+    a ~ dnorm( 0 , 0.2 ) ,
+    bM ~ dnorm( 0 , 0.5 ) ,
+    sigma ~ dexp( 1 )
+  ) , data = d )
 ```
 
 
 ```{r}
 m5.3 <- quap(
-    alist(
-        D ~ dnorm( mu , sigma ) ,
-        mu <- a + bM*M + bA*A ,
-        a ~ dnorm( 0 , 0.2 ) ,
-        bM ~ dnorm( 0 , 0.5 ) ,
-        bA ~ dnorm( 0 , 0.5 ) ,
-        sigma ~ dexp( 1 )
-    ) , data = d )
+  alist(
+    D ~ dnorm( mu , sigma ) ,
+    mu <- a + bM*M + bA*A ,
+    a ~ dnorm( 0 , 0.2 ) ,
+    bM ~ dnorm( 0 , 0.5 ) ,
+    bA ~ dnorm( 0 , 0.5 ) ,
+    sigma ~ dexp( 1 )
+  ) , data = d )
 precis( m5.3 )
 ```
 
@@ -369,45 +369,45 @@ dsmall
 
 ```{r}
 m5.1.stan <- ulam(
-    alist(
-        D ~ dnorm( mu , sigma ) ,
-        mu <- a + bA * A ,
-        a ~ dnorm( 0 , 0.2 ) ,
-        bA ~ dnorm( 0 , 0.5 ) ,
-        sigma ~ dexp( 1 )
-    ) , data = dsmall,
-    chains=4,
-    cores=4,
-    log_lik = TRUE)
+  alist(
+    D ~ dnorm( mu , sigma ) ,
+    mu <- a + bA * A ,
+    a ~ dnorm( 0 , 0.2 ) ,
+    bA ~ dnorm( 0 , 0.5 ) ,
+    sigma ~ dexp( 1 )
+  ) , data = dsmall,
+  chains=4,
+  cores=4,
+  log_lik = TRUE)
 ```
 
 ```{r}
 m5.2.stan <- ulam(
-    alist(
-        D ~ dnorm( mu , sigma ) ,
-        mu <- a + bM * M ,
-        a ~ dnorm( 0 , 0.2 ) ,
-        bM ~ dnorm( 0 , 0.5 ) ,
-        sigma ~ dexp( 1 )
-    ) , data = dsmall ,
-    chains=4,
-    cores=4,
-    log_lik = TRUE)
+  alist(
+    D ~ dnorm( mu , sigma ) ,
+    mu <- a + bM * M ,
+    a ~ dnorm( 0 , 0.2 ) ,
+    bM ~ dnorm( 0 , 0.5 ) ,
+    sigma ~ dexp( 1 )
+  ) , data = dsmall ,
+  chains=4,
+  cores=4,
+  log_lik = TRUE)
 ```
 
 ```{r}
 m5.3.stan <- ulam(
-    alist(
-        D ~ dnorm( mu , sigma ) ,
-        mu <- a + bM*M + bA*A ,
-        a ~ dnorm( 0 , 0.2 ) ,
-        bM ~ dnorm( 0 , 0.5 ) ,
-        bA ~ dnorm( 0 , 0.5 ) ,
-        sigma ~ dexp( 1 )
-    ) , data = dsmall ,
-    chains=4,
-    cores=4,
-    log_lik = TRUE)
+  alist(
+    D ~ dnorm( mu , sigma ) ,
+    mu <- a + bM*M + bA*A ,
+    a ~ dnorm( 0 , 0.2 ) ,
+    bM ~ dnorm( 0 , 0.5 ) ,
+    bA ~ dnorm( 0 , 0.5 ) ,
+    sigma ~ dexp( 1 )
+  ) , data = dsmall ,
+  chains=4,
+  cores=4,
+  log_lik = TRUE)
 ```
 
 ```{r}
@@ -429,18 +429,25 @@ _Modify the Metropolis algorithm code from the chapter to write your own simple 
 iter <- 1e5
 samples <- rep(0,iter)
 current <- 0.5
-current_lik 
 for ( i in 1:iter ) {
-    # record current position
-    positions[i] <- current
-
-    # generate proposal
-    proposal <- runif(1, min=0,max=1 )
-
-    # move?
-    prob_move <- proposal/current
-    current <- ifelse( runif(1) < prob_move , proposal , current )
+  
+  # record current position
+  samples[i] <- current
+  current_lik <- dbinom( 6 , size=9 , prob=current )
+  
+  # generate proposal
+  proposal <- runif(1, min=0,max=1 )
+  
+  prop_lik <- dbinom(6, size=9, prob = proposal)
+  
+  # move?
+  prob_move <- prop_lik/current_lik
+  current <- ifelse( runif(1) < prob_move , proposal , current )
 }
+```
+
+```{r}
+dens(samples, adj=1)
 ```
 
 ## Book
@@ -451,18 +458,18 @@ num_weeks <- 1e5
 positions <- rep(0,num_weeks)
 current <- 10
 for ( i in 1:num_weeks ) {
-    # record current position
-    positions[i] <- current
-
-    # flip coin to generate proposal
-    proposal <- current + sample( c(-1,1) , size=1 )
-    # now make sure he loops around the archipelago
-    if ( proposal < 1 ) proposal <- 10
-    if ( proposal > 10 ) proposal <- 1
-
-    # move?
-    prob_move <- proposal/current
-    current <- ifelse( runif(1) < prob_move , proposal , current )
+  # record current position
+  positions[i] <- current
+  
+  # flip coin to generate proposal
+  proposal <- current + sample( c(-1,1) , size=1 )
+  # now make sure he loops around the archipelago
+  if ( proposal < 1 ) proposal <- 10
+  if ( proposal > 10 ) proposal <- 1
+  
+  # move?
+  prob_move <- proposal/current
+  current <- ifelse( runif(1) < prob_move , proposal , current )
 }
 ```
 
@@ -482,11 +489,11 @@ dens( Rd )
 ## R code 9.3
 # U needs to return neg-log-probability
 myU4 <- function( q , a=0 , b=1 , k=0 , d=1 ) {
-    muy <- q[1]
-    mux <- q[2]
-    U <- sum( dnorm(y,muy,1,log=TRUE) ) + sum( dnorm(x,mux,1,log=TRUE) ) +
-        dnorm(muy,a,b,log=TRUE) + dnorm(mux,k,d,log=TRUE)
-    return( -U )
+  muy <- q[1]
+  mux <- q[2]
+  U <- sum( dnorm(y,muy,1,log=TRUE) ) + sum( dnorm(x,mux,1,log=TRUE) ) +
+    dnorm(muy,a,b,log=TRUE) + dnorm(mux,k,d,log=TRUE)
+  return( -U )
 }
 ```
 
@@ -496,11 +503,11 @@ myU4 <- function( q , a=0 , b=1 , k=0 , d=1 ) {
 # gradient function
 # need vector of partial derivatives of U with respect to vector q
 myU_grad4 <- function( q , a=0 , b=1 , k=0 , d=1 ) {
-    muy <- q[1]
-    mux <- q[2]
-    G1 <- sum( y - muy ) + (a - muy)/b^2 #dU/dmuy
-    G2 <- sum( x - mux ) + (k - mux)/d^2 #dU/dmuy
-    return( c( -G1 , -G2 ) ) # negative bc energy is neg-log-prob
+  muy <- q[1]
+  mux <- q[2]
+  G1 <- sum( y - muy ) + (a - muy)/b^2 #dU/dmuy
+  G2 <- sum( x - mux ) + (k - mux)/d^2 #dU/dmuy
+  return( c( -G1 , -G2 ) ) # negative bc energy is neg-log-prob
 }
 # test data
 set.seed(7)
@@ -524,19 +531,19 @@ n_samples <- 4
 path_col <- col.alpha("black",0.5)
 points( Q$q[1] , Q$q[2] , pch=4 , col="black" )
 for ( i in 1:n_samples ) {
-    Q <- HMC2( myU4 , myU_grad4 , step , L , Q$q )
-    if ( n_samples < 10 ) {
-      for ( j in 1:L ) {
-        K0 <- sum(Q$ptraj[j,]^2)/2 # kinetic energy
-        lines( Q$traj[j:(j+1),1] , Q$traj[j:(j+1),2] , col=path_col , lwd=1+2*K0 )
-      }
-      points( Q$traj[1:L+1,] , pch=16 , col="white" , cex=0.35 )
-      Arrows( Q$traj[L,1] , Q$traj[L,2] , Q$traj[L+1,1] , Q$traj[L+1,2] ,
-          arr.length=0.35 , arr.adj = 0.7 )
-      text( Q$traj[L+1,1] , Q$traj[L+1,2] , i , cex=0.8 , pos=4 , offset=0.4 )
+  Q <- HMC2( myU4 , myU_grad4 , step , L , Q$q )
+  if ( n_samples < 10 ) {
+    for ( j in 1:L ) {
+      K0 <- sum(Q$ptraj[j,]^2)/2 # kinetic energy
+      lines( Q$traj[j:(j+1),1] , Q$traj[j:(j+1),2] , col=path_col , lwd=1+2*K0 )
     }
-    points( Q$traj[L+1,1] , Q$traj[L+1,2] , pch=ifelse( Q$accept==1 , 16 , 1 ) ,
-        col=ifelse( abs(Q$dH)>0.1 , "red" , "black" ) )
+    points( Q$traj[1:L+1,] , pch=16 , col="white" , cex=0.35 )
+    Arrows( Q$traj[L,1] , Q$traj[L,2] , Q$traj[L+1,1] , Q$traj[L+1,2] ,
+            arr.length=0.35 , arr.adj = 0.7 )
+    text( Q$traj[L+1,1] , Q$traj[L+1,2] , i , cex=0.8 , pos=4 , offset=0.4 )
+  }
+  points( Q$traj[L+1,1] , Q$traj[L+1,2] , pch=ifelse( Q$accept==1 , 16 , 1 ) ,
+          col=ifelse( abs(Q$dH)>0.1 , "red" , "black" ) )
 }
 ```
 
@@ -554,26 +561,26 @@ HMC2 <- function (U, grad_U, epsilon, L, current_q) {
   ptraj <- qtraj
   qtraj[1,] <- current_q
   ptraj[1,] <- p
-```
-
-
-```{r, eval=FALSE, echo=FALSE}
-## R code 9.7
+  ```
+  
+  
+  ```{r, eval=FALSE, echo=FALSE}
+  ## R code 9.7
   # Alternate full steps for position and momentum
   for ( i in 1:L ) {
     q = q + epsilon * p # Full step for the position
     # Make a full step for the momentum, except at end of trajectory
     if ( i!=L ) {
-        p = p - epsilon * grad_U(q)
-        ptraj[i+1,] <- p
+      p = p - epsilon * grad_U(q)
+      ptraj[i+1,] <- p
     }
     qtraj[i+1,] <- q
   }
-```
-
-
-```{r, eval=FALSE, echo=FALSE}
-## R code 9.8
+  ```
+  
+  
+  ```{r, eval=FALSE, echo=FALSE}
+  ## R code 9.8
   # Make a half step for momentum at the end
   p = p - epsilon * grad_U(q) / 2
   ptraj[L+1,] <- p
@@ -609,14 +616,14 @@ dd$cid <- ifelse( dd$cont_africa==1 , 1 , 2 )
 
 ## R code 9.10
 m8.5 <- quap(
-    alist(
-        log_gdp_std ~ dnorm( mu , sigma ) ,
-        mu <- a[cid] + b[cid]*( rugged_std - 0.215 ) ,
-        a[cid] ~ dnorm( 1 , 0.1 ) ,
-        b[cid] ~ dnorm( 0 , 0.3 ) ,
-        sigma ~ dexp( 1 )
-    ) ,
-    data=dd )
+  alist(
+    log_gdp_std ~ dnorm( mu , sigma ) ,
+    mu <- a[cid] + b[cid]*( rugged_std - 0.215 ) ,
+    a[cid] ~ dnorm( 1 , 0.1 ) ,
+    b[cid] ~ dnorm( 0 , 0.3 ) ,
+    sigma ~ dexp( 1 )
+  ) ,
+  data=dd )
 precis( m8.5 , depth=2 )
 ```
 
@@ -624,9 +631,9 @@ precis( m8.5 , depth=2 )
 ```{r, eval=FALSE, echo=FALSE}
 ## R code 9.11
 dat_slim <- list(
-    log_gdp_std = dd$log_gdp_std,
-    rugged_std = dd$rugged_std,
-    cid = as.integer( dd$cid )
+  log_gdp_std = dd$log_gdp_std,
+  rugged_std = dd$rugged_std,
+  cid = as.integer( dd$cid )
 )
 str(dat_slim)
 ```
@@ -635,14 +642,14 @@ str(dat_slim)
 ```{r, eval=FALSE, echo=FALSE}
 ## R code 9.12
 m9.1 <- ulam(
-    alist(
-        log_gdp_std ~ dnorm( mu , sigma ) ,
-        mu <- a[cid] + b[cid]*( rugged_std - 0.215 ) ,
-        a[cid] ~ dnorm( 1 , 0.1 ) ,
-        b[cid] ~ dnorm( 0 , 0.3 ) ,
-        sigma ~ dexp( 1 )
-    ) ,
-    data=dat_slim , chains=1 )
+  alist(
+    log_gdp_std ~ dnorm( mu , sigma ) ,
+    mu <- a[cid] + b[cid]*( rugged_std - 0.215 ) ,
+    a[cid] ~ dnorm( 1 , 0.1 ) ,
+    b[cid] ~ dnorm( 0 , 0.3 ) ,
+    sigma ~ dexp( 1 )
+  ) ,
+  data=dat_slim , chains=1 )
 ```
 
 
@@ -655,14 +662,14 @@ precis( m9.1 , depth=2 )
 ```{r, eval=FALSE, echo=FALSE}
 ## R code 9.14
 m9.1 <- ulam(
-    alist(
-        log_gdp_std ~ dnorm( mu , sigma ) ,
-        mu <- a[cid] + b[cid]*( rugged_std - 0.215 ) ,
-        a[cid] ~ dnorm( 1 , 0.1 ) ,
-        b[cid] ~ dnorm( 0 , 0.3 ) ,
-        sigma ~ dexp( 1 )
-    ) ,
-    data=dat_slim , chains=4 , cores=4 , iter=1000 )
+  alist(
+    log_gdp_std ~ dnorm( mu , sigma ) ,
+    mu <- a[cid] + b[cid]*( rugged_std - 0.215 ) ,
+    a[cid] ~ dnorm( 1 , 0.1 ) ,
+    b[cid] ~ dnorm( 0 , 0.3 ) ,
+    sigma ~ dexp( 1 )
+  ) ,
+  data=dat_slim , chains=4 , cores=4 , iter=1000 )
 ```
 
 
@@ -701,13 +708,13 @@ trankplot( m9.1 , n_cols=2 )
 y <- c(-1,1)
 set.seed(11)
 m9.2 <- ulam(
-    alist(
-        y ~ dnorm( mu , sigma ) ,
-        mu <- alpha ,
-        alpha ~ dnorm( 0 , 1000 ) ,
-        sigma ~ dexp( 0.0001 )
-    ) ,
-    data=list(y=y) , chains=2 )
+  alist(
+    y ~ dnorm( mu , sigma ) ,
+    mu <- alpha ,
+    alpha ~ dnorm( 0 , 1000 ) ,
+    sigma ~ dexp( 0.0001 )
+  ) ,
+  data=list(y=y) , chains=2 )
 ```
 
 
@@ -721,13 +728,13 @@ precis( m9.2 )
 ## R code 9.22
 set.seed(11)
 m9.3 <- ulam(
-    alist(
-        y ~ dnorm( mu , sigma ) ,
-        mu <- alpha ,
-        alpha ~ dnorm( 1 , 10 ) ,
-        sigma ~ dexp( 1 )
-    ) ,
-    data=list(y=y) , chains=2 )
+  alist(
+    y ~ dnorm( mu , sigma ) ,
+    mu <- alpha ,
+    alpha ~ dnorm( 1 , 10 ) ,
+    sigma ~ dexp( 1 )
+  ) ,
+  data=list(y=y) , chains=2 )
 precis( m9.3 )
 ```
 
@@ -742,14 +749,14 @@ y <- rnorm( 100 , mean=0 , sd=1 )
 ```{r, eval=FALSE, echo=FALSE}
 ## R code 9.24
 m9.4 <- ulam(
-    alist(
-        y ~ dnorm( mu , sigma ) ,
-        mu <- a1 + a2 ,
-        a1 ~ dnorm( 0 , 1000 ),
-        a2 ~ dnorm( 0 , 1000 ),
-        sigma ~ dexp( 1 )
-    ) ,
-    data=list(y=y) , chains=2 )
+  alist(
+    y ~ dnorm( mu , sigma ) ,
+    mu <- a1 + a2 ,
+    a1 ~ dnorm( 0 , 1000 ),
+    a2 ~ dnorm( 0 , 1000 ),
+    sigma ~ dexp( 1 )
+  ) ,
+  data=list(y=y) , chains=2 )
 precis( m9.4 )
 ```
 
@@ -757,14 +764,14 @@ precis( m9.4 )
 ```{r, eval=FALSE, echo=FALSE}
 ## R code 9.25
 m9.5 <- ulam(
-    alist(
-        y ~ dnorm( mu , sigma ) ,
-        mu <- a1 + a2 ,
-        a1 ~ dnorm( 0 , 10 ),
-        a2 ~ dnorm( 0 , 10 ),
-        sigma ~ dexp( 1 )
-    ) ,
-    data=list(y=y) , chains=2 )
+  alist(
+    y ~ dnorm( mu , sigma ) ,
+    mu <- a1 + a2 ,
+    a1 ~ dnorm( 0 , 10 ),
+    a2 ~ dnorm( 0 , 10 ),
+    sigma ~ dexp( 1 )
+  ) ,
+  data=list(y=y) , chains=2 )
 precis( m9.5 )
 ```
 
@@ -772,13 +779,13 @@ precis( m9.5 )
 ```{r, eval=FALSE, echo=FALSE}
 ## R code 9.26
 mp <- map2stan(
-    alist(
-        a ~ dnorm(0,1),
-        b ~ dcauchy(0,1)
-    ),
-    data=list(y=1),
-    start=list(a=0,b=0),
-    iter=1e4, warmup=100 , WAIC=FALSE )
+  alist(
+    a ~ dnorm(0,1),
+    b ~ dcauchy(0,1)
+  ),
+  data=list(y=1),
+  start=list(a=0,b=0),
+  iter=1e4, warmup=100 , WAIC=FALSE )
 ```
 
 
@@ -788,10 +795,10 @@ N <- 100                          # number of individuals
 height <- rnorm(N,10,2)           # sim total height of each
 leg_prop <- runif(N,0.4,0.5)      # leg as proportion of height
 leg_left <- leg_prop*height +     # sim left leg as proportion + error
-    rnorm( N , 0 , 0.02 )
+  rnorm( N , 0 , 0.02 )
 leg_right <- leg_prop*height +    # sim right leg as proportion + error
-    rnorm( N , 0 , 0.02 )
-                                  # combine into data frame
+  rnorm( N , 0 , 0.02 )
+# combine into data frame
 d <- data.frame(height,leg_left,leg_right)
 ```
 
@@ -799,32 +806,32 @@ d <- data.frame(height,leg_left,leg_right)
 ```{r, eval=FALSE, echo=FALSE}
 ## R code 9.28
 m5.8s <- map2stan(
-    alist(
-        height ~ dnorm( mu , sigma ) ,
-        mu <- a + bl*leg_left + br*leg_right ,
-        a ~ dnorm( 10 , 100 ) ,
-        bl ~ dnorm( 2 , 10 ) ,
-        br ~ dnorm( 2 , 10 ) ,
-        sigma ~ dcauchy( 0 , 1 )
-    ) ,
-    data=d, chains=4,
-    start=list(a=10,bl=0,br=0,sigma=1) )
+  alist(
+    height ~ dnorm( mu , sigma ) ,
+    mu <- a + bl*leg_left + br*leg_right ,
+    a ~ dnorm( 10 , 100 ) ,
+    bl ~ dnorm( 2 , 10 ) ,
+    br ~ dnorm( 2 , 10 ) ,
+    sigma ~ dcauchy( 0 , 1 )
+  ) ,
+  data=d, chains=4,
+  start=list(a=10,bl=0,br=0,sigma=1) )
 ```
 
 
 ```{r, eval=FALSE, echo=FALSE}
 ## R code 9.29
 m5.8s2 <- map2stan(
-    alist(
-        height ~ dnorm( mu , sigma ) ,
-        mu <- a + bl*leg_left + br*leg_right ,
-        a ~ dnorm( 10 , 100 ) ,
-        bl ~ dnorm( 2 , 10 ) ,
-        br ~ dnorm( 2 , 10 ) & T[0,] ,
-        sigma ~ dcauchy( 0 , 1 )
-    ) ,
-    data=d, chains=4,
-    start=list(a=10,bl=0,br=0,sigma=1) )
+  alist(
+    height ~ dnorm( mu , sigma ) ,
+    mu <- a + bl*leg_left + br*leg_right ,
+    a ~ dnorm( 10 , 100 ) ,
+    bl ~ dnorm( 2 , 10 ) ,
+    br ~ dnorm( 2 , 10 ) & T[0,] ,
+    sigma ~ dcauchy( 0 , 1 )
+  ) ,
+  data=d, chains=4,
+  start=list(a=10,bl=0,br=0,sigma=1) )
 
 ```
 
