@@ -363,7 +363,6 @@ Now with stan
 
 ```{r}
 dsmall <- list(D=d$D, A=d$A, M=d$M)
-dsmall
 ```
 
 
