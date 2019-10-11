@@ -456,6 +456,182 @@ plot(x=1:iter,y=samples, type="l")
 ```
 
 
+## third set of problems
+
+### 8E4
+_Explain the difference between the effective number of samples, n_eff as calculated by Stan,
+and the actual number of samples._
+
+n_eff takes autocorellation into account.
+
+### 8M3
+
+_Re-estimate one of the Stan models from the chapter, but at different numbers of warmup it- erations. Be sure to use the same number of sampling iterations in each case. Compare the n_eff values. How much warmup is enough?_
+
+Using the marriage model
+
+```{r}
+m5.3.stan <- ulam(
+  alist(
+    D ~ dnorm( mu , sigma ) ,
+    mu <- a + bM*M + bA*A ,
+    a ~ dnorm( 0 , 0.2 ) ,
+    bM ~ dnorm( 0 , 0.5 ) ,
+    bA ~ dnorm( 0 , 0.5 ) ,
+    sigma ~ dexp( 1 )
+  ) , data = dsmall ,
+  chains=4,
+  cores=4,
+  log_lik = TRUE)
+precis(m5.3.stan)
+```
+
+0.12 seconds
+
+```{r}
+m5.3.stan.w100 <- ulam(
+  alist(
+    D ~ dnorm( mu , sigma ) ,
+    mu <- a + bM*M + bA*A ,
+    a ~ dnorm( 0 , 0.2 ) ,
+    bM ~ dnorm( 0 , 0.5 ) ,
+    bA ~ dnorm( 0 , 0.5 ) ,
+    sigma ~ dexp( 1 )
+  ) , data = dsmall ,
+  chains=4,
+  cores=4,
+  iter=600,
+  warmup=100,
+  log_lik = TRUE)
+precis(m5.3.stan.w100)
+```
+
+100 seems non-optimal as the sampling is less even.
+Total: 0.059
+
+```{r}
+m5.3.stan.w10 <- ulam(
+  alist(
+    D ~ dnorm( mu , sigma ) ,
+    mu <- a + bM*M + bA*A ,
+    a ~ dnorm( 0 , 0.2 ) ,
+    bM ~ dnorm( 0 , 0.5 ) ,
+    bA ~ dnorm( 0 , 0.5 ) ,
+    sigma ~ dexp( 1 )
+  ) , data = dsmall ,
+  chains=4,
+  cores=4,
+  iter=600,
+  warmup=10,
+  log_lik = TRUE)
+precis(m5.3.stan.w10)
+```
+
+But 10 warmup samples is not that much worse.
+Total time: 0.05 seconds
+
+```{r}
+m5.3.stan.w250 <- ulam(
+  alist(
+    D ~ dnorm( mu , sigma ) ,
+    mu <- a + bM*M + bA*A ,
+    a ~ dnorm( 0 , 0.2 ) ,
+    bM ~ dnorm( 0 , 0.5 ) ,
+    bA ~ dnorm( 0 , 0.5 ) ,
+    sigma ~ dexp( 1 )
+  ) , data = dsmall ,
+  chains=4,
+  cores=4,
+  iter=600,
+  warmup=250,
+  log_lik = TRUE)
+precis(m5.3.stan.w250)
+```
+
+### 8H3
+
+_Sometimes changing a prior for one parameter has unanticipated effects on other parameters. This is because when a parameter is highly correlated with another parameter in the posterior, the prior influences both parameters. Here’s an example to work and think through. Go back to the leg length example in Chapter 5. Here is the code again, which simulates height and leg lengths for 100 imagined individuals:_
+
+```{r}
+## R code 9.27
+N <- 100                          # number of individuals
+height <- rnorm(N,10,2)           # sim total height of each
+leg_prop <- runif(N,0.4,0.5)      # leg as proportion of height
+leg_left <- leg_prop*height +     # sim left leg as proportion + error
+  rnorm( N , 0 , 0.02 )
+leg_right <- leg_prop*height +    # sim right leg as proportion + error
+  rnorm( N , 0 , 0.02 )
+# combine into data frame
+d <- data.frame(height,leg_left,leg_right)
+```
+
+
+```{r}
+## R code 9.28
+m5.8s <- map2stan(
+  alist(
+    height ~ dnorm( mu , sigma ) ,
+    mu <- a + bl*leg_left + br*leg_right ,
+    a ~ dnorm( 10 , 100 ) ,
+    bl ~ dnorm( 2 , 10 ) ,
+    br ~ dnorm( 2 , 10 ) ,
+    sigma ~ dcauchy( 0 , 1 )
+  ) ,
+  data=d, chains=4,
+  log_lik = TRUE,
+  start=list(a=10,bl=0,br=0,sigma=1) )
+```
+
+```{r}
+trankplot(m5.8s)
+plotchains(m5.8s)
+precis(m5.8s)
+pairs(m5.8s)
+```
+
+
+_Compare the posterior distribution produced by the code above to the posterior distribution pro- duced when you change the prior for br so that it is strictly positive:_
+
+
+```{r}
+## R code 9.29
+m5.8s2 <- map2stan(
+  alist(
+    height ~ dnorm( mu , sigma ) ,
+    mu <- a + bl*leg_left + br*leg_right ,
+    a ~ dnorm( 10 , 100 ) ,
+    bl ~ dnorm( 2 , 10 ) ,
+    br ~ dnorm( 2 , 10 ) & T[0,] ,
+    sigma ~ dcauchy( 0 , 1 )
+  ) ,
+  data=d, chains=4,
+  log_lik = TRUE,
+  start=list(a=10,bl=0,br=0,sigma=1) )
+
+```
+
+
+_Note that T[0,] on the right-hand side of the prior for br. What the T[0,] does is truncate the normal distribution so that it has positive probability only above zero. In other words, that prior ensures that the posterior distribution for br will have no probability mass below zero. Compare the two posterior distributions for m5.8s and m5.8s2. What has changed in the pos- terior distribution of both beta parameters? Can you explain the change induced by the change in_
+
+```{r}
+trankplot(m5.8s2)
+plotchains(m5.8s2)
+precis(m5.8s2)
+pairs(m5.8s2)
+```
+
+So bR and bL are still inversely correlated, as expected, but now bR is always postive (of course) and bL is generally negative.  Interestingly the n_eff is lower.  Probably because in the previous modely that could flip between + and -
+
+### 8H4
+
+_For the two models fit in the previous problem, use DIC or WAIC to compare the effective numbers of parameters for each model. Which model has more effective parameters? Why?_
+
+```{r}
+compare(m5.8s, m5.8s2)
+```
+
+m5.8s has more effective parameters.  But why?
+
 ## Book
 
 ```{r, eval=FALSE, echo=FALSE}
