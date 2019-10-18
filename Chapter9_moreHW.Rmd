@@ -9,8 +9,6 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-library(rethinking)
-library(tidyverse)
 ```
 
 ## 1. 
@@ -56,8 +54,24 @@ m1 <- ulam(alist(
   chains = 4,
   cores = 4,
   iter=2000)
-
 ```
+
+are the priors reasonable?
+```{r}
+priors <- extract.prior(m1)
+str(priors)
+```
+
+each "score" would be the sum of a wine and a judge, so we could just run through some of these
+```{r}
+data <- data.frame(judge=sample(1:9, 1000, replace = TRUE), 
+                   wine=sample(1:20, 1000, replace = TRUE))
+prior.score <- link(m1,data,post=priors)
+dens(prior.score)
+dens(wlist$score)
+```
+
+Reasonable...
 
 ```{r}
 precis(m1, depth=2)
@@ -82,15 +96,15 @@ Problem 1.
 ```{r}
 wlist <- with(Wines2012,
               list(score = score_std,
-                   flight=as.numeric(flight),
+                   red=as.numeric(flight),
                    wine_amer=wine.amer+1,
                    judge_amer=judge.amer+1
               ))
 
 m2 <- ulam(alist(
   score ~ dnorm(mu, sigma),
-  mu <- a_f[flight] + a_w_amer[wine_amer] + a_j_amer[judge_amer],
-  a_f[flight] ~ dnorm(0,1),
+  mu <- a_red[red] + a_w_amer[wine_amer] + a_j_amer[judge_amer],
+  a_red[red] ~ dnorm(0,1),
   a_w_amer[wine_amer] ~ dnorm(0,1),
   a_j_amer[judge_amer] ~ dnorm(0,1),
   sigma ~ dexp(1)),
@@ -120,3 +134,44 @@ to help with this, or just use your knowledge of the linear model instead.
 What do you conclude about the features and the scores? Can you relate
 the results of your model(s) to the individual judge and wine inferences from
 Problem 1?
+
+```{r}
+
+m3 <- ulam(alist(
+  score ~ dnorm(mu, sigma),
+  mu <- a_red[red] + 
+    a_w_amer[wine_amer] + 
+    a_j_amer[judge_amer] + 
+    i_red_w_amer[red]*(wine_amer-1) + # 0 for french wines, 1 for american wines
+    i_red_j_amer[red]*(wine_amer-1) + # 0 for french wines, 1 for american wines
+    i_w_j_amer[wine_amer]*(judge_amer-1), # 0 for french judges, 1 for american judges
+  a_red[red] ~ dnorm(0,1),
+  a_w_amer[wine_amer] ~ dnorm(0,1),
+  a_j_amer[judge_amer] ~ dnorm(0,1),
+  i_red_w_amer[red] ~ dnorm(0,.5),
+  i_red_j_amer[red] ~ dnorm(0,.5),
+  i_w_j_amer[wine_amer] ~ dnorm(0,.5),
+  sigma ~ dexp(1)),
+  data = wlist,
+  chains = 4,
+  cores = 4,
+  iter=2000)
+```
+
+```{r}
+precis(m3, depth=2)
+plot(precis(m3, depth=2))
+traceplot(m3, ask=FALSE)
+trankplot(m3, ask=FALSE)
+```
+
+I don't see anything inersting here:
+
+* a_red: score of white or red wines
+* a_w_amer: score of french or american wines
+* a_j_amer: score of french or american judges
+* i_red_w_amer: interaction effect of red on french vs american wines (the amount that a white or red score shifts when a  wine is from America 
+* i_red_j_amer: interaction effect of red on french vs american wines (the amount that a white or red score shifts when a  judge is from America )
+* i_w_j_amer: interaction effect of wine and judge country.  The amount that the score shifts when an american or french wine is judged by an american.
+
+
