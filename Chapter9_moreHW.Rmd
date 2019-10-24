@@ -143,7 +143,7 @@ m3 <- ulam(alist(
     a_w_amer[wine_amer] + 
     a_j_amer[judge_amer] + 
     i_red_w_amer[red]*(wine_amer-1) + # 0 for french wines, 1 for american wines
-    i_red_j_amer[red]*(wine_amer-1) + # 0 for french wines, 1 for american wines
+    i_red_j_amer[red]*(judge_amer-1) + # 0 for french wines, 1 for american wines
     i_w_j_amer[wine_amer]*(judge_amer-1), # 0 for french judges, 1 for american judges
   a_red[red] ~ dnorm(0,1),
   a_w_amer[wine_amer] ~ dnorm(0,1),
