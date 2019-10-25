@@ -94,9 +94,9 @@ among the wines and judges? Try to relate the results to the inferences in
 Problem 1.
 
 ```{r}
-wlist <- with(Wines2012,
+wlist2 <- with(Wines2012,
               list(score = score_std,
-                   red=as.numeric(flight),
+                   red=ifelse(flight=="red",2,1),
                    wine_amer=wine.amer+1,
                    judge_amer=judge.amer+1
               ))
@@ -108,7 +108,7 @@ m2 <- ulam(alist(
   a_w_amer[wine_amer] ~ dnorm(0,1),
   a_j_amer[judge_amer] ~ dnorm(0,1),
   sigma ~ dexp(1)),
-  data = wlist,
+  data = wlist2,
   chains = 4,
   cores = 4,
   iter=2000)
@@ -152,7 +152,7 @@ m3 <- ulam(alist(
   i_red_j_amer[red] ~ dnorm(0,.5),
   i_w_j_amer[wine_amer] ~ dnorm(0,.5),
   sigma ~ dexp(1)),
-  data = wlist,
+  data = wlist2,
   chains = 4,
   cores = 4,
   iter=2000)
@@ -174,4 +174,46 @@ I don't see anything inersting here:
 * i_red_j_amer: interaction effect of red on french vs american wines (the amount that a white or red score shifts when a  judge is from America )
 * i_w_j_amer: interaction effect of wine and judge country.  The amount that the score shifts when an american or french wine is judged by an american.
 
+Try with indices:
+
+```{r}
+map(wlist2, summary)
+wlist2i <- wlist2
+wlist2i$red <- wlist2i$red-1
+wlist2i$wine_amer <- wlist2i$wine_amer-1
+wlist2i$judge_amer <- wlist2i$judge_amer-1
+map(wlist2i, summary)
+```
+
+now the base is a white wine from france judged by a french judge
+```{r}
+m3i <- ulam(alist(
+  score ~ dnorm(mu, sigma),
+  mu <- a +
+    b_red*red + 
+    b_w_amer*wine_amer + 
+    b_j_amer*judge_amer + 
+    b_red_w_amer*red*wine_amer + # 0 for french wines, 1 for american wines
+    b_red_j_amer*red*judge_amer + # 0 for french wines, 1 for american wines
+    b_w_j_amer*wine_amer*judge_amer, # 0 for french judges, 1 for american judges
+  a ~ dnorm(0,1),
+  b_red ~ dnorm(0,1),
+  b_w_amer ~ dnorm(0,1),
+  b_j_amer ~ dnorm(0,1),
+  b_red_w_amer ~ dnorm(0,.5),
+  b_red_j_amer ~ dnorm(0,.5),
+  b_w_j_amer ~ dnorm(0,.5),
+  sigma ~ dexp(1)),
+  data = wlist2i,
+  chains = 4,
+  cores = 4,
+  iter=2000)
+```
+
+```{r}
+precis(m3i, depth=2)
+plot(precis(m3i, depth=2))
+traceplot(m3i, ask=FALSE)
+trankplot(m3i, ask=FALSE)
+```
 
