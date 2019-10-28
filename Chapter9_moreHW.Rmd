@@ -122,6 +122,14 @@ traceplot(m2, ask=FALSE)
 trankplot(m2, ask=FALSE)
 ```
 
+```{r}
+post <- extract.samples(m2)
+str(post)
+post_j <- post$a_j_amer[,1] - post$a_j_amer[,2]
+plot(precis(post_j))
+```
+
+
 No effect of flight, or country of origin for wine or judge.
 
 ## 3. Now consider two-way interactions among the three features. 
