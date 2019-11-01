@@ -50,9 +50,19 @@ extra parameter blah blah
 
 ## PDF 1
 
-_The data in data(NWOGrants) are outcomes for scientific funding applications for the Netherlands Organization for Scientific Research (NWO) from 2010–2012 (see van der Lee and Ellemers doi:10.1073/pnas.1510159112). These data have a very similar structure to the UCBAdmit data discussed in Chapter 11.
-I want you to consider a similar question: What are the total and indirect causal effects of gender on grant awards? Consider a mediation path (a pipe) through dis- cipline. Draw the corresponding DAG and then use one or more binomial GLMs to answer the question.
-What is your causal interpretation? If NWO’s goal is to equalize rates of funding between the genders, what type of intervention would be most effective?_
+_The data in data(NWOGrants) are outcomes for scientific funding applications for the Netherlands Organization for Scientific Research (NWO) from 2010–2012 (see van der Lee and Ellemers doi:10.1073/pnas.1510159112). These data have a very similar structure to the UCBAdmit data discussed in Chapter 11. I want you to consider a similar question: What are the total and indirect causal effects of gender on grant awards? Consider a mediation path (a pipe) through dis- cipline. Draw the corresponding DAG and then use one or more binomial GLMs to answer the question. What is your causal interpretation? If NWO’s goal is to equalize rates of funding between the genders, what type of intervention would be most effective?_
+
+```{r}
+g <- dagitty("dag{
+  G -> A;
+  G -> D;
+  D -> A
+}")
+coordinates(g) <- list(x=c(G=0, D=1, A=2),
+                       y=c(G=0, D=1, A=0))
+plot(g)
+```
+
 
 ```{r}
 data("NWOGrants")
@@ -195,3 +205,19 @@ Overall I do see a reduction in award rates to women.  When we consider discipli
 ## 11.2
 
 _2. Suppose that the NWO Grants sample has an unobserved confound that influences both choice of discipline and the probability of an award. One example of such a confound could be the career stage of each applicant. Suppose that in some disciplines, junior scholars apply for most of the grants. In other disciplines, scholars from all career stages compete. As a result, career stage influences discipline as well as the probability of being awarded a grant. Add these influences to your DAG from Problem 1. What happens now when you condition on discipline? Does it provide an un-confounded estimate of the direct path from gender to an award? Why or why not? Justify your answer with the back-door criterion. Hint: This is structurally a lot like the grandparents-parentschildren-neighborhoods example from a previous week. If you have trouble thinking this though, try simulating fake data, assuming your DAG is true. Then analyze it using the model from Problem 1. What do you conclude? Is it possible for gender to have a real direct causal influence but for a regression conditioning on both gender and discipline to suggest zero influence?_
+
+
+```{r}
+g <- dagitty("dag{
+  G -> A;
+  G -> D;
+  D -> A;
+  C -> A;
+  C -> D;
+}")
+coordinates(g) <- list(x=c(G=0, D=1, A=2, C=2),
+                       y=c(G=0, D=1, A=0, C=1))
+plot(g)
+```
+
+So if this is the DAG, the regression model from 1 closes the D->A, but leaves a back door from D through C to A?
