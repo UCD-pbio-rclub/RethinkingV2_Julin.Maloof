@@ -1,0 +1,97 @@
+---
+title: "Chapter 11"
+author: "Julin N Maloof"
+date: "10/31/2019"
+output: 
+  html_document: 
+    keep_md: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(rethinking)
+library(tidyverse)
+```
+
+0E1
+10E2
+10E3
+10M1
+ 
+Problems 1 and 2 at https://github.com/rmcelreath/statrethinking_winter2019/blob/master/homework/week06.pdf
+
+## 10E1
+_If an event has probability 0.35, what are the log-odds of this event?_
+
+```{r}
+logit(.35)
+log(.35/.65)
+```
+
+## 10E2
+_If an event has log-odds 3.2, what is the probability of this event?_
+```{r}
+inv_logit(3.2)
+exp(3.2) / (1+exp(3.2)) # algebra works!
+```
+
+## 10E3
+_Suppose that a coefficient in a logistic regression has value 1.7. What does this imply about the proportional change in odds of the outcome?_
+
+The increases the probability of the event by 70%
+
+## 10M1
+_Asexplainedinthechapter,binomialdatacanbeorganizedinaggregatedanddisaggregated forms, without any impact on inference. But the likelihood of the data does change when the data are converted between the two formats. Can you explain why?_
+
+extra parameter blah blah
+
+## PDF 1
+
+_The data in data(NWOGrants) are outcomes for scientific funding applications for the Netherlands Organization for Scientific Research (NWO) from 2010–2012 (see van der Lee and Ellemers doi:10.1073/pnas.1510159112). These data have a very similar structure to the UCBAdmit data discussed in Chapter 11.
+I want you to consider a similar question: What are the total and indirect causal effects of gender on grant awards? Consider a mediation path (a pipe) through dis- cipline. Draw the corresponding DAG and then use one or more binomial GLMs to answer the question.
+What is your causal interpretation? If NWO’s goal is to equalize rates of funding between the genders, what type of intervention would be most effective?_
+
+```{r}
+data("NWOGrants")
+NWOGrants
+```
+
+plot it
+```{r}
+NWOGrants %>% 
+  mutate(success=awards/applications) %>%
+  ggplot(aes(x=discipline, y=success, color=gender, size=applications)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle=90, hjust = 1, vjust=0.5))
+```
+
+overall
+```{r}
+d1 <- with(NWOGrants, list(g=ifelse(gender=="male",1,2),
+                           applications=applications,
+                           awards=awards))
+
+m11.1 <- ulam(
+  alist(awards ~ dbinom(applications, p),
+        logit(p) <- a[g],
+        a[g] ~ dnorm(0,1.5)),
+  data=d1,
+  chains = 4,
+  cores = 4)
+```
+
+```{r}
+precis(m11.1, depth=2)
+```
+
+```{r}
+post <- extract.samples(m11.1)
+precis(data.frame(rel_dif=post$a[,1]-post$a[,2]))
+precis(data.frame(prob_dif=inv_logit(post$a[,1])-inv_logit(post$a[,2])))
+```
+
+
+
