@@ -68,9 +68,9 @@ NWOGrants %>%
   theme(axis.text.x = element_text(angle=90, hjust = 1, vjust=0.5))
 ```
 
-overall
+overall difference, irrespective of field
 ```{r}
-d1 <- with(NWOGrants, list(g=ifelse(gender=="male",1,2),
+d1 <- with(NWOGrants, list(g=ifelse(gender=="m",1,2),
                            applications=applications,
                            awards=awards))
 
@@ -83,15 +83,115 @@ m11.1 <- ulam(
   cores = 4)
 ```
 
+this is on the logit scale
 ```{r}
 precis(m11.1, depth=2)
 ```
 
+look at differences in award rate
 ```{r}
-post <- extract.samples(m11.1)
-precis(data.frame(rel_dif=post$a[,1]-post$a[,2]))
-precis(data.frame(prob_dif=inv_logit(post$a[,1])-inv_logit(post$a[,2])))
+post <- extract.samples(m11.1) 
+
+# relative scale
+precis(data.frame(rel_dif=exp(post$a[,2]-post$a[,1])))
+
+#absolute scale
+precis(data.frame(prob_dif=inv_logit(post$a[,2])-inv_logit(post$a[,1])))
+```
+Women are 82% as likely to receive an award, translating to a reduced success rate of 3% 
+
+
+
+## now fit a model that has a separate probability for each discipline
+
+```{r}
+d2 <- with(NWOGrants, list(g=ifelse(gender=="m",1,2),
+                           applications=applications,
+                           awards=awards, 
+                           discipline=rep(1:9, each=2)))
+
+m11.2 <- ulam(
+  alist(awards ~ dbinom(applications, p),
+        logit(p) <- a[g] + b[discipline],
+        a[g] ~ dnorm(0,1.5),
+        b[discipline] ~ dnorm(0,1.5)),
+  data=d2,
+  iter=2000,
+  chains = 4,
+  cores = 4)
+```
+
+```{r}
+pairs(m11.2)
+precis(m11.2, depth=2)
+```
+
+so much correlation.  Try not indexing gender. I this parameterization each discipline coefficient will be the rate for males in that discipline and then the gender coefficient will be the difference for females.
+
+```{r}
+d3 <- with(NWOGrants, list(g=ifelse(gender=="m",0,1),
+                           applications=applications,
+                           awards=awards, 
+                           discipline=rep(1:9, each=2)))
+
+m11.3 <- ulam(
+  alist(awards ~ dbinom(applications, p),
+        logit(p) <-  a[discipline] + b_female*g,
+        a[discipline] ~ dnorm(0,1.5),
+        b_female ~dnorm(0,1.5)),
+  data=d3,
+  iter=2000,
+  chains = 4,
+  cores = 4)
 ```
 
 
+```{r}
+precis(m11.3, depth=2)
+pairs(m11.3)
+```
+This looks much better.
 
+look at differences in award rate.
+
+On relative scale
+```{r}
+post <- extract.samples(m11.3, pars="b_female") 
+
+# relative  and absolute scale
+precis(list(rel_female=exp(post$b_female)))
+```
+
+So women are 86% as likely to get an award, but the 89% condidence intervals cross 1
+
+For the absolute scale I think it will probably be easier to use link
+
+```{r}
+# the difference between men and women will be the same for all disciplines using this model, so just get one of them.
+newdat <- data.frame(g=0:1, 
+                     discipline=1)
+newdat
+pred <- link(m11.3, data = newdat)
+head(pred)
+```
+
+```{r}
+precis(list(abs_female=pred[,2] - pred[,1]))
+```
+
+Women do 3% worse when accounting for overall differences in award rate between departments, although confidence interval touches 0
+
+Can I do this from posterior directly?
+
+```{r}
+post <- extract.samples(m11.3)
+str(post)
+# again I should just be able to look at one discipline
+precis(list(abd_female=inv_logit(post$a[,1]) -inv_logit(post$a[,1]-post$b_female)))
+```
+
+Overall I do see a reduction in award rates to women.  When we consider discipline than the signficance of this drops, but I wonder if there is still something going on...
+
+## 11.2
+
+_2. Suppose that the NWO Grants sample has an unobserved confound that influences both choice of discipline and the probability of an award. One example of such a confound could be the career stage of each applicant. Suppose that in some disciplines, junior scholars apply for most of the grants. In other disciplines, scholars from all career stages compete. As a result, career stage influences discipline as well as the probability of being awarded a grant. Add these influences to your DAG from Problem 1. What happens now when you condition on discipline? Does it provide an un-confounded estimate of the direct path from gender to an award? Why or why not? Justify your answer with the back-door criterion. Hint: This is structurally a lot like the grandparents-parentschildren-neighborhoods example from a previous week. If you have trouble thinking this though, try simulating fake data, assuming your DAG is true. Then analyze it using the model from Problem 1. What do you conclude? Is it possible for gender to have a real direct causal influence but for a regression conditioning on both gender and discipline to suggest zero influence?_
