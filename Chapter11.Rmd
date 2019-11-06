@@ -202,6 +202,32 @@ precis(list(abd_female=inv_logit(post$a[,1]) -inv_logit(post$a[,1]-post$b_female
 
 Overall I do see a reduction in award rates to women.  When we consider discipline than the signficance of this drops, but I wonder if there is still something going on...
 
+interaction?
+
+```{r}
+
+
+m11.4 <- ulam(
+  alist(awards ~ dbinom(applications, p),
+        logit(p) <-  a[discipline] + b_female*g + inter[discipline]*g,
+        a[discipline] ~ dnorm(0,1.5),
+        b_female ~dnorm(0,1.5),
+        inter[discipline] ~ dnorm(0,.5)),
+  data=d3,
+  iter=2000,
+  chains = 4,
+  cores = 4)
+```
+
+```{r}
+precis(m11.4, depth=2)
+```
+
+```{r}
+plot(precis(m11.4, depth=2))
+```
+
+
 ## 11.2
 
 _2. Suppose that the NWO Grants sample has an unobserved confound that influences both choice of discipline and the probability of an award. One example of such a confound could be the career stage of each applicant. Suppose that in some disciplines, junior scholars apply for most of the grants. In other disciplines, scholars from all career stages compete. As a result, career stage influences discipline as well as the probability of being awarded a grant. Add these influences to your DAG from Problem 1. What happens now when you condition on discipline? Does it provide an un-confounded estimate of the direct path from gender to an award? Why or why not? Justify your answer with the back-door criterion. Hint: This is structurally a lot like the grandparents-parentschildren-neighborhoods example from a previous week. If you have trouble thinking this though, try simulating fake data, assuming your DAG is true. Then analyze it using the model from Problem 1. What do you conclude? Is it possible for gender to have a real direct causal influence but for a regression conditioning on both gender and discipline to suggest zero influence?_
