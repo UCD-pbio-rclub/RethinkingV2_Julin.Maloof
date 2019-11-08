@@ -8,7 +8,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE, autodep = TRUE)
 ```
 
 ```{r}
@@ -292,16 +292,9 @@ salamanders
 
 ```{r}
 library(GGally)
-salamanders %>% select(-SITE) %>% ggpairs()
+salamanders %>% select(SALAMAN, PCTCOVER, FORESTAGE) %>% ggpairs()
 ```
 
-```{r}
-salamanders %>% 
-  select(-SITE) %>% 
-  mutate(SALAMAN=log(SALAMAN+1)) %>% 
-           ggpairs()
-
-```
 
 ```{r}
 salamanders$pctcover_std <- scale(salamanders$PCTCOVER)
@@ -365,6 +358,15 @@ pred_obs %>%
 ```
 
 Lots of scatter at high PCTCOVER.
+
+```{r}
+pred_obs %>%
+  mutate(observed=SALAMAN,
+         predicted=mu) %>%
+  ggplot(aes(observed,predicted)) +
+  geom_point()
+```
+
 
 _(b) Can you improve the model by using the other predictor, FORESTAGE? Try any models you think useful. Can you explain why FORESTAGE helps or does not help with prediction?_
 
@@ -476,6 +478,152 @@ _There are three parts._
 
 _First, model the number of observations of social_learning for each species as a function of the log brain size. Use a Poisson distribution for the social_learning outcome variable. Interpret the resulting posterior._
 
+```{r}
+data("Primates301")
+p <- Primates301 %>% 
+  select(genus, species, social_learning, brain, research_effort) %>%
+  mutate(l_brain_std = scale(log(brain)),
+         l_research_effort_std = scale(log(research_effort)),
+         gen_spec = str_c(genus, "_", species)) %>%
+  na.omit() %>%
+  arrange(gen_spec)
+
+table(p$gen_spec) %>% max() #more than one row per species?  no
+
+p
+```
+
+```{r}
+p %>%
+  select(social_learning, l_brain_std, l_research_effort_std) %>%
+  ggpairs()
+```
+
+```{r}
+p_small <- list(social_learning=p$social_learning, l_brain_std=as.vector(p$l_brain_std))
+p_small
+m3 <- ulam(
+  alist(social_learning ~ dpois(lambda),
+        log(lambda) <- alpha + beta_brain*l_brain_std,
+        alpha ~ dnorm(3, 0.5),
+        beta_brain ~ dnorm(0, .5)),
+  data=p_small,
+  chains=4,
+  cores=4,
+  log_lik=T)
+```
+
+```{r}
+precis(m3)
+```
+
+each std deviation increase in log brain size causes a `r exp(2.7)` fold increase in social learning
+
+```{r}
+pairs(m3)
+trankplot(m3)
+traceplot(m3)
+```
+
+```{r}
+pred <- link(m3)
+pred_obs <- as_tibble(
+  cbind(p, 
+        predicted=colMeans(pred),
+        low.89 = apply(pred, 2, HPDI)[1,],
+        high.89 = apply(pred, 2, HPDI)[2,]))
+```
+
+```{r}
+pred_obs %>%
+  ggplot(aes(x=brain)) +
+  geom_point(aes(y=social_learning)) +
+  geom_pointrange(aes(y=predicted, ymin=low.89, ymax=high.89), color="blue", alpha=.5) +
+  scale_x_log10()
+```
+
+
 _Second, some species are studied much more than others. So the number of reported instances of social_learning could be a product of research effort. Use the research_effort variable, specifically its logarithm, as an additional predictor variable. Interpret the coefficient for log research_effort. Does this model disagree with the previous one?_
 
+```{r}
+p_small <- list(social_learning=p$social_learning, l_brain_std=as.vector(p$l_brain_std), l_research_effort_std=as.vector(p$l_research_effort_std))
+
+m3.2 <- ulam(
+  alist(social_learning ~ dpois(lambda),
+        log(lambda) <- alpha + beta_brain*l_brain_std + beta_r*l_research_effort_std,
+        alpha ~ dnorm(3, 0.5),
+        beta_brain ~ dnorm(0, .5),
+        beta_r ~ dnorm(0, .5)),
+  data=p_small,
+  chains=4,
+  cores=4,
+  log_lik=T)
+```
+
+```{r}
+precis(m3.2)
+```
+
+The brain size effect is now much smaller, and research effort has a large effect
+
+each std deviation increase in log brain size is associated with a `r exp(0.45)` fold increase in social learning
+
+each std deviation increase in log research effort is associated with a `r exp(1.94)` fold increase in social learning
+
+
+```{r}
+pairs(m3.2)
+trankplot(m3.2)
+traceplot(m3.2)
+```
+
+```{r}
+pred <- link(m3.2)
+pred_obs <- as_tibble(
+  cbind(p, 
+        predicted=colMeans(pred),
+        low.89 = apply(pred, 2, HPDI)[1,],
+        high.89 = apply(pred, 2, HPDI)[2,]))
+```
+
+```{r}
+pred_obs %>%
+  ggplot(aes(x=brain)) +
+  geom_point(aes(y=social_learning)) +
+  geom_pointrange(aes(y=predicted, ymin=low.89, ymax=high.89), color="blue", alpha=.5) +
+  scale_x_log10()
+```
+
+```{r}
+pred_obs %>%
+  ggplot(aes(x=research_effort)) +
+  geom_point(aes(y=social_learning)) +
+  geom_pointrange(aes(y=predicted, ymin=low.89, ymax=high.89), color="blue", alpha=.5) +
+  scale_x_log10()
+```
+
+```{r}
+pred_obs %>%
+  ggplot(aes(x=social_learning, y=predicted)) +
+  geom_point() +
+  scale_x_log10() +
+  scale_y_log10()
+```
+
+
 _Third, draw a DAG to represent how you think the variables social_learning, brain, and research_effort interact. Justify the DAG with the measured associations in the two models above (and any other models you used)._
+
+There is a backdoor from brain size to research effort
+
+```{r}
+g <- dagitty("dag{
+  brain_size -> learning;
+  brain_size -> research;
+  research -> learning
+}")
+coordinates(g) <- list(x=c(brain_size=1, learning=1, research=2),
+                       y=c(brain_size=0, learning=2, research=1))
+plot(g)
+```
+
+
