@@ -287,7 +287,7 @@ _(a) Model the relationship between density and percent cover, using a log-link 
 
 ```{r}
 data("salamanders")
-salamanders
+head(salamanders)
 ```
 
 ```{r}
@@ -345,7 +345,7 @@ pred_obs <- as_tibble(cbind(
   mu=colMeans(pred),
   low.89=apply(pred,2,HPDI)[1,],
   high.89=apply(pred, 2, HPDI)[2,]))
-pred_obs
+head(pred_obs)
 ```
 
 ```{r}
@@ -490,7 +490,7 @@ p <- Primates301 %>%
 
 table(p$gen_spec) %>% max() #more than one row per species?  no
 
-p
+head(p)
 ```
 
 ```{r}
@@ -501,7 +501,7 @@ p %>%
 
 ```{r}
 p_small <- list(social_learning=p$social_learning, l_brain_std=as.vector(p$l_brain_std))
-p_small
+
 m3 <- ulam(
   alist(social_learning ~ dpois(lambda),
         log(lambda) <- alpha + beta_brain*l_brain_std,
