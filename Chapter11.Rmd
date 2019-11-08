@@ -280,4 +280,202 @@ This keeps the outcome variable on a positive scale, required for count data.  Y
 (OK but this is true for so much stuff that we model with linear models and Gaussian distributions...)
 
 ## 10H4
+
+_The data contained in data(salamanders) are counts of salamanders (Plethodon elongatus) from 47 different 49-m2 plots in northern California.  The column SALAMAN is the count in each plot, and the columns PCTCOVER and FORESTAGE are percent of ground cover and age of trees in the plot, respectively. You will model SALAMAN as a Poisson variable._
+
+_(a) Model the relationship between density and percent cover, using a log-link (same as the example in the book and lecture). Use weakly informative priors of your choosing. Check the quadratic approximation again, by comparing map to map2stan. Then plot the expected counts and their 89% interval against percent cover. In which ways does the model do a good job? In which ways does it do a bad job?_
+
+```{r}
+data("salamanders")
+salamanders
+```
+
+```{r}
+library(GGally)
+salamanders %>% select(-SITE) %>% ggpairs()
+```
+
+```{r}
+salamanders %>% 
+  select(-SITE) %>% 
+  mutate(SALAMAN=log(SALAMAN+1)) %>% 
+           ggpairs()
+
+```
+
+```{r}
+salamanders$pctcover_std <- scale(salamanders$PCTCOVER)
+m10h4.1.quap <- quap(
+  alist(SALAMAN ~ dpois(lambda),
+        log(lambda) <- alpha + beta_pct*pctcover_std,
+        alpha ~ dnorm(3, 0.5),
+        beta_pct ~ dnorm(0, 0.2)),
+  data=salamanders)
+```
+
+```{r}
+precis(m10h4.1.quap)
+```
+
+```{r}
+m10h4.1.stan <- ulam(
+  alist(SALAMAN ~ dpois(lambda),
+        log(lambda) <- alpha + beta_pct*pctcover_std,
+        alpha ~ dnorm(3, 0.5),
+        beta_pct ~ dnorm(0, 0.5)),
+  chains=4,
+  cores=4,
+  data=salamanders,
+  log_lik = TRUE)
+```
+```{r}
+precis(m10h4.1.quap)
+```
+
+```{r}
+precis(m10h4.1.stan)
+```
+
+somewhat similar
+
+```{r}
+pairs(m10h4.1.stan)
+trankplot(m10h4.1.stan)
+traceplot(m10h4.1.stan)
+```
+
+plot observed and expected
+```{r}
+pred <- link(m10h4.1.stan)
+pred_obs <- as_tibble(cbind(
+  salamanders,
+  mu=colMeans(pred),
+  low.89=apply(pred,2,HPDI)[1,],
+  high.89=apply(pred, 2, HPDI)[2,]))
+pred_obs
+```
+
+```{r}
+pred_obs %>%
+  mutate(observed=SALAMAN,
+         predicted=mu) %>%
+  ggplot(aes(x=PCTCOVER)) +
+  geom_point(aes(y=observed), color="black") +
+  geom_pointrange(aes(y=predicted, ymin=low.89, ymax=high.89), color="blue")
+```
+
+Lots of scatter at high PCTCOVER.
+
+_(b) Can you improve the model by using the other predictor, FORESTAGE? Try any models you think useful. Can you explain why FORESTAGE helps or does not help with prediction?_
+
+additive model:
+
+```{r}
+salamanders$forestage_std <- scale(salamanders$FORESTAGE)
+m10h4.2 <- ulam(
+  alist(SALAMAN ~ dpois(lambda),
+        log(lambda) <- alpha + beta_pct*pctcover_std + beta_f*forestage_std,
+        alpha ~ dnorm(3, 0.5),
+        c(beta_pct,beta_f) ~ dnorm(0, 0.5)),
+  chains=4,
+  cores=4,
+  data=salamanders,
+  log_lik = TRUE)
+```
+
+```{r}
+precis(m10h4.2)
+```
+
+```{r}
+pairs(m10h4.2)
+trankplot(m10h4.2)
+traceplot(m10h4.2)
+```
+
+plot observed and expected
+```{r}
+pred <- link(m10h4.2)
+pred_obs <- as_tibble(cbind(
+  salamanders,
+  mu=colMeans(pred),
+  low.89=apply(pred,2,HPDI)[1,],
+  high.89=apply(pred, 2, HPDI)[2,]))
+pred_obs
+```
+
+```{r}
+pred_obs %>%
+  mutate(observed=SALAMAN,
+         predicted=mu) %>%
+  ggplot(aes(x=PCTCOVER)) +
+  geom_point(aes(y=observed), color="black") +
+  geom_pointrange(aes(y=predicted, ymin=low.89, ymax=high.89), color="blue")
+```
+
+```{r}
+compare(m10h4.1.stan, m10h4.2)
+```
+
+interaction model:
+
+```{r}
+m10h4.3 <- ulam(
+  alist(SALAMAN ~ dpois(lambda),
+        log(lambda) <- alpha + 
+          beta_pct*pctcover_std + 
+          beta_f*forestage_std +
+          beta_pct_f*pctcover_std*forestage_std,
+        alpha ~ dnorm(3, 0.5),
+        c(beta_pct,beta_f,beta_pct_f) ~ dnorm(0, 0.5)),
+  chains=4,
+  cores=4,
+  data=salamanders,
+  log_lik = TRUE)
+```
+
+```{r}
+precis(m10h4.3)
+```
+
+```{r}
+pairs(m10h4.3)
+trankplot(m10h4.3)
+traceplot(m10h4.3)
+```
+
+plot observed and expected
+```{r}
+pred <- link(m10h4.3)
+pred_obs <- as_tibble(cbind(
+  salamanders,
+  mu=colMeans(pred),
+  low.89=apply(pred,2,HPDI)[1,],
+  high.89=apply(pred, 2, HPDI)[2,]))
+pred_obs
+```
+
+```{r}
+pred_obs %>%
+  mutate(observed=SALAMAN,
+         predicted=mu) %>%
+  ggplot(aes(x=PCTCOVER)) +
+  geom_point(aes(y=observed), color="black") +
+  geom_pointrange(aes(y=predicted, ymin=low.89, ymax=high.89), color="blue")
+```
+
+```{r}
+compare(m10h4.1.stan, m10h4.2)
+```
+
 ## Week6 PDF # 3 
+
+_The data in data(Primates301) were first introduced at the end of Chapter 7. In this problem, you will consider how brain size is associated with social learning._
+
+_There are three parts._
+
+_First, model the number of observations of social_learning for each species as a function of the log brain size. Use a Poisson distribution for the social_learning outcome variable. Interpret the resulting posterior._
+
+_Second, some species are studied much more than others. So the number of reported instances of social_learning could be a product of research effort. Use the research_effort variable, specifically its logarithm, as an additional predictor variable. Interpret the coefficient for log research_effort. Does this model disagree with the previous one?_
+
+_Third, draw a DAG to represent how you think the variables social_learning, brain, and research_effort interact. Justify the DAG with the measured associations in the two models above (and any other models you used)._
