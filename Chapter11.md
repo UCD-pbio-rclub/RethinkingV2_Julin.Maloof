@@ -592,6 +592,395 @@ This keeps the outcome variable on a positive scale, required for count data.  Y
 
 (OK but this is true for so much stuff that we model with linear models and Gaussian distributions...)
 
+## 10H3
+_The data contained in library(MASS);data(eagles) are records of salmon pirating at- tempts by Bald Eagles in Washington State. See ?eagles for details. While one eagle feeds, some- times another will swoop in and try to steal the salmon from it. Call the feeding eagle the “victim” and the thief the “pirate.” Use the available data to build a binomial GLM of successful pirating attempts._
+
+
+```r
+library(MASS)
+```
+
+```
+## 
+## Attaching package: 'MASS'
+```
+
+```
+## The following object is masked from 'package:dplyr':
+## 
+##     select
+```
+
+```r
+data(eagles)
+?eagles
+eagles
+```
+
+```
+##    y  n P A V
+## 1 17 24 L A L
+## 2 29 29 L A S
+## 3 17 27 L I L
+## 4 20 20 L I S
+## 5  1 12 S A L
+## 6 15 16 S A S
+## 7  0 28 S I L
+## 8  1  4 S I S
+```
+
+
+```r
+eagleslist <- with(eagles,
+                   list(y=y,
+                        n=n,
+                        pirate_large=ifelse(P=="L",1,0),
+                        pirate_adult=ifelse(A=="A",1,0),
+                        victim_large=ifelse(V=="L",1,0)))
+str(eagleslist)
+```
+
+```
+## List of 5
+##  $ y           : int [1:8] 17 29 17 20 1 15 0 1
+##  $ n           : int [1:8] 24 29 27 20 12 16 28 4
+##  $ pirate_large: num [1:8] 1 1 1 1 0 0 0 0
+##  $ pirate_adult: num [1:8] 1 1 0 0 1 1 0 0
+##  $ victim_large: num [1:8] 1 0 1 0 1 0 1 0
+```
+
+
+```r
+m10h3q <- quap(alist(y ~ dbinom(n, p),
+                    logit(p) <- alpha + 
+                      b_pirate_large*pirate_large +
+                      b_pirate_adult*pirate_adult +
+                      b_victim_large*victim_large,
+                    alpha ~ dnorm(0,10),
+                    c(b_pirate_large, b_pirate_adult, b_victim_large) ~ dnorm(0,5)),
+              data=eagleslist)
+```
+
+
+```r
+precis(m10h3q)
+```
+
+```
+##                      mean        sd       5.5%     94.5%
+## alpha           0.5915456 0.6622747 -0.4668974  1.649988
+## b_pirate_large  4.2418436 0.8960257  2.8098216  5.673866
+## b_pirate_adult  1.0814092 0.5339218  0.2280990  1.934719
+## b_victim_large -4.5926285 0.9614019 -6.1291344 -3.056123
+```
+
+```r
+pairs(m10h3q)
+```
+
+![](Chapter11_files/figure-html/unnamed-chunk-26-1.png)<!-- -->
+
+
+```r
+m10h3stan <- ulam(alist(y ~ dbinom(n, p),
+                    logit(p) <- alpha + 
+                      b_pirate_large*pirate_large +
+                      b_pirate_adult*pirate_adult +
+                      b_victim_large*victim_large,
+                    alpha ~ dnorm(0,10),
+                    c(b_pirate_large, b_pirate_adult, b_victim_large) ~ dnorm(0,5)),
+              data=eagleslist,
+              chains = 4,
+              cores = 4,
+              iter = 2000,
+              log_lik = TRUE)
+```
+
+
+```r
+precis(m10h3stan)
+```
+
+```
+##                      mean        sd       5.5%     94.5%    n_eff
+## alpha           0.6680818 0.6949563 -0.3765181  1.826792 1828.035
+## b_victim_large -5.0969311 1.0851857 -6.9662089 -3.552801 1517.705
+## b_pirate_adult  1.1294505 0.5461097  0.2916863  2.038210 2115.254
+## b_pirate_large  4.6775512 1.0019921  3.2608353  6.408095 1565.650
+##                     Rhat
+## alpha          1.0017591
+## b_victim_large 1.0002728
+## b_pirate_adult 1.0022453
+## b_pirate_large 0.9994862
+```
+
+```r
+pairs(m10h3stan)
+```
+
+![](Chapter11_files/figure-html/unnamed-chunk-28-1.png)<!-- -->
+
+_(b) Now interpret the estimates. If the quadratic approximation turned out okay, then it’s okay to use the map estimates. Otherwise stick to map2stan estimates. Then plot the posterior predictions. Compute and display both (1) the predicted probability of success and its 89% interval for each row (i) in the data, as well as (2) the predicted success count and its 89% interval. What different information does each type of posterior prediction provide?_
+
+posterior are not entirely Gaussian, stick with Stan
+
+Get predictions
+
+
+```r
+pred <- link(m10h3stan)
+head(pred)
+```
+
+```
+##           [,1]      [,2]      [,3]      [,4]       [,5]      [,6]
+## [1,] 0.7225917 0.9988672 0.6311558 0.9982766 0.01175426 0.8010487
+## [2,] 0.7495498 0.9994508 0.5630972 0.9987255 0.00574217 0.7783477
+## [3,] 0.8571167 0.9971798 0.5652816 0.9871212 0.09033975 0.8540960
+## [4,] 0.8021618 0.9988147 0.4235613 0.9934944 0.04784005 0.9126056
+## [5,] 0.7562515 0.9949442 0.6229421 0.9905473 0.04607962 0.7539323
+## [6,] 0.6734950 0.9963793 0.5567622 0.9940680 0.03948403 0.8457748
+##             [,7]      [,8]
+## [1,] 0.007753010 0.7256547
+## [2,] 0.002480948 0.6019489
+## [3,] 0.021074034 0.5592636
+## [4,] 0.009023120 0.6542652
+## [5,] 0.025077391 0.6199919
+## [6,] 0.024421236 0.7695613
+```
+
+```r
+summary(pred)
+```
+
+```
+##        V1               V2               V3               V4        
+##  Min.   :0.4802   Min.   :0.9667   Min.   :0.2736   Min.   :0.8947  
+##  1st Qu.:0.7432   1st Qu.:0.9966   1st Qu.:0.5008   1st Qu.:0.9895  
+##  Median :0.7943   Median :0.9983   Median :0.5616   Median :0.9947  
+##  Mean   :0.7887   Mean   :0.9974   Mean   :0.5599   Mean   :0.9919  
+##  3rd Qu.:0.8439   3rd Qu.:0.9992   3rd Qu.:0.6215   3rd Qu.:0.9976  
+##  Max.   :0.9597   Max.   :1.0000   Max.   :0.8507   Max.   :0.9999  
+##        V5                 V6               V7                  V8        
+##  Min.   :0.000383   Min.   :0.5020   Min.   :0.0001549   Min.   :0.1769  
+##  1st Qu.:0.020388   1st Qu.:0.7991   1st Qu.:0.0065914   1st Qu.:0.5479  
+##  Median :0.039911   Median :0.8529   Median :0.0132420   Median :0.6543  
+##  Mean   :0.050561   Mean   :0.8435   Mean   :0.0176576   Mean   :0.6458  
+##  3rd Qu.:0.069070   3rd Qu.:0.8973   3rd Qu.:0.0233485   3rd Qu.:0.7536  
+##  Max.   :0.320536   Max.   :0.9881   Max.   :0.1226691   Max.   :0.9670
+```
+These are the probability of successful pirate for each of the 8 rows in the table.
+
+
+```r
+pred_obs <- as_tibble(cbind(eagles, 
+                            mean_prob=colMeans(pred),
+                            low.89=apply(pred, 2, HPDI)[1,],
+                            high.89=apply(pred, 2, HPDI)[2,]
+)) %>%
+  mutate(observed_prob=y/n,
+         pred_success=mean_prob*n,
+         pred_low=low.89*n,
+         pred_high=high.89*n,
+         label=str_c("P: ", P, ", A: ", A, ", V: ", V)) %>%
+  dplyr::select(label, everything())
+pred_obs
+```
+
+```
+## # A tibble: 8 x 13
+##   label     y     n P     A     V     mean_prob  low.89 high.89
+##   <chr> <int> <int> <fct> <fct> <fct>     <dbl>   <dbl>   <dbl>
+## 1 P: L…    17    24 L     A     L        0.789  6.65e-1  0.899 
+## 2 P: L…    29    29 L     A     S        0.997  9.94e-1  1.000 
+## 3 P: L…    17    27 L     I     L        0.560  4.17e-1  0.700 
+## 4 P: L…    20    20 L     I     S        0.992  9.83e-1  1.000 
+## 5 P: S…     1    12 S     A     L        0.0506 5.71e-4  0.101 
+## 6 P: S…    15    16 S     A     S        0.843  7.44e-1  0.960 
+## 7 P: S…     0    28 S     I     L        0.0177 1.55e-4  0.0361
+## 8 P: S…     1     4 S     I     S        0.646  4.35e-1  0.883 
+## # … with 4 more variables: observed_prob <dbl>, pred_success <dbl>,
+## #   pred_low <dbl>, pred_high <dbl>
+```
+
+
+```r
+pred_obs %>%
+  ggplot(aes(x=label)) +
+  geom_pointrange(aes(y=mean_prob, ymin=low.89, ymax=high.89), color="blue", fill="blue") +
+  geom_point(aes(y=observed_prob)) +
+  theme(axis.text.x = element_text(angle=90))
+```
+
+![](Chapter11_files/figure-html/unnamed-chunk-31-1.png)<!-- -->
+
+
+```r
+pred_obs %>%
+  ggplot(aes(x=label)) +
+  geom_pointrange(aes(y=pred_success, ymin=pred_low, ymax=pred_high), color="blue", fill="blue") +
+  geom_point(aes(y=y)) +
+  theme(axis.text.x = element_text(angle=90))
+```
+
+![](Chapter11_files/figure-html/unnamed-chunk-32-1.png)<!-- -->
+
+Overall the fit looks pretty good.  Size of pirate and victim are both pretty importnat; age is less important.
+
+Try with interaction
+
+
+```r
+m10h3stan_int <- ulam(alist(y ~ dbinom(n, p),
+                    logit(p) <- alpha + 
+                      b_pirate_large*pirate_large +
+                      b_pirate_adult*pirate_adult +
+                      b_victim_large*victim_large +
+                      bpsa*pirate_large*pirate_adult,
+                    alpha ~ dnorm(0,10),
+                    c(b_pirate_large, b_pirate_adult, b_victim_large) ~ dnorm(0,5),
+                    bpsa ~ dnorm(0,2.5)),
+              data=eagleslist,
+              chains = 4,
+              cores = 4,
+              iter = 2000,
+              log_lik = TRUE)
+```
+
+
+```r
+precis(m10h3stan_int)
+```
+
+```
+##                      mean       sd      5.5%      94.5%    n_eff     Rhat
+## alpha          -0.5060512 0.893756 -1.966597  0.8903941 1353.238 1.001999
+## b_victim_large -5.2038196 1.088062 -7.058916 -3.6066771 1379.121 1.002439
+## b_pirate_adult  2.9715258 1.076442  1.264331  4.7127681 1306.866 1.003297
+## b_pirate_large  6.1770377 1.286468  4.228951  8.3409163 1129.966 1.005967
+## bpsa           -2.4099196 1.161655 -4.287005 -0.5223843 1330.255 1.003211
+```
+
+```r
+pairs(m10h3stan_int)
+```
+
+![](Chapter11_files/figure-html/unnamed-chunk-34-1.png)<!-- -->
+
+
+```r
+compare(m10h3stan, m10h3stan_int)
+```
+
+```
+##                   WAIC    pWAIC    dWAIC     weight       SE     dSE
+## m10h3stan_int 21.21540 2.228920 0.000000 0.98984143 5.687052      NA
+## m10h3stan     30.37385 5.045099 9.158454 0.01015857 7.777259 3.26884
+```
+
+Interaction model fits better.  Lets compare the predictions.
+
+```r
+pred_int <- link(m10h3stan_int)
+head(pred)
+```
+
+```
+##           [,1]      [,2]      [,3]      [,4]       [,5]      [,6]
+## [1,] 0.7225917 0.9988672 0.6311558 0.9982766 0.01175426 0.8010487
+## [2,] 0.7495498 0.9994508 0.5630972 0.9987255 0.00574217 0.7783477
+## [3,] 0.8571167 0.9971798 0.5652816 0.9871212 0.09033975 0.8540960
+## [4,] 0.8021618 0.9988147 0.4235613 0.9934944 0.04784005 0.9126056
+## [5,] 0.7562515 0.9949442 0.6229421 0.9905473 0.04607962 0.7539323
+## [6,] 0.6734950 0.9963793 0.5567622 0.9940680 0.03948403 0.8457748
+##             [,7]      [,8]
+## [1,] 0.007753010 0.7256547
+## [2,] 0.002480948 0.6019489
+## [3,] 0.021074034 0.5592636
+## [4,] 0.009023120 0.6542652
+## [5,] 0.025077391 0.6199919
+## [6,] 0.024421236 0.7695613
+```
+
+```r
+summary(pred)
+```
+
+```
+##        V1               V2               V3               V4        
+##  Min.   :0.4802   Min.   :0.9667   Min.   :0.2736   Min.   :0.8947  
+##  1st Qu.:0.7432   1st Qu.:0.9966   1st Qu.:0.5008   1st Qu.:0.9895  
+##  Median :0.7943   Median :0.9983   Median :0.5616   Median :0.9947  
+##  Mean   :0.7887   Mean   :0.9974   Mean   :0.5599   Mean   :0.9919  
+##  3rd Qu.:0.8439   3rd Qu.:0.9992   3rd Qu.:0.6215   3rd Qu.:0.9976  
+##  Max.   :0.9597   Max.   :1.0000   Max.   :0.8507   Max.   :0.9999  
+##        V5                 V6               V7                  V8        
+##  Min.   :0.000383   Min.   :0.5020   Min.   :0.0001549   Min.   :0.1769  
+##  1st Qu.:0.020388   1st Qu.:0.7991   1st Qu.:0.0065914   1st Qu.:0.5479  
+##  Median :0.039911   Median :0.8529   Median :0.0132420   Median :0.6543  
+##  Mean   :0.050561   Mean   :0.8435   Mean   :0.0176576   Mean   :0.6458  
+##  3rd Qu.:0.069070   3rd Qu.:0.8973   3rd Qu.:0.0233485   3rd Qu.:0.7536  
+##  Max.   :0.320536   Max.   :0.9881   Max.   :0.1226691   Max.   :0.9670
+```
+These are the probability of successful pirate for each of the 8 rows in the table.
+
+
+```r
+pred_obs_int <- as_tibble(cbind(pred_obs, 
+                            mean_prob_int=colMeans(pred_int),
+                            low.89_int=apply(pred_int, 2, HPDI)[1,],
+                            high.89_int=apply(pred_int, 2, HPDI)[2,]
+)) %>%
+  mutate(pred_success_int=mean_prob_int*n,
+         pred_low_int=low.89_int*n,
+         pred_high_int=high.89_int*n)
+pred_obs_int
+```
+
+```
+## # A tibble: 8 x 19
+##   label     y     n P     A     V     mean_prob  low.89 high.89
+##   <chr> <int> <int> <fct> <fct> <fct>     <dbl>   <dbl>   <dbl>
+## 1 P: L…    17    24 L     A     L        0.789  6.65e-1  0.899 
+## 2 P: L…    29    29 L     A     S        0.997  9.94e-1  1.000 
+## 3 P: L…    17    27 L     I     L        0.560  4.17e-1  0.700 
+## 4 P: L…    20    20 L     I     S        0.992  9.83e-1  1.000 
+## 5 P: S…     1    12 S     A     L        0.0506 5.71e-4  0.101 
+## 6 P: S…    15    16 S     A     S        0.843  7.44e-1  0.960 
+## 7 P: S…     0    28 S     I     L        0.0177 1.55e-4  0.0361
+## 8 P: S…     1     4 S     I     S        0.646  4.35e-1  0.883 
+## # … with 10 more variables: observed_prob <dbl>, pred_success <dbl>,
+## #   pred_low <dbl>, pred_high <dbl>, mean_prob_int <dbl>,
+## #   low.89_int <dbl>, high.89_int <dbl>, pred_success_int <dbl>,
+## #   pred_low_int <dbl>, pred_high_int <dbl>
+```
+
+
+```r
+pred_obs_int %>%
+  ggplot(aes(x=label)) +
+  geom_pointrange(aes(y=mean_prob, ymin=low.89, ymax=high.89), color="blue", position = position_nudge(x=-.1)) +
+  geom_pointrange(aes(y=mean_prob_int, ymin=low.89_int, ymax=high.89_int), color="red", position = position_nudge(x=.1)) +
+  geom_point(aes(y=observed_prob)) +
+  theme(axis.text.x = element_text(angle=90))
+```
+
+![](Chapter11_files/figure-html/unnamed-chunk-38-1.png)<!-- -->
+
+
+```r
+pred_obs_int %>%
+  ggplot(aes(x=label)) +
+  geom_pointrange(aes(y=pred_success, ymin=pred_low, ymax=pred_high), color="blue", position = position_nudge(x=-.1)) +
+  geom_pointrange(aes(y=pred_success_int, ymin=pred_low_int, ymax=pred_high_int), color="red", position = position_nudge(x=.1)) +
+  geom_point(aes(y=y)) +
+  theme(axis.text.x = element_text(angle=90))
+```
+
+![](Chapter11_files/figure-html/unnamed-chunk-39-1.png)<!-- -->
+
+Fits better!
+
 ## 10H4
 
 _The data contained in data(salamanders) are counts of salamanders (Plethodon elongatus) from 47 different 49-m2 plots in northern California.  The column SALAMAN is the count in each plot, and the columns PCTCOVER and FORESTAGE are percent of ground cover and age of trees in the plot, respectively. You will model SALAMAN as a Poisson variable._
@@ -601,87 +990,26 @@ _(a) Model the relationship between density and percent cover, using a log-link 
 
 ```r
 data("salamanders")
-salamanders
+head(salamanders)
 ```
 
 ```
-##    SITE SALAMAN PCTCOVER FORESTAGE
-## 1     1      13       85       316
-## 2     2      11       86        88
-## 3     3      11       90       548
-## 4     4       9       88        64
-## 5     5       8       89        43
-## 6     6       7       83       368
-## 7     7       6       83       200
-## 8     8       6       91        71
-## 9     9       5       88        42
-## 10   10       5       90       551
-## 11   11       4       87       675
-## 12   12       3       83       217
-## 13   13       3       87       212
-## 14   14       3       89       398
-## 15   15       3       92       357
-## 16   16       3       93       478
-## 17   17       2        2         5
-## 18   18       2       87        30
-## 19   19       2       93       551
-## 20   20       1        7         3
-## 21   21       1       16        15
-## 22   22       1       19        31
-## 23   23       1       29        10
-## 24   24       1       34        49
-## 25   25       1       46        30
-## 26   26       1       80       215
-## 27   27       1       86       586
-## 28   28       1       88       105
-## 29   29       1       92       210
-## 30   30       0        0         0
-## 31   31       0        1         4
-## 32   32       0        3         3
-## 33   33       0        5         2
-## 34   34       0        8        10
-## 35   35       0        9         8
-## 36   36       0       11         6
-## 37   37       0       14        49
-## 38   38       0       17        29
-## 39   39       0       24        57
-## 40   40       0       44        59
-## 41   41       0       52        78
-## 42   42       0       77        50
-## 43   43       0       78       320
-## 44   44       0       80       411
-## 45   45       0       86       133
-## 46   46       0       89        60
-## 47   47       0       91       187
+##   SITE SALAMAN PCTCOVER FORESTAGE
+## 1    1      13       85       316
+## 2    2      11       86        88
+## 3    3      11       90       548
+## 4    4       9       88        64
+## 5    5       8       89        43
+## 6    6       7       83       368
 ```
 
 
 ```r
 library(GGally)
+salamanders %>% dplyr::select(SALAMAN, PCTCOVER, FORESTAGE) %>% ggpairs()
 ```
 
-```
-## Registered S3 method overwritten by 'GGally':
-##   method from   
-##   +.gg   ggplot2
-```
-
-```
-## 
-## Attaching package: 'GGally'
-```
-
-```
-## The following object is masked from 'package:dplyr':
-## 
-##     nasa
-```
-
-```r
-salamanders %>% select(SALAMAN, PCTCOVER, FORESTAGE) %>% ggpairs()
-```
-
-![](Chapter11_files/figure-html/unnamed-chunk-24-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-41-1.png)<!-- -->
 
 
 
@@ -702,7 +1030,7 @@ precis(m10h4.1.quap)
 
 ```
 ##               mean        sd      5.5%     94.5%
-## alpha    0.7997915 0.1014376 0.6376746 0.9619083
+## alpha    0.7997914 0.1014376 0.6376745 0.9619082
 ## beta_pct 0.6535256 0.1064780 0.4833533 0.8236980
 ```
 
@@ -725,7 +1053,7 @@ precis(m10h4.1.quap)
 
 ```
 ##               mean        sd      5.5%     94.5%
-## alpha    0.7997915 0.1014376 0.6376746 0.9619083
+## alpha    0.7997914 0.1014376 0.6376745 0.9619082
 ## beta_pct 0.6535256 0.1064780 0.4833533 0.8236980
 ```
 
@@ -735,9 +1063,9 @@ precis(m10h4.1.stan)
 ```
 
 ```
-##               mean        sd      5.5%     94.5%    n_eff     Rhat
-## alpha    0.6590881 0.1164568 0.4679335 0.8404691 832.2551 1.004191
-## beta_pct 0.8998101 0.1403850 0.6756486 1.1272866 767.9772 1.007390
+##               mean        sd      5.5%     94.5%    n_eff      Rhat
+## alpha    0.6625333 0.1187904 0.4680666 0.8506492 764.7956 1.0003034
+## beta_pct 0.8951736 0.1403594 0.6816316 1.1201919 783.0796 0.9994593
 ```
 
 somewhat similar
@@ -747,14 +1075,14 @@ somewhat similar
 pairs(m10h4.1.stan)
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-30-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-47-1.png)<!-- -->
 
 ```r
 trankplot(m10h4.1.stan)
 traceplot(m10h4.1.stan)
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-30-2.png)<!-- -->![](Chapter11_files/figure-html/unnamed-chunk-30-3.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-47-2.png)<!-- -->![](Chapter11_files/figure-html/unnamed-chunk-47-3.png)<!-- -->
 
 plot observed and expected
 
@@ -765,24 +1093,19 @@ pred_obs <- as_tibble(cbind(
   mu=colMeans(pred),
   low.89=apply(pred,2,HPDI)[1,],
   high.89=apply(pred, 2, HPDI)[2,]))
-pred_obs
+head(pred_obs)
 ```
 
 ```
-## # A tibble: 47 x 8
-##     SITE SALAMAN PCTCOVER FORESTAGE pctcover_std[,1]    mu low.89 high.89
-##    <int>   <int>    <int>     <int>            <dbl> <dbl>  <dbl>   <dbl>
-##  1     1      13       85       316            0.727  3.73   3.19    4.24
-##  2     2      11       86        88            0.755  3.83   3.28    4.36
-##  3     3      11       90       548            0.867  4.24   3.59    4.89
-##  4     4       9       88        64            0.811  4.03   3.43    4.62
-##  5     5       8       89        43            0.839  4.13   3.50    4.74
-##  6     6       7       83       368            0.671  3.55   3.02    4.01
-##  7     7       6       83       200            0.671  3.55   3.02    4.01
-##  8     8       6       91        71            0.895  4.35   3.68    5.03
-##  9     9       5       88        42            0.811  4.03   3.43    4.62
-## 10    10       5       90       551            0.867  4.24   3.59    4.89
-## # … with 37 more rows
+## # A tibble: 6 x 8
+##    SITE SALAMAN PCTCOVER FORESTAGE pctcover_std[,1]    mu low.89 high.89
+##   <int>   <int>    <int>     <int>            <dbl> <dbl>  <dbl>   <dbl>
+## 1     1      13       85       316            0.727  3.73   3.14    4.21
+## 2     2      11       86        88            0.755  3.83   3.30    4.41
+## 3     3      11       90       548            0.867  4.23   3.60    4.90
+## 4     4       9       88        64            0.811  4.03   3.46    4.65
+## 5     5       8       89        43            0.839  4.13   3.52    4.77
+## 6     6       7       83       368            0.671  3.55   3.08    4.08
 ```
 
 
@@ -795,7 +1118,7 @@ pred_obs %>%
   geom_pointrange(aes(y=predicted, ymin=low.89, ymax=high.89), color="blue")
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-32-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-49-1.png)<!-- -->
 
 Lots of scatter at high PCTCOVER.
 
@@ -808,7 +1131,7 @@ pred_obs %>%
   geom_point()
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-33-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-50-1.png)<!-- -->
 
 
 _(b) Can you improve the model by using the other predictor, FORESTAGE? Try any models you think useful. Can you explain why FORESTAGE helps or does not help with prediction?_
@@ -835,10 +1158,10 @@ precis(m10h4.2)
 ```
 
 ```
-##                mean         sd       5.5%     94.5%    n_eff      Rhat
-## alpha    0.65501556 0.11756923  0.4555913 0.8333947 844.5714 1.0047221
-## beta_f   0.01835796 0.09530968 -0.1374866 0.1735507 936.7183 0.9995558
-## beta_pct 0.88954517 0.15473838  0.6494090 1.1446556 789.7242 1.0011236
+##                mean         sd       5.5%     94.5%     n_eff      Rhat
+## alpha    0.65501756 0.12181522  0.4583297 0.8434691  692.2849 0.9991825
+## beta_f   0.01898094 0.09001692 -0.1226663 0.1625840 1256.6568 1.0019872
+## beta_pct 0.89310741 0.15306438  0.6509104 1.1494828  772.5915 1.0008394
 ```
 
 
@@ -846,19 +1169,19 @@ precis(m10h4.2)
 pairs(m10h4.2)
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-36-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-53-1.png)<!-- -->
 
 ```r
 trankplot(m10h4.2)
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-36-2.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-53-2.png)<!-- -->
 
 ```r
 traceplot(m10h4.2)
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-36-3.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-53-3.png)<!-- -->
 
 plot observed and expected
 
@@ -876,16 +1199,16 @@ pred_obs
 ## # A tibble: 47 x 9
 ##     SITE SALAMAN PCTCOVER FORESTAGE pctcover_std[,1] forestage_std[,…    mu
 ##    <int>   <int>    <int>     <int>            <dbl>            <dbl> <dbl>
-##  1     1      13       85       316            0.727            0.761  3.75
-##  2     2      11       86        88            0.755           -0.418  3.77
-##  3     3      11       90       548            0.867            1.96   4.38
-##  4     4       9       88        64            0.811           -0.542  3.96
+##  1     1      13       85       316            0.727            0.761  3.76
+##  2     2      11       86        88            0.755           -0.418  3.78
+##  3     3      11       90       548            0.867            1.96   4.39
+##  4     4       9       88        64            0.811           -0.542  3.97
 ##  5     5       8       89        43            0.839           -0.650  4.06
 ##  6     6       7       83       368            0.671            1.03   3.59
-##  7     7       6       83       200            0.671            0.161  3.52
-##  8     8       6       91        71            0.895           -0.505  4.27
+##  7     7       6       83       200            0.671            0.161  3.53
+##  8     8       6       91        71            0.895           -0.505  4.28
 ##  9     9       5       88        42            0.811           -0.655  3.96
-## 10    10       5       90       551            0.867            1.98   4.38
+## 10    10       5       90       551            0.867            1.98   4.39
 ## # … with 37 more rows, and 2 more variables: low.89 <dbl>, high.89 <dbl>
 ```
 
@@ -899,7 +1222,7 @@ pred_obs %>%
   geom_pointrange(aes(y=predicted, ymin=low.89, ymax=high.89), color="blue")
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-38-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-55-1.png)<!-- -->
 
 
 ```r
@@ -907,9 +1230,9 @@ compare(m10h4.1.stan, m10h4.2)
 ```
 
 ```
-##                  WAIC    pWAIC   dWAIC   weight       SE      dSE
-## m10h4.1.stan 214.9449 3.984454 0.00000 0.898256 24.66818       NA
-## m10h4.2      219.3009 6.949885 4.35599 0.101744 25.40286 1.368113
+##                  WAIC    pWAIC    dWAIC    weight       SE     dSE
+## m10h4.1.stan 214.9087 3.893460 0.000000 0.8568647 24.59892      NA
+## m10h4.2      218.4877 6.429347 3.578979 0.1431353 25.15243 1.18967
 ```
 
 interaction model:
@@ -936,11 +1259,11 @@ precis(m10h4.3)
 ```
 
 ```
-##                  mean        sd        5.5%       94.5%    n_eff     Rhat
-## alpha       0.9084932 0.1858158  0.60924921  1.21461887 424.5171 1.004026
-## beta_pct_f -0.5061598 0.2681831 -0.95305121 -0.08990875 416.0174 1.004295
-## beta_f      0.4121384 0.2257866  0.05083799  0.79064335 408.9000 1.002674
-## beta_pct    0.5860730 0.2318478  0.21460524  0.95097108 417.7776 1.002151
+##                  mean        sd        5.5%      94.5%    n_eff     Rhat
+## alpha       0.9159851 0.1731851  0.63420296  1.1802584 583.7882 1.003716
+## beta_pct_f -0.5126583 0.2625507 -0.91907145 -0.1128446 631.8610 1.001556
+## beta_f      0.4171630 0.2217191  0.06115377  0.7721276 651.8511 1.001262
+## beta_pct    0.5780088 0.2144516  0.24067254  0.9251724 564.5769 1.005379
 ```
 
 
@@ -948,14 +1271,14 @@ precis(m10h4.3)
 pairs(m10h4.3)
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-42-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-59-1.png)<!-- -->
 
 ```r
 trankplot(m10h4.3)
 traceplot(m10h4.3)
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-42-2.png)<!-- -->![](Chapter11_files/figure-html/unnamed-chunk-42-3.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-59-2.png)<!-- -->![](Chapter11_files/figure-html/unnamed-chunk-59-3.png)<!-- -->
 
 plot observed and expected
 
@@ -974,12 +1297,12 @@ pred_obs
 ##     SITE SALAMAN PCTCOVER FORESTAGE pctcover_std[,1] forestage_std[,…    mu
 ##    <int>   <int>    <int>     <int>            <dbl>            <dbl> <dbl>
 ##  1     1      13       85       316            0.727            0.761  3.95
-##  2     2      11       86        88            0.755           -0.418  3.84
+##  2     2      11       86        88            0.755           -0.418  3.85
 ##  3     3      11       90       548            0.867            1.96   3.97
 ##  4     4       9       88        64            0.811           -0.542  4.03
-##  5     5       8       89        43            0.839           -0.650  4.13
-##  6     6       7       83       368            0.671            1.03   3.99
-##  7     7       6       83       200            0.671            0.161  3.74
+##  5     5       8       89        43            0.839           -0.650  4.14
+##  6     6       7       83       368            0.671            1.03   4.00
+##  7     7       6       83       200            0.671            0.161  3.75
 ##  8     8       6       91        71            0.895           -0.505  4.32
 ##  9     9       5       88        42            0.811           -0.655  4.03
 ## 10    10       5       90       551            0.867            1.98   3.97
@@ -996,7 +1319,7 @@ pred_obs %>%
   geom_pointrange(aes(y=predicted, ymin=low.89, ymax=high.89), color="blue")
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-44-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-61-1.png)<!-- -->
 
 
 ```r
@@ -1004,9 +1327,9 @@ compare(m10h4.1.stan, m10h4.2)
 ```
 
 ```
-##                  WAIC    pWAIC   dWAIC   weight       SE      dSE
-## m10h4.1.stan 214.9449 3.984454 0.00000 0.898256 24.66818       NA
-## m10h4.2      219.3009 6.949885 4.35599 0.101744 25.40286 1.368113
+##                  WAIC    pWAIC    dWAIC    weight       SE     dSE
+## m10h4.1.stan 214.9087 3.893460 0.000000 0.8568647 24.59892      NA
+## m10h4.2      218.4877 6.429347 3.578979 0.1431353 25.15243 1.18967
 ```
 
 ## Week6 PDF # 3 
@@ -1021,7 +1344,7 @@ _First, model the number of observations of social_learning for each species as 
 ```r
 data("Primates301")
 p <- Primates301 %>% 
-  select(genus, species, social_learning, brain, research_effort) %>%
+  dplyr::select(genus, species, social_learning, brain, research_effort) %>%
   mutate(l_brain_std = scale(log(brain)),
          l_research_effort_std = scale(log(research_effort)),
          gen_spec = str_c(genus, "_", species)) %>%
@@ -1036,318 +1359,30 @@ table(p$gen_spec) %>% max() #more than one row per species?  no
 ```
 
 ```r
-p
+head(p)
 ```
 
 ```
-##              genus          species social_learning  brain research_effort
-## 1   Allenopithecus     nigroviridis               0  58.02               6
-## 2         Alouatta         belzebul               0  52.84              15
-## 3         Alouatta           caraya               0  52.63              45
-## 4         Alouatta          guariba               0  51.70              37
-## 5         Alouatta         palliata               3  49.88              79
-## 6         Alouatta            pigra               0  51.13              25
-## 7         Alouatta             sara               0  59.08               4
-## 8         Alouatta        seniculus               0  55.22              82
-## 9            Aotus           azarai               0  20.67              22
-## 10           Aotus        lemurinus               0  16.30              16
-## 11           Aotus      trivirgatus               0  16.85              58
-## 12      Arctocebus     calabarensis               0   6.92               1
-## 13          Ateles        belzebuth               0 117.02              12
-## 14          Ateles        fusciceps               0 114.24               4
-## 15          Ateles        geoffroyi               2 105.09              58
-## 16          Ateles         paniscus               0 103.85              30
-## 17           Avahi          laniger               0   9.86              10
-## 18           Avahi     occidentalis               0   7.95               6
-## 19    Bunopithecus          hoolock               0 110.68              24
-## 20         Cacajao           calvus               0  76.00              11
-## 21         Cacajao   melanocephalus               0  68.77               8
-## 22       Callimico          goeldii               0  11.43              43
-## 23      Callithrix        argentata               0   7.95              16
-## 24      Callithrix          jacchus               2   7.24             161
-## 25      Callithrix          pygmaea               0   4.17              36
-## 26           Cebus        albifrons               1  65.45              13
-## 27           Cebus           apella              17  66.63             249
-## 28           Cebus        capucinus               5  72.93              60
-## 29           Cebus        olivaceus               0  69.84              18
-## 30      Cercocebus        galeritus               0  99.07              19
-## 31      Cercocebus        torquatus               1 105.99              32
-## 32   Cercopithecus         ascanius               1  59.58              26
-## 33   Cercopithecus        campbelli               0  57.39              11
-## 34   Cercopithecus           cephus               0  65.26               8
-## 35   Cercopithecus            diana               1  62.61              28
-## 36   Cercopithecus       erythrotis               0  65.40               3
-## 37   Cercopithecus          hamlyni               0  65.90               4
-## 38   Cercopithecus          lhoesti               0  74.20               7
-## 39   Cercopithecus            mitis               0  71.33              56
-## 40   Cercopithecus             mona               0  61.84               8
-## 41   Cercopithecus        neglectus               0  65.97              17
-## 42   Cercopithecus        nictitans               0  71.13               7
-## 43   Cercopithecus       petaurista               0  55.08               5
-## 44   Cercopithecus         pogonias               0  59.56               8
-## 45   Cercopithecus            wolfi               0  61.45               7
-## 46    Cheirogaleus            major               0   5.81               3
-## 47    Cheirogaleus           medius               0   2.60              13
-## 48      Chiropotes          satanas               0  48.33              21
-## 49     Chlorocebus         aethiops               5  65.00              91
-## 50         Colobus       angolensis               0  77.70              16
-## 51         Colobus          guereza               0  74.39              42
-## 52         Colobus        polykomos               0  73.83              17
-## 53         Colobus          satanas               0  74.90              10
-## 54     Daubentonia madagascariensis               0  44.85              52
-## 55    Erythrocebus            patas               2  97.73              33
-## 56         Eulemur        coronatus               0  20.65              11
-## 57         Eulemur           fulvus               1  25.77              81
-## 58         Eulemur           macaco               0  24.51              32
-## 59         Eulemur           mongoz               0  20.17              13
-## 60         Eulemur      rubriventer               0  26.23              13
-## 61        Euoticus      elegantulus               0   5.53               1
-## 62          Galago           alleni               0   5.58               2
-## 63          Galago           moholi               0   3.71              14
-## 64          Galago     senegalensis               0   3.96              20
-## 65      Galagoides         demidoff               0   2.65               5
-## 66         Gorilla          gorilla              13 490.41             517
-## 67       Hapalemur          griseus               0  14.09              40
-## 68       Hapalemur            simus               0  27.14               8
-## 69       Hylobates           agilis               0  91.16              16
-## 70       Hylobates          klossii               0  87.99               4
-## 71       Hylobates              lar               0 101.87              86
-## 72       Hylobates         muelleri               0  85.13               5
-## 73       Hylobates         pileatus               0  84.69              16
-## 74           Indri            indri               0  34.81               8
-## 75       Lagothrix       lagotricha               0  96.50              34
-## 76           Lemur            catta               4  22.90             103
-## 77  Leontopithecus      chrysomelas               0  11.84              46
-## 78  Leontopithecus          rosalia               0  12.83              85
-## 79       Lepilemur         dorsalis               0   6.70               1
-## 80       Lepilemur         edwardsi               0   7.25               5
-## 81       Lepilemur         leucopus               0   6.87               2
-## 82       Lepilemur         microdon               0   9.75               1
-## 83       Lepilemur       mustelinus               0   9.56               5
-## 84       Lepilemur     ruficaudatus               0   8.25               2
-## 85      Lophocebus         albigena               0  93.97              34
-## 86      Lophocebus        aterrimus               0 101.59               6
-## 87           Loris      tardigradus               0   5.87              14
-## 88          Macaca        arctoides               1 100.70              48
-## 89          Macaca       assamensis               0  90.46              17
-## 90          Macaca         cyclopis               0  82.00              12
-## 91          Macaca     fascicularis               7  63.98             174
-## 92          Macaca          fuscata              45 102.92             253
-## 93          Macaca          mulatta              15  88.98             296
-## 94          Macaca       nemestrina               3 105.59              51
-## 95          Macaca            nigra               0  94.90              27
-## 96          Macaca          radiata               0  74.87              34
-## 97          Macaca          silenus               1  85.00              48
-## 98          Macaca           sinica               0  69.70              12
-## 99          Macaca         sylvanus               0  93.20              67
-## 100     Mandrillus      leucophaeus               0 148.00              18
-## 101     Mandrillus           sphinx               3 153.88              30
-## 102     Microcebus          murinus               0   1.63              66
-## 103     Microcebus            rufus               0   1.72               8
-## 104          Mirza        coquereli               0   5.80               3
-## 105        Nasalis         larvatus               0  92.30              17
-## 106       Nomascus       gabriellae               0 119.38               4
-## 107     Nycticebus          coucang               0  10.13              37
-## 108     Nycticebus         pygmaeus               0   7.23              19
-## 109       Otolemur   crassicaudatus               1  11.78              36
-## 110       Otolemur        garnettii               1  11.50              12
-## 111            Pan         paniscus               5 341.29             225
-## 112            Pan      troglodytes             214 363.05             755
-## 113          Papio           anubis               4 167.42              43
-## 114          Papio     cynocephalus               2 163.19             114
-## 115          Papio        hamadryas               1 146.17              78
-## 116          Papio            papio               3 142.50               8
-## 117          Papio          ursinus               5 178.00              22
-## 118   Perodicticus            potto               0  12.42              10
-## 119   Piliocolobus           badius               0  63.59              52
-## 120   Piliocolobus           kirkii               1  57.25               7
-## 121       Pithecia         pithecia               0  32.26              28
-## 122          Pongo         pygmaeus              86 377.38             321
-## 123      Presbytis           comata               0  80.30              11
-## 124      Presbytis       melalophos               0  64.85               6
-## 125     Procolobus            verus               0  52.60               3
-## 126    Propithecus          diadema               0  39.80              28
-## 127    Propithecus        verreauxi               1  26.21              41
-## 128      Pygathrix          nemaeus               0  91.41              25
-## 129  Rhinopithecus        roxellana               0 117.76              36
-## 130       Saguinus      fuscicollis               2   7.94              81
-## 131       Saguinus         leucopus               0   9.70               3
-## 132       Saguinus            midas               0   9.78              17
-## 133       Saguinus           mystax               0  11.09              46
-## 134       Saguinus          oedipus               0   9.76             153
-## 135        Saimiri        oerstedii               1  25.07               4
-## 136        Saimiri         sciureus               1  24.14              89
-## 137  Semnopithecus         entellus               2 110.93              98
-## 138   Symphalangus      syndactylus               0 123.50              40
-## 139        Tarsius         bancanus               0   3.16               8
-## 140        Tarsius         dentatus               0   3.00               2
-## 141        Tarsius         syrichta               0   3.36              10
-## 142  Theropithecus           gelada               0 133.33              34
-## 143 Trachypithecus        cristatus               0  57.86               8
-## 144 Trachypithecus             geei               0  81.30               7
-## 145 Trachypithecus           johnii               1  84.60               9
-## 146 Trachypithecus         obscurus               0  62.12               6
-## 147 Trachypithecus          phayrei               0  72.84              16
-## 148 Trachypithecus         pileatus               0 103.64               5
-## 149 Trachypithecus          vetulus               0  61.29               2
-## 150        Varecia        variegata               0  32.12              57
-##     l_brain_std l_research_effort_std                     gen_spec
-## 1    0.37259063           -0.73726892  Allenopithecus_nigroviridis
-## 2    0.29771403           -0.03690129            Alouatta_belzebul
-## 3    0.29452568            0.80282398              Alouatta_caraya
-## 4    0.28025120            0.65320644             Alouatta_guariba
-## 5    0.25155764            1.23298947            Alouatta_palliata
-## 6    0.27137485            0.35354872               Alouatta_pigra
-## 7    0.38708621           -1.04718654                Alouatta_sara
-## 8    0.33298822            1.26147789           Alouatta_seniculus
-## 9   -0.45376792            0.25583917                 Aotus_azarai
-## 10  -0.64393787            0.01242878              Aotus_lemurinus
-## 11  -0.61736773            0.99680134            Aotus_trivirgatus
-## 12  -1.32989768           -2.10680186      Arctocebus_calabarensis
-## 13   0.93429513           -0.20746126             Ateles_belzebuth
-## 14   0.91504472           -1.04718654             Ateles_fusciceps
-## 15   0.84820262            0.99680134             Ateles_geoffroyi
-## 16   0.83869920            0.49290637              Ateles_paniscus
-## 17  -1.04640979           -0.34681891                Avahi_laniger
-## 18  -1.21880200           -0.73726892           Avahi_occidentalis
-## 19   0.88969734            0.32234640         Bunopithecus_hoolock
-## 20   0.58872363           -0.27396849               Cacajao_calvus
-## 21   0.50868566           -0.51737888       Cacajao_melanocephalus
-## 22  -0.92810891            0.76807477            Callimico_goeldii
-## 23  -1.21880200            0.01242878         Callithrix_argentata
-## 24  -1.29370377            1.77717406           Callithrix_jacchus
-## 25  -1.73542873            0.63226401           Callithrix_pygmaea
-## 26   0.46906841           -0.14628055              Cebus_albifrons
-## 27   0.48337484            2.11046814                 Cebus_apella
-## 28   0.55571005            1.02271403              Cebus_capucinus
-## 29   0.52104721            0.10245635              Cebus_olivaceus
-## 30   0.80097167            0.14378268         Cercocebus_galeritus
-## 31   0.85503030            0.54223644         Cercocebus_torquatus
-## 32   0.39383372            0.38352711       Cercopithecus_ascanius
-## 33   0.36384932           -0.27396849      Cercopithecus_campbelli
-## 34   0.46674075           -0.51737888         Cercopithecus_cephus
-## 35   0.43355021            0.44017160          Cercopithecus_diana
-## 36   0.46845652           -1.26707658     Cercopithecus_erythrotis
-## 37   0.47455445           -1.04718654        Cercopithecus_hamlyni
-## 38   0.56953260           -0.61944372        Cercopithecus_lhoesti
-## 39   0.53794908            0.96997926          Cercopithecus_mitis
-## 40   0.42364243           -0.51737888           Cercopithecus_mona
-## 41   0.47540447            0.05876726      Cercopithecus_neglectus
-## 42   0.53570100           -0.61944372      Cercopithecus_nictitans
-## 43   0.33095574           -0.87662657     Cercopithecus_petaurista
-## 44   0.39356491           -0.51737888       Cercopithecus_pogonias
-## 45   0.41857704           -0.61944372          Cercopithecus_wolfi
-## 46  -1.46988019           -1.26707658           Cheirogaleus_major
-## 47  -2.11366137           -0.14628055          Cheirogaleus_medius
-## 48   0.22628288            0.22028156           Chiropotes_satanas
-## 49   0.46354452            1.34107759         Chlorocebus_aethiops
-## 50   0.60643563            0.01242878           Colobus_angolensis
-## 51   0.57158017            0.75008922              Colobus_guereza
-## 52   0.56553013            0.05876726            Colobus_polykomos
-## 53   0.57705054           -0.34681891              Colobus_satanas
-## 54   0.16645089            0.91333477 Daubentonia_madagascariensis
-## 55   0.79006829            0.56575679           Erythrocebus_patas
-## 56  -0.45454299           -0.27396849            Eulemur_coronatus
-## 57  -0.27720157            1.25209924               Eulemur_fulvus
-## 58  -0.31733821            0.54223644               Eulemur_macaco
-## 59  -0.47337355           -0.14628055               Eulemur_mongoz
-## 60  -0.26303578           -0.14628055          Eulemur_rubriventer
-## 61  -1.50942670           -2.10680186         Euoticus_elegantulus
-## 62  -1.50222004           -1.57699420                Galago_alleni
-## 63  -1.82901251           -0.08963606                Galago_moholi
-## 64  -1.77680014            0.18298875          Galago_senegalensis
-## 65  -2.09841036           -0.87662657          Galagoides_demidoff
-## 66   2.08154982            2.66889523              Gorilla_gorilla
-## 67  -0.76059299            0.71279641            Hapalemur_griseus
-## 68  -0.23572959           -0.51737888              Hapalemur_simus
-## 69   0.73434888            0.01242878             Hylobates_agilis
-## 70   0.70601130           -1.04718654            Hylobates_klossii
-## 71   0.82328656            1.29788243                Hylobates_lar
-## 72   0.67955476           -0.87662657           Hylobates_muelleri
-## 73   0.67540579            0.01242878           Hylobates_pileatus
-## 74  -0.03644996           -0.51737888                  Indri_indri
-## 75   0.77992755            0.58857492         Lagothrix_lagotricha
-## 76  -0.37173808            1.43575734                  Lemur_catta
-## 77  -0.89989214            0.81962358   Leontopithecus_chrysomelas
-## 78  -0.83559758            1.28894256       Leontopithecus_rosalia
-## 79  -1.35576541           -2.10680186           Lepilemur_dorsalis
-## 80  -1.29259865           -0.87662657           Lepilemur_edwardsi
-## 81  -1.33570375           -1.57699420           Lepilemur_leucopus
-## 82  -1.05539224           -2.10680186           Lepilemur_microdon
-## 83  -1.07114875           -0.87662657         Lepilemur_mustelinus
-## 84  -1.18914476           -1.57699420       Lepilemur_ruficaudatus
-## 85   0.75865624            0.58857492          Lophocebus_albigena
-## 86   0.82108285           -0.73726892         Lophocebus_aterrimus
-## 87  -1.46165422           -0.08963606            Loris_tardigradus
-## 88   0.81403765            0.85215406             Macaca_arctoides
-## 89   0.72817708            0.05876726            Macaca_assamensis
-## 90   0.64956205           -0.20746126              Macaca_cyclopis
-## 91   0.45088079            1.83652662          Macaca_fascicularis
-## 92   0.83149686            2.12264929               Macaca_fuscata
-## 93   0.71496938            2.24262942               Macaca_mulatta
-## 94   0.85200296            0.89849254            Macaca_nemestrina
-## 95   0.76654118            0.41237396                 Macaca_nigra
-## 96   0.57672978            0.58857492               Macaca_radiata
-## 97   0.67833116            0.85215406               Macaca_silenus
-## 98   0.51944062           -0.20746126                Macaca_sinica
-## 99   0.75206857            1.10705866              Macaca_sylvanus
-## 100  1.12234267            0.10245635       Mandrillus_leucophaeus
-## 101  1.15353680            0.49290637            Mandrillus_sphinx
-## 102 -2.48751190            1.09556445           Microcebus_murinus
-## 103 -2.44448133           -0.51737888             Microcebus_rufus
-## 104 -1.47125944           -1.26707658              Mirza_coquereli
-## 105  0.74429936            0.05876726             Nasalis_larvatus
-## 106  0.95028165           -1.04718654          Nomascus_gabriellae
-## 107 -1.02478000            0.65320644           Nycticebus_coucang
-## 108 -1.29481041            0.14378268          Nycticebus_pygmaeus
-## 109 -0.90395982            0.63226401      Otolemur_crassicaudatus
-## 110 -0.92322047           -0.20746126           Otolemur_garnettii
-## 111  1.79130535            2.03299927                 Pan_paniscus
-## 112  1.84079218            2.95833571              Pan_troglodytes
-## 113  1.22105799            0.76807477                 Papio_anubis
-## 114  1.20056889            1.51331561           Papio_cynocephalus
-## 115  1.11238098            1.22325238              Papio_hamadryas
-## 116  1.09202168           -0.51737888                  Papio_papio
-## 117  1.27012041            0.25583917                Papio_ursinus
-## 118 -0.86160130           -0.34681891           Perodicticus_potto
-## 119  0.44598534            0.91333477          Piliocolobus_badius
-## 120  0.36189378           -0.61944372          Piliocolobus_kirkii
-## 121 -0.09736102            0.44017160            Pithecia_pithecia
-## 122  1.87178716            2.30460426               Pongo_pygmaeus
-## 123  0.63278865           -0.27396849             Presbytis_comata
-## 124  0.46169472           -0.73726892         Presbytis_melalophos
-## 125  0.29406916           -1.26707658             Procolobus_verus
-## 126  0.07080742            0.44017160          Propithecus_diadema
-## 127 -0.26364650            0.73167023        Propithecus_verreauxi
-## 128  0.73654161            0.35354872            Pygathrix_nemaeus
-## 129  0.93934229            0.63226401      Rhinopithecus_roxellana
-## 130 -1.21980975            1.25209924         Saguinus_fuscicollis
-## 131 -1.05950872           -1.26707658            Saguinus_leucopus
-## 132 -1.05293247            0.05876726               Saguinus_midas
-## 133 -0.95228680            0.81962358              Saguinus_mystax
-## 134 -1.05457147            1.73821781             Saguinus_oedipus
-## 135 -0.29925087           -1.04718654            Saimiri_oerstedii
-## 136 -0.32951695            1.32409132             Saimiri_sciureus
-## 137  0.89150379            1.39772209       Semnopithecus_entellus
-## 138  0.97744742            0.71279641     Symphalangus_syndactylus
-## 139 -1.95748533           -0.51737888             Tarsius_bancanus
-## 140 -1.99908710           -1.57699420             Tarsius_dentatus
-## 141 -1.90835004           -0.34681891             Tarsius_syrichta
-## 142  1.03876639            0.58857492         Theropithecus_gelada
-## 143  0.37037964           -0.51737888     Trachypithecus_cristatus
-## 144  0.64269786           -0.61944372          Trachypithecus_geei
-## 145  0.67455448           -0.42735131        Trachypithecus_johnii
-## 146  0.42725946           -0.73726892      Trachypithecus_obscurus
-## 147  0.55472139            0.01242878       Trachypithecus_phayrei
-## 148  0.83707852           -0.87662657      Trachypithecus_pileatus
-## 149  0.41648962           -1.57699420       Trachypithecus_vetulus
-## 150 -0.10084321            0.98350795            Varecia_variegata
+##            genus      species social_learning brain research_effort
+## 1 Allenopithecus nigroviridis               0 58.02               6
+## 2       Alouatta     belzebul               0 52.84              15
+## 3       Alouatta       caraya               0 52.63              45
+## 4       Alouatta      guariba               0 51.70              37
+## 5       Alouatta     palliata               3 49.88              79
+## 6       Alouatta        pigra               0 51.13              25
+##   l_brain_std l_research_effort_std                    gen_spec
+## 1   0.3725906           -0.73726892 Allenopithecus_nigroviridis
+## 2   0.2977140           -0.03690129           Alouatta_belzebul
+## 3   0.2945257            0.80282398             Alouatta_caraya
+## 4   0.2802512            0.65320644            Alouatta_guariba
+## 5   0.2515576            1.23298947           Alouatta_palliata
+## 6   0.2713749            0.35354872              Alouatta_pigra
 ```
 
 
 ```r
 p %>%
-  select(social_learning, l_brain_std, l_research_effort_std) %>%
+  dplyr::select(social_learning, l_brain_std, l_research_effort_std) %>%
   ggpairs()
 ```
 
@@ -1362,60 +1397,12 @@ p %>%
 ## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-47-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-64-1.png)<!-- -->
 
 
 ```r
 p_small <- list(social_learning=p$social_learning, l_brain_std=as.vector(p$l_brain_std))
-p_small
-```
 
-```
-## $social_learning
-##   [1]   0   0   0   0   3   0   0   0   0   0   0   0   0   0   2   0   0
-##  [18]   0   0   0   0   0   0   2   0   1  17   5   0   0   1   1   0   0
-##  [35]   1   0   0   0   0   0   0   0   0   0   0   0   0   0   5   0   0
-##  [52]   0   0   0   2   0   1   0   0   0   0   0   0   0   0  13   0   0
-##  [69]   0   0   0   0   0   0   0   4   0   0   0   0   0   0   0   0   0
-##  [86]   0   0   1   0   0   7  45  15   3   0   0   1   0   0   0   3   0
-## [103]   0   0   0   0   0   0   1   1   5 214   4   2   1   3   5   0   0
-## [120]   1   0  86   0   0   0   0   1   0   0   2   0   0   0   0   1   1
-## [137]   2   0   0   0   0   0   0   0   1   0   0   0   0   0
-## 
-## $l_brain_std
-##   [1]  0.37259063  0.29771403  0.29452568  0.28025120  0.25155764
-##   [6]  0.27137485  0.38708621  0.33298822 -0.45376792 -0.64393787
-##  [11] -0.61736773 -1.32989768  0.93429513  0.91504472  0.84820262
-##  [16]  0.83869920 -1.04640979 -1.21880200  0.88969734  0.58872363
-##  [21]  0.50868566 -0.92810891 -1.21880200 -1.29370377 -1.73542873
-##  [26]  0.46906841  0.48337484  0.55571005  0.52104721  0.80097167
-##  [31]  0.85503030  0.39383372  0.36384932  0.46674075  0.43355021
-##  [36]  0.46845652  0.47455445  0.56953260  0.53794908  0.42364243
-##  [41]  0.47540447  0.53570100  0.33095574  0.39356491  0.41857704
-##  [46] -1.46988019 -2.11366137  0.22628288  0.46354452  0.60643563
-##  [51]  0.57158017  0.56553013  0.57705054  0.16645089  0.79006829
-##  [56] -0.45454299 -0.27720157 -0.31733821 -0.47337355 -0.26303578
-##  [61] -1.50942670 -1.50222004 -1.82901251 -1.77680014 -2.09841036
-##  [66]  2.08154982 -0.76059299 -0.23572959  0.73434888  0.70601130
-##  [71]  0.82328656  0.67955476  0.67540579 -0.03644996  0.77992755
-##  [76] -0.37173808 -0.89989214 -0.83559758 -1.35576541 -1.29259865
-##  [81] -1.33570375 -1.05539224 -1.07114875 -1.18914476  0.75865624
-##  [86]  0.82108285 -1.46165422  0.81403765  0.72817708  0.64956205
-##  [91]  0.45088079  0.83149686  0.71496938  0.85200296  0.76654118
-##  [96]  0.57672978  0.67833116  0.51944062  0.75206857  1.12234267
-## [101]  1.15353680 -2.48751190 -2.44448133 -1.47125944  0.74429936
-## [106]  0.95028165 -1.02478000 -1.29481041 -0.90395982 -0.92322047
-## [111]  1.79130535  1.84079218  1.22105799  1.20056889  1.11238098
-## [116]  1.09202168  1.27012041 -0.86160130  0.44598534  0.36189378
-## [121] -0.09736102  1.87178716  0.63278865  0.46169472  0.29406916
-## [126]  0.07080742 -0.26364650  0.73654161  0.93934229 -1.21980975
-## [131] -1.05950872 -1.05293247 -0.95228680 -1.05457147 -0.29925087
-## [136] -0.32951695  0.89150379  0.97744742 -1.95748533 -1.99908710
-## [141] -1.90835004  1.03876639  0.37037964  0.64269786  0.67455448
-## [146]  0.42725946  0.55472139  0.83707852  0.41648962 -0.10084321
-```
-
-```r
 m3 <- ulam(
   alist(social_learning ~ dpois(lambda),
         log(lambda) <- alpha + beta_brain*l_brain_std,
@@ -1434,8 +1421,8 @@ precis(m3)
 
 ```
 ##                 mean         sd      5.5%      94.5%    n_eff     Rhat
-## alpha      -1.040394 0.10904633 -1.217710 -0.8706834 546.1299 1.008306
-## beta_brain  2.700647 0.07167565  2.588167  2.8160554 556.9191 1.008598
+## alpha      -1.041629 0.11260138 -1.232193 -0.8704509 451.7209 1.007637
+## beta_brain  2.701913 0.07451217  2.589092  2.8237263 469.3767 1.005404
 ```
 
 each std deviation increase in log brain size causes a 14.8797317 fold increase in social learning
@@ -1445,14 +1432,14 @@ each std deviation increase in log brain size causes a 14.8797317 fold increase 
 pairs(m3)
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-50-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-67-1.png)<!-- -->
 
 ```r
 trankplot(m3)
 traceplot(m3)
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-50-2.png)<!-- -->![](Chapter11_files/figure-html/unnamed-chunk-50-3.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-67-2.png)<!-- -->![](Chapter11_files/figure-html/unnamed-chunk-67-3.png)<!-- -->
 
 
 ```r
@@ -1473,7 +1460,7 @@ pred_obs %>%
   scale_x_log10()
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-52-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-69-1.png)<!-- -->
 
 
 _Second, some species are studied much more than others. So the number of reported instances of social_learning could be a product of research effort. Use the research_effort variable, specifically its logarithm, as an additional predictor variable. Interpret the coefficient for log research_effort. Does this model disagree with the previous one?_
@@ -1501,9 +1488,9 @@ precis(m3.2)
 
 ```
 ##                  mean         sd       5.5%      94.5%    n_eff     Rhat
-## alpha      -1.5793689 0.13404605 -1.7960587 -1.3579870 654.9503 1.002108
-## beta_brain  0.4470408 0.08025986  0.3185656  0.5722533 766.3493 1.001266
-## beta_r      1.9542250 0.08153888  1.8233364  2.0851369 559.1892 1.002646
+## alpha      -1.5671515 0.14429612 -1.7992478 -1.3342840 715.7346 1.001049
+## beta_brain  0.4573966 0.08430175  0.3198357  0.5965524 621.8965 1.001147
+## beta_r      1.9428324 0.08430192  1.8012811  2.0749844 587.1847 1.000996
 ```
 
 The brain size effect is now much smaller, and research effort has a large effect
@@ -1518,19 +1505,19 @@ each std deviation increase in log research effort is associated with a 6.958751
 pairs(m3.2)
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-55-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-72-1.png)<!-- -->
 
 ```r
 trankplot(m3.2)
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-55-2.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-72-2.png)<!-- -->
 
 ```r
 traceplot(m3.2)
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-55-3.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-72-3.png)<!-- -->
 
 
 ```r
@@ -1551,7 +1538,7 @@ pred_obs %>%
   scale_x_log10()
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-57-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-74-1.png)<!-- -->
 
 
 ```r
@@ -1562,7 +1549,7 @@ pred_obs %>%
   scale_x_log10()
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-58-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-75-1.png)<!-- -->
 
 
 ```r
@@ -1577,7 +1564,7 @@ pred_obs %>%
 ## Warning: Transformation introduced infinite values in continuous x-axis
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-59-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-76-1.png)<!-- -->
 
 
 _Third, draw a DAG to represent how you think the variables social_learning, brain, and research_effort interact. Justify the DAG with the measured associations in the two models above (and any other models you used)._
@@ -1596,6 +1583,6 @@ coordinates(g) <- list(x=c(brain_size=1, learning=1, research=2),
 plot(g)
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-60-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-77-1.png)<!-- -->
 
 
