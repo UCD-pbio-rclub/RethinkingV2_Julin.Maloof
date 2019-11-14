@@ -280,6 +280,176 @@ This keeps the outcome variable on a positive scale, required for count data.  Y
 
 (OK but this is true for so much stuff that we model with linear models and Gaussian distributions...)
 
+## 10H3
+_The data contained in library(MASS);data(eagles) are records of salmon pirating at- tempts by Bald Eagles in Washington State. See ?eagles for details. While one eagle feeds, some- times another will swoop in and try to steal the salmon from it. Call the feeding eagle the “victim” and the thief the “pirate.” Use the available data to build a binomial GLM of successful pirating attempts._
+
+```{r}
+library(MASS)
+data(eagles)
+?eagles
+eagles
+```
+
+```{r}
+eagleslist <- with(eagles,
+                   list(y=y,
+                        n=n,
+                        pirate_large=ifelse(P=="L",1,0),
+                        pirate_adult=ifelse(A=="A",1,0),
+                        victim_large=ifelse(V=="L",1,0)))
+str(eagleslist)
+```
+
+```{r}
+m10h3q <- quap(alist(y ~ dbinom(n, p),
+                    logit(p) <- alpha + 
+                      b_pirate_large*pirate_large +
+                      b_pirate_adult*pirate_adult +
+                      b_victim_large*victim_large,
+                    alpha ~ dnorm(0,10),
+                    c(b_pirate_large, b_pirate_adult, b_victim_large) ~ dnorm(0,5)),
+              data=eagleslist)
+```
+
+```{r}
+precis(m10h3q)
+pairs(m10h3q)
+```
+
+```{r}
+m10h3stan <- ulam(alist(y ~ dbinom(n, p),
+                    logit(p) <- alpha + 
+                      b_pirate_large*pirate_large +
+                      b_pirate_adult*pirate_adult +
+                      b_victim_large*victim_large,
+                    alpha ~ dnorm(0,10),
+                    c(b_pirate_large, b_pirate_adult, b_victim_large) ~ dnorm(0,5)),
+              data=eagleslist,
+              chains = 4,
+              cores = 4,
+              iter = 2000,
+              log_lik = TRUE)
+```
+
+```{r}
+precis(m10h3stan)
+pairs(m10h3stan)
+```
+
+_(b) Now interpret the estimates. If the quadratic approximation turned out okay, then it’s okay to use the map estimates. Otherwise stick to map2stan estimates. Then plot the posterior predictions. Compute and display both (1) the predicted probability of success and its 89% interval for each row (i) in the data, as well as (2) the predicted success count and its 89% interval. What different information does each type of posterior prediction provide?_
+
+posterior are not entirely Gaussian, stick with Stan
+
+Get predictions
+
+```{r}
+pred <- link(m10h3stan)
+head(pred)
+summary(pred)
+```
+These are the probability of successful pirate for each of the 8 rows in the table.
+
+```{r}
+pred_obs <- as_tibble(cbind(eagles, 
+                            mean_prob=colMeans(pred),
+                            low.89=apply(pred, 2, HPDI)[1,],
+                            high.89=apply(pred, 2, HPDI)[2,]
+)) %>%
+  mutate(observed_prob=y/n,
+         pred_success=mean_prob*n,
+         pred_low=low.89*n,
+         pred_high=high.89*n,
+         label=str_c("P: ", P, ", A: ", A, ", V: ", V)) %>%
+  dplyr::select(label, everything())
+pred_obs
+```
+
+```{r}
+pred_obs %>%
+  ggplot(aes(x=label)) +
+  geom_pointrange(aes(y=mean_prob, ymin=low.89, ymax=high.89), color="blue", fill="blue") +
+  geom_point(aes(y=observed_prob)) +
+  theme(axis.text.x = element_text(angle=90))
+```
+
+```{r}
+pred_obs %>%
+  ggplot(aes(x=label)) +
+  geom_pointrange(aes(y=pred_success, ymin=pred_low, ymax=pred_high), color="blue", fill="blue") +
+  geom_point(aes(y=y)) +
+  theme(axis.text.x = element_text(angle=90))
+```
+
+Overall the fit looks pretty good.  Size of pirate and victim are both pretty importnat; age is less important.
+
+Try with interaction
+
+```{r}
+m10h3stan_int <- ulam(alist(y ~ dbinom(n, p),
+                    logit(p) <- alpha + 
+                      b_pirate_large*pirate_large +
+                      b_pirate_adult*pirate_adult +
+                      b_victim_large*victim_large +
+                      bpsa*pirate_large*pirate_adult,
+                    alpha ~ dnorm(0,10),
+                    c(b_pirate_large, b_pirate_adult, b_victim_large) ~ dnorm(0,5),
+                    bpsa ~ dnorm(0,2.5)),
+              data=eagleslist,
+              chains = 4,
+              cores = 4,
+              iter = 2000,
+              log_lik = TRUE)
+```
+
+```{r}
+precis(m10h3stan_int)
+pairs(m10h3stan_int)
+```
+
+```{r}
+compare(m10h3stan, m10h3stan_int)
+```
+
+Interaction model fits better.  Lets compare the predictions.
+```{r}
+pred_int <- link(m10h3stan_int)
+head(pred)
+summary(pred)
+```
+These are the probability of successful pirate for each of the 8 rows in the table.
+
+```{r}
+pred_obs_int <- as_tibble(cbind(pred_obs, 
+                            mean_prob_int=colMeans(pred_int),
+                            low.89_int=apply(pred_int, 2, HPDI)[1,],
+                            high.89_int=apply(pred_int, 2, HPDI)[2,]
+)) %>%
+  mutate(pred_success_int=mean_prob_int*n,
+         pred_low_int=low.89_int*n,
+         pred_high_int=high.89_int*n)
+pred_obs_int
+```
+
+```{r}
+pred_obs_int %>%
+  ggplot(aes(x=label)) +
+  geom_pointrange(aes(y=mean_prob, ymin=low.89, ymax=high.89), color="blue", position = position_nudge(x=-.1)) +
+  geom_pointrange(aes(y=mean_prob_int, ymin=low.89_int, ymax=high.89_int), color="red", position = position_nudge(x=.1)) +
+  geom_point(aes(y=observed_prob)) +
+  theme(axis.text.x = element_text(angle=90))
+```
+
+```{r}
+pred_obs_int %>%
+  ggplot(aes(x=label)) +
+  geom_pointrange(aes(y=pred_success, ymin=pred_low, ymax=pred_high), color="blue", position = position_nudge(x=-.1)) +
+  geom_pointrange(aes(y=pred_success_int, ymin=pred_low_int, ymax=pred_high_int), color="red", position = position_nudge(x=.1)) +
+  geom_point(aes(y=y)) +
+  theme(axis.text.x = element_text(angle=90))
+```
+
+Fits better!
+
 ## 10H4
 
 _The data contained in data(salamanders) are counts of salamanders (Plethodon elongatus) from 47 different 49-m2 plots in northern California.  The column SALAMAN is the count in each plot, and the columns PCTCOVER and FORESTAGE are percent of ground cover and age of trees in the plot, respectively. You will model SALAMAN as a Poisson variable._
@@ -292,7 +462,7 @@ head(salamanders)
 ```
 
 ```{r}
-salamanders %>% select(SALAMAN, PCTCOVER, FORESTAGE) %>% ggpairs()
+salamanders %>% dplyr::select(SALAMAN, PCTCOVER, FORESTAGE) %>% ggpairs()
 ```
 
 
@@ -481,7 +651,7 @@ _First, model the number of observations of social_learning for each species as 
 ```{r}
 data("Primates301")
 p <- Primates301 %>% 
-  select(genus, species, social_learning, brain, research_effort) %>%
+  dplyr::select(genus, species, social_learning, brain, research_effort) %>%
   mutate(l_brain_std = scale(log(brain)),
          l_research_effort_std = scale(log(research_effort)),
          gen_spec = str_c(genus, "_", species)) %>%
@@ -495,7 +665,7 @@ head(p)
 
 ```{r}
 p %>%
-  select(social_learning, l_brain_std, l_research_effort_std) %>%
+  dplyr::select(social_learning, l_brain_std, l_research_effort_std) %>%
   ggpairs()
 ```
 

@@ -46,7 +46,18 @@ library(rethinking)
 ```
 
 ```
-## rethinking (Version 1.90)
+## rethinking (Version 1.91)
+```
+
+```
+## 
+## Attaching package: 'rethinking'
+```
+
+```
+## The following object is masked from 'package:stats':
+## 
+##     rstudent
 ```
 
 ```r
@@ -54,7 +65,7 @@ library(tidyverse)
 ```
 
 ```
-## ── Attaching packages ──── tidyverse 1.2.1 ──
+## ── Attaching packages ────────────────────────────────── tidyverse 1.2.1 ──
 ```
 
 ```
@@ -65,7 +76,7 @@ library(tidyverse)
 ```
 
 ```
-## ── Conflicts ─────── tidyverse_conflicts() ──
+## ── Conflicts ───────────────────────────────────── tidyverse_conflicts() ──
 ## ✖ tidyr::extract() masks rstan::extract()
 ## ✖ dplyr::filter()  masks stats::filter()
 ## ✖ dplyr::lag()     masks stats::lag()
@@ -232,8 +243,8 @@ precis(m11.1, depth=2)
 
 ```
 ##           mean         sd      5.5%     94.5%    n_eff     Rhat
-## a[1] -1.532296 0.06696433 -1.637565 -1.420580 1350.091 1.000028
-## a[2] -1.740812 0.08389174 -1.870094 -1.610378 1333.340 1.000504
+## a[1] -1.532508 0.06444880 -1.632609 -1.429007 1391.192 1.000347
+## a[2] -1.736481 0.08059295 -1.861345 -1.609508 1408.391 0.999907
 ```
 
 look at differences in award rate
@@ -246,8 +257,8 @@ precis(data.frame(rel_dif=exp(post$a[,2]-post$a[,1])))
 ```
 
 ```
-##             mean         sd      5.5%    94.5%     histogram
-## rel_dif 0.816816 0.09108549 0.6791924 0.973958 ▁▁▂▃▇▇▅▂▂▁▁▁▁
+##             mean         sd      5.5%     94.5%    histogram
+## rel_dif 0.819823 0.08459473 0.6929348 0.9663226 ▁▁▂▃▇▇▅▂▂▁▁▁
 ```
 
 ```r
@@ -256,8 +267,8 @@ precis(data.frame(prob_dif=inv_logit(post$a[,2])-inv_logit(post$a[,1])))
 ```
 
 ```
-##                 mean         sd        5.5%        94.5%   histogram
-## prob_dif -0.02834612 0.01498351 -0.05261722 -0.003616951 ▁▁▂▃▇▇▅▂▁▁▁
+##                 mean         sd        5.5%        94.5%  histogram
+## prob_dif -0.02777275 0.01392101 -0.04992741 -0.004561252 ▁▁▁▃▇▇▅▂▁▁
 ```
 Women are 82% as likely to receive an award, translating to a reduced success rate of 3% 
 
@@ -289,6 +300,12 @@ m11.2 <- ulam(
 ## http://mc-stan.org/misc/warnings.html#bulk-ess
 ```
 
+```
+## Warning: Tail Effective Samples Size (ESS) is too low, indicating posterior variances and tail quantiles may be unreliable.
+## Running the chains for more iterations may help. See
+## http://mc-stan.org/misc/warnings.html#tail-ess
+```
+
 
 ```r
 pairs(m11.2)
@@ -302,17 +319,17 @@ precis(m11.2, depth=2)
 
 ```
 ##            mean        sd       5.5%      94.5%    n_eff     Rhat
-## a[1] -1.2006456 0.4537998 -1.9075364 -0.4840414 327.6787 1.018782
-## a[2] -1.3378077 0.4554483 -2.0431351 -0.6241983 338.2100 1.017836
-## b[1]  0.1997746 0.4917393 -0.5938039  0.9871467 386.9325 1.013992
-## b[2] -0.1531240 0.4777923 -0.9006507  0.6069762 380.8522 1.015175
-## b[3]  0.1629690 0.5063306 -0.6462943  0.9770598 430.6079 1.013574
-## b[4] -0.3769783 0.4636960 -1.1113154  0.3558326 345.2142 1.018064
-## b[5] -0.3443805 0.4754096 -1.1024636  0.4019560 364.5607 1.015706
-## b[6] -0.4202314 0.4860527 -1.1954046  0.3339823 378.7168 1.015329
-## b[7] -0.1421930 0.4679858 -0.8797490  0.6020407 345.8202 1.016294
-## b[8] -0.5984276 0.4601068 -1.3244547  0.1313876 340.3398 1.018420
-## b[9] -0.4818142 0.4661975 -1.2301959  0.2492911 353.7825 1.015226
+## a[1] -1.1949377 0.4250615 -1.9106403 -0.5450413 313.4236 1.007643
+## a[2] -1.3330912 0.4266675 -2.0415787 -0.6705171 317.6503 1.007483
+## b[1]  0.1875881 0.4586430 -0.5354389  0.9546452 388.6041 1.006099
+## b[2] -0.1612351 0.4564259 -0.8624993  0.5908838 340.6427 1.006258
+## b[3]  0.1594095 0.4859282 -0.6303840  0.9449390 413.2674 1.007005
+## b[4] -0.3823160 0.4421644 -1.0728511  0.3466631 333.7426 1.007602
+## b[5] -0.3557451 0.4503802 -1.0667063  0.4007917 356.8286 1.006539
+## b[6] -0.4181544 0.4570857 -1.1364828  0.3143766 370.1610 1.006931
+## b[7] -0.1480132 0.4433855 -0.8395630  0.5892443 331.4896 1.008476
+## b[8] -0.6054813 0.4304089 -1.2703783  0.1128159 325.6695 1.008019
+## b[9] -0.4866842 0.4377664 -1.1800209  0.2556796 333.5162 1.007413
 ```
 
 so much correlation.  Try not indexing gender. I this parameterization each discipline coefficient will be the rate for males in that discipline and then the gender coefficient will be the difference for females.
@@ -343,16 +360,16 @@ precis(m11.3, depth=2)
 
 ```
 ##                mean        sd       5.5%        94.5%    n_eff      Rhat
-## a[1]     -0.9746861 0.2083377 -1.3098744 -0.643431786 3831.701 0.9998193
-## a[2]     -1.3336079 0.1910410 -1.6388055 -1.030912821 4606.922 1.0000673
-## a[3]     -0.9956264 0.2556035 -1.4033874 -0.592566111 4175.883 0.9998506
-## a[4]     -1.5584770 0.1396908 -1.7845543 -1.337323408 4361.830 0.9994781
-## a[5]     -1.5279332 0.1652101 -1.7971612 -1.263913303 4208.094 1.0003499
-## a[6]     -1.5887017 0.2041195 -1.9217697 -1.275838702 3622.840 0.9993471
-## a[7]     -1.3189912 0.1572873 -1.5736924 -1.072298103 3292.071 0.9997634
-## a[8]     -1.7824001 0.1119530 -1.9640327 -1.605250624 3377.191 0.9996266
-## a[9]     -1.6592184 0.1369797 -1.8824286 -1.441558252 2958.912 0.9998627
-## b_female -0.1619715 0.1067256 -0.3318247  0.007849806 2469.495 1.0004059
+## a[1]     -0.9703198 0.2063782 -1.3133473 -0.651717725 4195.513 1.0002867
+## a[2]     -1.3365192 0.1874059 -1.6421945 -1.042822314 4794.462 0.9999530
+## a[3]     -0.9988477 0.2534362 -1.4076838 -0.603679991 4410.247 1.0004452
+## a[4]     -1.5550444 0.1393841 -1.7872395 -1.337566267 3415.893 1.0001374
+## a[5]     -1.5290669 0.1660396 -1.7997799 -1.273160465 4843.586 1.0006353
+## a[6]     -1.5878935 0.2113591 -1.9333473 -1.266777964 4668.769 0.9995471
+## a[7]     -1.3152324 0.1514526 -1.5575925 -1.080030725 4150.811 1.0000268
+## a[8]     -1.7822967 0.1107202 -1.9589638 -1.602346515 4031.535 0.9998967
+## a[9]     -1.6628401 0.1353235 -1.8821914 -1.446011916 4466.892 0.9996882
+## b_female -0.1628451 0.1040575 -0.3305328  0.001692421 3060.192 1.0001048
 ```
 
 ```r
@@ -374,8 +391,8 @@ precis(list(rel_female=exp(post$b_female)))
 ```
 
 ```
-##                 mean         sd      5.5%    94.5% histogram
-## rel_female 0.8553283 0.09171534 0.7176131 1.007881 ▁▁▅▇▃▁▁▁▁
+##                 mean         sd      5.5%    94.5%      histogram
+## rel_female 0.8543403 0.08930556 0.7185408 1.001694 ▁▁▁▂▅▇▇▅▂▁▁▁▁▁
 ```
 
 So women are 86% as likely to get an award, but the 89% condidence intervals cross 1
@@ -403,12 +420,12 @@ head(pred)
 
 ```
 ##           [,1]      [,2]
-## [1,] 0.2775867 0.2402815
-## [2,] 0.2583470 0.1983850
-## [3,] 0.2705937 0.2285860
-## [4,] 0.2650143 0.2487810
-## [5,] 0.2717701 0.2103704
-## [6,] 0.3085298 0.3141709
+## [1,] 0.2286231 0.2330686
+## [2,] 0.2919495 0.2543404
+## [3,] 0.2876541 0.2183053
+## [4,] 0.2675664 0.2456986
+## [5,] 0.3310425 0.2917223
+## [6,] 0.1999016 0.1804065
 ```
 
 
@@ -417,8 +434,8 @@ precis(list(abs_female=pred[,2] - pred[,1]))
 ```
 
 ```
-##                   mean         sd       5.5%       94.5%  histogram
-## abs_female -0.03072858 0.02045121 -0.0630797 0.001366298 ▁▁▁▅▇▅▁▁▁▁
+##                   mean         sd        5.5%       94.5%      histogram
+## abs_female -0.03090697 0.01980371 -0.06341506 0.000359746 ▁▁▁▂▃▅▇▇▅▃▁▁▁▁
 ```
 
 Women do 3% worse when accounting for overall differences in award rate between departments, although confidence interval touches 0
@@ -433,8 +450,8 @@ str(post)
 
 ```
 ## List of 2
-##  $ a       : num [1:4000, 1:9] -0.956 -1.055 -0.992 -1.02 -0.986 ...
-##  $ b_female: num [1:4000(1d)] -0.1947 -0.3418 -0.2247 -0.0851 -0.337 ...
+##  $ a       : num [1:4000, 1:9] -1.216 -0.886 -0.907 -1.007 -0.703 ...
+##  $ b_female: num [1:4000(1d)] 0.025 -0.19 -0.369 -0.115 -0.184 ...
 ##  - attr(*, "source")= chr "ulam posterior: 4000 samples from m11.3"
 ```
 
@@ -444,8 +461,8 @@ precis(list(abd_female=inv_logit(post$a[,1]) -inv_logit(post$a[,1]-post$b_female
 ```
 
 ```
-##                   mean         sd        5.5%       94.5%  histogram
-## abd_female -0.03393459 0.02322153 -0.07215642 0.001360331 ▁▁▁▂▇▇▅▁▁▁
+##                   mean         sd        5.5%        94.5% histogram
+## abd_female -0.03410005 0.02254414 -0.07208479 0.0003595087  ▁▁▂▅▇▅▁▁
 ```
 
 Overall I do see a reduction in award rates to women.  When we consider discipline than the signficance of this drops, but I wonder if there is still something going on...
@@ -472,46 +489,26 @@ precis(m11.4, depth=2)
 ```
 
 ```
-##                  mean        sd        5.5%        94.5%    n_eff
-## a[1]     -1.003859144 0.2323783 -1.38190458 -0.637370728 5044.918
-## a[2]     -1.390813846 0.2047582 -1.72189022 -1.067906654 5400.341
-## a[3]     -1.002511413 0.2619684 -1.42115626 -0.595824739 5251.879
-## a[4]     -1.727191214 0.1742474 -2.01196980 -1.450076284 4290.980
-## a[5]     -1.609843417 0.1813457 -1.90712802 -1.328376524 4556.343
-## a[6]     -1.840685821 0.2602844 -2.27587379 -1.441632113 4177.454
-## a[7]     -1.180992115 0.1778802 -1.46755397 -0.901728724 5318.549
-## a[8]     -1.717119343 0.1305359 -1.92770571 -1.511426972 6055.808
-## a[9]     -1.500247120 0.1599686 -1.76027720 -1.246040639 5559.588
-## b_female -0.079553780 0.2031599 -0.40913646  0.241078280 1760.963
-## inter[1] -0.003084928 0.3560298 -0.57710563  0.566270317 4084.913
-## inter[2]  0.152817545 0.3479303 -0.41385323  0.701351291 4245.931
-## inter[3] -0.064330971 0.4299350 -0.76151823  0.617709573 6135.776
-## inter[4]  0.310246186 0.2879448 -0.14248981  0.769136975 2435.410
-## inter[5]  0.242161757 0.3258880 -0.27498818  0.753834595 3467.792
-## inter[6]  0.478290703 0.3413114 -0.06747827  1.035069556 3451.929
-## inter[7] -0.434149332 0.3057509 -0.93029196  0.056219464 3390.123
-## inter[8] -0.230918737 0.2544512 -0.63228696  0.172985331 2180.421
-## inter[9] -0.439941628 0.2789779 -0.89674220 -0.008646316 2419.731
-##               Rhat
-## a[1]     0.9994468
-## a[2]     1.0006243
-## a[3]     1.0001560
-## a[4]     0.9995334
-## a[5]     0.9994826
-## a[6]     0.9999905
-## a[7]     1.0000666
-## a[8]     0.9993370
-## a[9]     0.9992794
-## b_female 1.0014347
-## inter[1] 1.0004490
-## inter[2] 1.0005540
-## inter[3] 1.0000503
-## inter[4] 1.0013696
-## inter[5] 1.0010111
-## inter[6] 1.0013187
-## inter[7] 0.9994397
-## inter[8] 1.0013871
-## inter[9] 1.0017528
+##                  mean        sd        5.5%       94.5%    n_eff      Rhat
+## a[1]     -1.010921615 0.2278512 -1.38223593 -0.65282997 5402.254 0.9993256
+## a[2]     -1.388708883 0.2016403 -1.71314378 -1.07317367 4934.253 1.0004456
+## a[3]     -1.004996806 0.2588242 -1.42153743 -0.59966690 6123.852 0.9997873
+## a[4]     -1.730433359 0.1766835 -2.01586234 -1.45387665 4485.614 0.9993227
+## a[5]     -1.611276361 0.1866676 -1.91510194 -1.32222738 4562.826 1.0002278
+## a[6]     -1.836190777 0.2573554 -2.25388521 -1.43761175 4513.120 0.9992847
+## a[7]     -1.180127451 0.1838976 -1.47458898 -0.89030220 4997.066 0.9993159
+## a[8]     -1.721646885 0.1301432 -1.93064101 -1.51545012 5091.197 0.9994332
+## a[9]     -1.500000474 0.1588282 -1.75350209 -1.24638522 4820.574 0.9998348
+## b_female -0.077821910 0.2135595 -0.42135367  0.26504151 1787.766 1.0024157
+## inter[1]  0.007323555 0.3560325 -0.56578134  0.57361629 4010.904 1.0005386
+## inter[2]  0.147615977 0.3473272 -0.40516437  0.69195086 4087.727 1.0003160
+## inter[3] -0.066573295 0.4289275 -0.75863717  0.61332304 5420.749 1.0001893
+## inter[4]  0.315585452 0.2957178 -0.15297066  0.80418860 2683.559 1.0000075
+## inter[5]  0.239788346 0.3387887 -0.31119351  0.76623066 3634.264 1.0008047
+## inter[6]  0.468172731 0.3476877 -0.08495996  1.01480003 2899.835 0.9998721
+## inter[7] -0.442067868 0.3060302 -0.93077176  0.03823043 3032.648 1.0007641
+## inter[8] -0.226644499 0.2661432 -0.65723187  0.19943788 2373.664 1.0012194
+## inter[9] -0.436383200 0.2886657 -0.89496703  0.03142262 2649.194 1.0014621
 ```
 
 
@@ -602,6 +599,395 @@ This keeps the outcome variable on a positive scale, required for count data.  Y
 
 (OK but this is true for so much stuff that we model with linear models and Gaussian distributions...)
 
+## 10H3
+_The data contained in library(MASS);data(eagles) are records of salmon pirating at- tempts by Bald Eagles in Washington State. See ?eagles for details. While one eagle feeds, some- times another will swoop in and try to steal the salmon from it. Call the feeding eagle the “victim” and the thief the “pirate.” Use the available data to build a binomial GLM of successful pirating attempts._
+
+
+```r
+library(MASS)
+```
+
+```
+## 
+## Attaching package: 'MASS'
+```
+
+```
+## The following object is masked from 'package:dplyr':
+## 
+##     select
+```
+
+```r
+data(eagles)
+?eagles
+eagles
+```
+
+```
+##    y  n P A V
+## 1 17 24 L A L
+## 2 29 29 L A S
+## 3 17 27 L I L
+## 4 20 20 L I S
+## 5  1 12 S A L
+## 6 15 16 S A S
+## 7  0 28 S I L
+## 8  1  4 S I S
+```
+
+
+```r
+eagleslist <- with(eagles,
+                   list(y=y,
+                        n=n,
+                        pirate_large=ifelse(P=="L",1,0),
+                        pirate_adult=ifelse(A=="A",1,0),
+                        victim_large=ifelse(V=="L",1,0)))
+str(eagleslist)
+```
+
+```
+## List of 5
+##  $ y           : int [1:8] 17 29 17 20 1 15 0 1
+##  $ n           : int [1:8] 24 29 27 20 12 16 28 4
+##  $ pirate_large: num [1:8] 1 1 1 1 0 0 0 0
+##  $ pirate_adult: num [1:8] 1 1 0 0 1 1 0 0
+##  $ victim_large: num [1:8] 1 0 1 0 1 0 1 0
+```
+
+
+```r
+m10h3q <- quap(alist(y ~ dbinom(n, p),
+                    logit(p) <- alpha + 
+                      b_pirate_large*pirate_large +
+                      b_pirate_adult*pirate_adult +
+                      b_victim_large*victim_large,
+                    alpha ~ dnorm(0,10),
+                    c(b_pirate_large, b_pirate_adult, b_victim_large) ~ dnorm(0,5)),
+              data=eagleslist)
+```
+
+
+```r
+precis(m10h3q)
+```
+
+```
+##                      mean        sd       5.5%     94.5%
+## alpha           0.5915456 0.6622748 -0.4668975  1.649989
+## b_pirate_large  4.2418208 0.8960187  2.8098099  5.673832
+## b_pirate_adult  1.0814174 0.5339215  0.2281077  1.934727
+## b_victim_large -4.5926128 0.9613955 -6.1291084 -3.056117
+```
+
+```r
+pairs(m10h3q)
+```
+
+![](Chapter11_files/figure-html/unnamed-chunk-26-1.png)<!-- -->
+
+
+```r
+m10h3stan <- ulam(alist(y ~ dbinom(n, p),
+                    logit(p) <- alpha + 
+                      b_pirate_large*pirate_large +
+                      b_pirate_adult*pirate_adult +
+                      b_victim_large*victim_large,
+                    alpha ~ dnorm(0,10),
+                    c(b_pirate_large, b_pirate_adult, b_victim_large) ~ dnorm(0,5)),
+              data=eagleslist,
+              chains = 4,
+              cores = 4,
+              iter = 2000,
+              log_lik = TRUE)
+```
+
+
+```r
+precis(m10h3stan)
+```
+
+```
+##                      mean        sd       5.5%     94.5%    n_eff
+## alpha           0.6637335 0.6819248 -0.3916924  1.791591 1877.224
+## b_victim_large -5.0337388 1.0582749 -6.8364324 -3.482865 1748.239
+## b_pirate_adult  1.1334794 0.5532767  0.2564207  2.013208 2002.102
+## b_pirate_large  4.6091540 0.9790200  3.1716305  6.254428 1583.631
+##                     Rhat
+## alpha          1.0008236
+## b_victim_large 1.0006981
+## b_pirate_adult 0.9996616
+## b_pirate_large 1.0005021
+```
+
+```r
+pairs(m10h3stan)
+```
+
+![](Chapter11_files/figure-html/unnamed-chunk-28-1.png)<!-- -->
+
+_(b) Now interpret the estimates. If the quadratic approximation turned out okay, then it’s okay to use the map estimates. Otherwise stick to map2stan estimates. Then plot the posterior predictions. Compute and display both (1) the predicted probability of success and its 89% interval for each row (i) in the data, as well as (2) the predicted success count and its 89% interval. What different information does each type of posterior prediction provide?_
+
+posterior are not entirely Gaussian, stick with Stan
+
+Get predictions
+
+
+```r
+pred <- link(m10h3stan)
+head(pred)
+```
+
+```
+##           [,1]      [,2]      [,3]      [,4]       [,5]      [,6]
+## [1,] 0.7399914 0.9992990 0.6046788 0.9986965 0.01094923 0.8472191
+## [2,] 0.9107439 0.9997830 0.7442789 0.9992397 0.02903942 0.9310561
+## [3,] 0.8431150 0.9997014 0.6749662 0.9992277 0.02814966 0.9474959
+## [4,] 0.8350484 0.9994329 0.5999719 0.9980884 0.01668798 0.8552393
+## [5,] 0.6702704 0.9937269 0.5844871 0.9909600 0.03953052 0.7623200
+## [6,] 0.8925297 0.9993329 0.5585012 0.9956368 0.03301445 0.8603102
+##             [,7]      [,8]
+## [1,] 0.005914587 0.7487637
+## [2,] 0.008458784 0.7939012
+## [3,] 0.011068478 0.8745798
+## [4,] 0.005002875 0.6364086
+## [5,] 0.027691801 0.6893868
+## [6,] 0.005173585 0.4840315
+```
+
+```r
+summary(pred)
+```
+
+```
+##        V1               V2               V3               V4        
+##  Min.   :0.4536   Min.   :0.9673   Min.   :0.2567   Min.   :0.8765  
+##  1st Qu.:0.7391   1st Qu.:0.9964   1st Qu.:0.4953   1st Qu.:0.9888  
+##  Median :0.7948   Median :0.9982   Median :0.5589   Median :0.9945  
+##  Mean   :0.7877   Mean   :0.9972   Mean   :0.5575   Mean   :0.9914  
+##  3rd Qu.:0.8433   3rd Qu.:0.9992   3rd Qu.:0.6204   3rd Qu.:0.9975  
+##  Max.   :0.9626   Max.   :1.0000   Max.   :0.8572   Max.   :0.9999  
+##        V5                  V6               V7                  V8        
+##  Min.   :0.0005083   Min.   :0.5331   Min.   :0.0001153   Min.   :0.1512  
+##  1st Qu.:0.0214519   1st Qu.:0.7956   1st Qu.:0.0070465   1st Qu.:0.5487  
+##  Median :0.0407875   Median :0.8548   Median :0.0135190   Median :0.6568  
+##  Mean   :0.0534568   Mean   :0.8425   Mean   :0.0185353   Mean   :0.6455  
+##  3rd Qu.:0.0718257   3rd Qu.:0.9015   3rd Qu.:0.0251496   3rd Qu.:0.7509  
+##  Max.   :0.3311130   Max.   :0.9886   Max.   :0.1718715   Max.   :0.9729
+```
+These are the probability of successful pirate for each of the 8 rows in the table.
+
+
+```r
+pred_obs <- as_tibble(cbind(eagles, 
+                            mean_prob=colMeans(pred),
+                            low.89=apply(pred, 2, HPDI)[1,],
+                            high.89=apply(pred, 2, HPDI)[2,]
+)) %>%
+  mutate(observed_prob=y/n,
+         pred_success=mean_prob*n,
+         pred_low=low.89*n,
+         pred_high=high.89*n,
+         label=str_c("P: ", P, ", A: ", A, ", V: ", V)) %>%
+  dplyr::select(label, everything())
+pred_obs
+```
+
+```
+## # A tibble: 8 x 13
+##   label     y     n P     A     V     mean_prob  low.89 high.89
+##   <chr> <int> <int> <fct> <fct> <fct>     <dbl>   <dbl>   <dbl>
+## 1 P: L…    17    24 L     A     L        0.788  6.69e-1  0.901 
+## 2 P: L…    29    29 L     A     S        0.997  9.94e-1  1.000 
+## 3 P: L…    17    27 L     I     L        0.558  4.17e-1  0.703 
+## 4 P: L…    20    20 L     I     S        0.991  9.81e-1  1.000 
+## 5 P: S…     1    12 S     A     L        0.0535 6.53e-4  0.109 
+## 6 P: S…    15    16 S     A     S        0.843  7.31e-1  0.955 
+## 7 P: S…     0    28 S     I     L        0.0185 3.20e-4  0.0381
+## 8 P: S…     1     4 S     I     S        0.645  4.22e-1  0.868 
+## # … with 4 more variables: observed_prob <dbl>, pred_success <dbl>,
+## #   pred_low <dbl>, pred_high <dbl>
+```
+
+
+```r
+pred_obs %>%
+  ggplot(aes(x=label)) +
+  geom_pointrange(aes(y=mean_prob, ymin=low.89, ymax=high.89), color="blue", fill="blue") +
+  geom_point(aes(y=observed_prob)) +
+  theme(axis.text.x = element_text(angle=90))
+```
+
+![](Chapter11_files/figure-html/unnamed-chunk-31-1.png)<!-- -->
+
+
+```r
+pred_obs %>%
+  ggplot(aes(x=label)) +
+  geom_pointrange(aes(y=pred_success, ymin=pred_low, ymax=pred_high), color="blue", fill="blue") +
+  geom_point(aes(y=y)) +
+  theme(axis.text.x = element_text(angle=90))
+```
+
+![](Chapter11_files/figure-html/unnamed-chunk-32-1.png)<!-- -->
+
+Overall the fit looks pretty good.  Size of pirate and victim are both pretty importnat; age is less important.
+
+Try with interaction
+
+
+```r
+m10h3stan_int <- ulam(alist(y ~ dbinom(n, p),
+                    logit(p) <- alpha + 
+                      b_pirate_large*pirate_large +
+                      b_pirate_adult*pirate_adult +
+                      b_victim_large*victim_large +
+                      bpsa*pirate_large*pirate_adult,
+                    alpha ~ dnorm(0,10),
+                    c(b_pirate_large, b_pirate_adult, b_victim_large) ~ dnorm(0,5),
+                    bpsa ~ dnorm(0,2.5)),
+              data=eagleslist,
+              chains = 4,
+              cores = 4,
+              iter = 2000,
+              log_lik = TRUE)
+```
+
+
+```r
+precis(m10h3stan_int)
+```
+
+```
+##                     mean        sd      5.5%      94.5%     n_eff     Rhat
+## alpha          -0.481587 0.9779743 -2.113790  1.0037005 1055.2746 1.004794
+## b_victim_large -5.216552 1.1649907 -7.163285 -3.6131459 1394.6153 1.002421
+## b_pirate_adult  2.972590 1.1454467  1.216403  4.8829315  866.6952 1.003420
+## b_pirate_large  6.168537 1.3828670  4.125637  8.5053373  879.5320 1.001457
+## bpsa           -2.408138 1.2406177 -4.424368 -0.4730717  916.7005 1.003078
+```
+
+```r
+pairs(m10h3stan_int)
+```
+
+![](Chapter11_files/figure-html/unnamed-chunk-34-1.png)<!-- -->
+
+
+```r
+compare(m10h3stan, m10h3stan_int)
+```
+
+```
+##                   WAIC    pWAIC   dWAIC     weight       SE      dSE
+## m10h3stan_int 21.93145 2.535442 0.00000 0.98641948 5.801133       NA
+## m10h3stan     30.50234 5.065915 8.57089 0.01358052 7.710244 2.906001
+```
+
+Interaction model fits better.  Lets compare the predictions.
+
+```r
+pred_int <- link(m10h3stan_int)
+head(pred)
+```
+
+```
+##           [,1]      [,2]      [,3]      [,4]       [,5]      [,6]
+## [1,] 0.7399914 0.9992990 0.6046788 0.9986965 0.01094923 0.8472191
+## [2,] 0.9107439 0.9997830 0.7442789 0.9992397 0.02903942 0.9310561
+## [3,] 0.8431150 0.9997014 0.6749662 0.9992277 0.02814966 0.9474959
+## [4,] 0.8350484 0.9994329 0.5999719 0.9980884 0.01668798 0.8552393
+## [5,] 0.6702704 0.9937269 0.5844871 0.9909600 0.03953052 0.7623200
+## [6,] 0.8925297 0.9993329 0.5585012 0.9956368 0.03301445 0.8603102
+##             [,7]      [,8]
+## [1,] 0.005914587 0.7487637
+## [2,] 0.008458784 0.7939012
+## [3,] 0.011068478 0.8745798
+## [4,] 0.005002875 0.6364086
+## [5,] 0.027691801 0.6893868
+## [6,] 0.005173585 0.4840315
+```
+
+```r
+summary(pred)
+```
+
+```
+##        V1               V2               V3               V4        
+##  Min.   :0.4536   Min.   :0.9673   Min.   :0.2567   Min.   :0.8765  
+##  1st Qu.:0.7391   1st Qu.:0.9964   1st Qu.:0.4953   1st Qu.:0.9888  
+##  Median :0.7948   Median :0.9982   Median :0.5589   Median :0.9945  
+##  Mean   :0.7877   Mean   :0.9972   Mean   :0.5575   Mean   :0.9914  
+##  3rd Qu.:0.8433   3rd Qu.:0.9992   3rd Qu.:0.6204   3rd Qu.:0.9975  
+##  Max.   :0.9626   Max.   :1.0000   Max.   :0.8572   Max.   :0.9999  
+##        V5                  V6               V7                  V8        
+##  Min.   :0.0005083   Min.   :0.5331   Min.   :0.0001153   Min.   :0.1512  
+##  1st Qu.:0.0214519   1st Qu.:0.7956   1st Qu.:0.0070465   1st Qu.:0.5487  
+##  Median :0.0407875   Median :0.8548   Median :0.0135190   Median :0.6568  
+##  Mean   :0.0534568   Mean   :0.8425   Mean   :0.0185353   Mean   :0.6455  
+##  3rd Qu.:0.0718257   3rd Qu.:0.9015   3rd Qu.:0.0251496   3rd Qu.:0.7509  
+##  Max.   :0.3311130   Max.   :0.9886   Max.   :0.1718715   Max.   :0.9729
+```
+These are the probability of successful pirate for each of the 8 rows in the table.
+
+
+```r
+pred_obs_int <- as_tibble(cbind(pred_obs, 
+                            mean_prob_int=colMeans(pred_int),
+                            low.89_int=apply(pred_int, 2, HPDI)[1,],
+                            high.89_int=apply(pred_int, 2, HPDI)[2,]
+)) %>%
+  mutate(pred_success_int=mean_prob_int*n,
+         pred_low_int=low.89_int*n,
+         pred_high_int=high.89_int*n)
+pred_obs_int
+```
+
+```
+## # A tibble: 8 x 19
+##   label     y     n P     A     V     mean_prob  low.89 high.89
+##   <chr> <int> <int> <fct> <fct> <fct>     <dbl>   <dbl>   <dbl>
+## 1 P: L…    17    24 L     A     L        0.788  6.69e-1  0.901 
+## 2 P: L…    29    29 L     A     S        0.997  9.94e-1  1.000 
+## 3 P: L…    17    27 L     I     L        0.558  4.17e-1  0.703 
+## 4 P: L…    20    20 L     I     S        0.991  9.81e-1  1.000 
+## 5 P: S…     1    12 S     A     L        0.0535 6.53e-4  0.109 
+## 6 P: S…    15    16 S     A     S        0.843  7.31e-1  0.955 
+## 7 P: S…     0    28 S     I     L        0.0185 3.20e-4  0.0381
+## 8 P: S…     1     4 S     I     S        0.645  4.22e-1  0.868 
+## # … with 10 more variables: observed_prob <dbl>, pred_success <dbl>,
+## #   pred_low <dbl>, pred_high <dbl>, mean_prob_int <dbl>,
+## #   low.89_int <dbl>, high.89_int <dbl>, pred_success_int <dbl>,
+## #   pred_low_int <dbl>, pred_high_int <dbl>
+```
+
+
+```r
+pred_obs_int %>%
+  ggplot(aes(x=label)) +
+  geom_pointrange(aes(y=mean_prob, ymin=low.89, ymax=high.89), color="blue", position = position_nudge(x=-.1)) +
+  geom_pointrange(aes(y=mean_prob_int, ymin=low.89_int, ymax=high.89_int), color="red", position = position_nudge(x=.1)) +
+  geom_point(aes(y=observed_prob)) +
+  theme(axis.text.x = element_text(angle=90))
+```
+
+![](Chapter11_files/figure-html/unnamed-chunk-38-1.png)<!-- -->
+
+
+```r
+pred_obs_int %>%
+  ggplot(aes(x=label)) +
+  geom_pointrange(aes(y=pred_success, ymin=pred_low, ymax=pred_high), color="blue", position = position_nudge(x=-.1)) +
+  geom_pointrange(aes(y=pred_success_int, ymin=pred_low_int, ymax=pred_high_int), color="red", position = position_nudge(x=.1)) +
+  geom_point(aes(y=y)) +
+  theme(axis.text.x = element_text(angle=90))
+```
+
+![](Chapter11_files/figure-html/unnamed-chunk-39-1.png)<!-- -->
+
+Fits better!
+
 ## 10H4
 
 _The data contained in data(salamanders) are counts of salamanders (Plethodon elongatus) from 47 different 49-m2 plots in northern California.  The column SALAMAN is the count in each plot, and the columns PCTCOVER and FORESTAGE are percent of ground cover and age of trees in the plot, respectively. You will model SALAMAN as a Poisson variable._
@@ -626,10 +1012,10 @@ head(salamanders)
 
 
 ```r
-salamanders %>% select(SALAMAN, PCTCOVER, FORESTAGE) %>% ggpairs()
+salamanders %>% dplyr::select(SALAMAN, PCTCOVER, FORESTAGE) %>% ggpairs()
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-24-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-41-1.png)<!-- -->
 
 
 
@@ -650,8 +1036,8 @@ precis(m10h4.1.quap)
 
 ```
 ##               mean        sd      5.5%     94.5%
-## alpha    0.7997914 0.1014376 0.6376745 0.9619082
-## beta_pct 0.6535256 0.1064780 0.4833533 0.8236980
+## alpha    0.7997838 0.1014382 0.6376660 0.9619015
+## beta_pct 0.6535396 0.1064787 0.4833661 0.8237132
 ```
 
 
@@ -673,8 +1059,8 @@ precis(m10h4.1.quap)
 
 ```
 ##               mean        sd      5.5%     94.5%
-## alpha    0.7997914 0.1014376 0.6376745 0.9619082
-## beta_pct 0.6535256 0.1064780 0.4833533 0.8236980
+## alpha    0.7997838 0.1014382 0.6376660 0.9619015
+## beta_pct 0.6535396 0.1064787 0.4833661 0.8237132
 ```
 
 
@@ -683,9 +1069,9 @@ precis(m10h4.1.stan)
 ```
 
 ```
-##               mean        sd      5.5%    94.5%    n_eff     Rhat
-## alpha    0.6681484 0.1205835 0.4605302 0.855159 774.7316 1.004938
-## beta_pct 0.8932997 0.1456481 0.6729482 1.136029 824.7785 1.001921
+##               mean        sd      5.5%     94.5%    n_eff     Rhat
+## alpha    0.6610284 0.1232501 0.4540424 0.8440612 743.9957 1.001986
+## beta_pct 0.9023013 0.1418832 0.6912867 1.1440361 913.8161 1.003632
 ```
 
 somewhat similar
@@ -695,14 +1081,14 @@ somewhat similar
 pairs(m10h4.1.stan)
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-30-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-47-1.png)<!-- -->
 
 ```r
 trankplot(m10h4.1.stan)
 traceplot(m10h4.1.stan)
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-30-2.png)<!-- -->![](Chapter11_files/figure-html/unnamed-chunk-30-3.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-47-2.png)<!-- -->![](Chapter11_files/figure-html/unnamed-chunk-47-3.png)<!-- -->
 
 plot observed and expected
 
@@ -720,12 +1106,12 @@ head(pred_obs)
 ## # A tibble: 6 x 8
 ##    SITE SALAMAN PCTCOVER FORESTAGE pctcover_std[,1]    mu low.89 high.89
 ##   <int>   <int>    <int>     <int>            <dbl> <dbl>  <dbl>   <dbl>
-## 1     1      13       85       316            0.727  3.75   3.21    4.28
-## 2     2      11       86        88            0.755  3.85   3.30    4.40
-## 3     3      11       90       548            0.867  4.25   3.63    4.92
-## 4     4       9       88        64            0.811  4.04   3.47    4.66
-## 5     5       8       89        43            0.839  4.15   3.53    4.76
-## 6     6       7       83       368            0.671  3.57   3.06    4.06
+## 1     1      13       85       316            0.727  3.75   3.25    4.32
+## 2     2      11       86        88            0.755  3.85   3.32    4.42
+## 3     3      11       90       548            0.867  4.26   3.62    4.90
+## 4     4       9       88        64            0.811  4.04   3.43    4.63
+## 5     5       8       89        43            0.839  4.15   3.54    4.77
+## 6     6       7       83       368            0.671  3.56   3.08    4.09
 ```
 
 
@@ -738,7 +1124,7 @@ pred_obs %>%
   geom_pointrange(aes(y=predicted, ymin=low.89, ymax=high.89), color="blue")
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-32-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-49-1.png)<!-- -->
 
 Lots of scatter at high PCTCOVER.
 
@@ -751,7 +1137,7 @@ pred_obs %>%
   geom_point()
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-33-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-50-1.png)<!-- -->
 
 
 _(b) Can you improve the model by using the other predictor, FORESTAGE? Try any models you think useful. Can you explain why FORESTAGE helps or does not help with prediction?_
@@ -778,10 +1164,10 @@ precis(m10h4.2)
 ```
 
 ```
-##                mean         sd       5.5%     94.5%    n_eff      Rhat
-## alpha    0.65390072 0.12003524  0.4593203 0.8418163 1101.500 1.0029776
-## beta_f   0.01777924 0.09579743 -0.1416433 0.1651314 1276.042 0.9994673
-## beta_pct 0.89306800 0.15784466  0.6434353 1.1440172 1018.115 1.0012334
+##               mean         sd       5.5%     94.5%     n_eff      Rhat
+## alpha    0.6593298 0.11965579  0.4659972 0.8419865 1016.3714 1.0005350
+## beta_f   0.0172658 0.09028251 -0.1323880 0.1550326 1335.3071 1.0025495
+## beta_pct 0.8897137 0.15163408  0.6513304 1.1341934  967.3081 0.9990162
 ```
 
 
@@ -789,19 +1175,19 @@ precis(m10h4.2)
 pairs(m10h4.2)
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-36-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-53-1.png)<!-- -->
 
 ```r
 trankplot(m10h4.2)
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-36-2.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-53-2.png)<!-- -->
 
 ```r
 traceplot(m10h4.2)
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-36-3.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-53-3.png)<!-- -->
 
 plot observed and expected
 
@@ -819,15 +1205,15 @@ pred_obs
 ## # A tibble: 47 x 9
 ##     SITE SALAMAN PCTCOVER FORESTAGE pctcover_std[,1] forestage_std[,…    mu
 ##    <int>   <int>    <int>     <int>            <dbl>            <dbl> <dbl>
-##  1     1      13       85       316            0.727            0.761  3.75
-##  2     2      11       86        88            0.755           -0.418  3.78
+##  1     1      13       85       316            0.727            0.761  3.76
+##  2     2      11       86        88            0.755           -0.418  3.79
 ##  3     3      11       90       548            0.867            1.96   4.38
-##  4     4       9       88        64            0.811           -0.542  3.97
-##  5     5       8       89        43            0.839           -0.650  4.07
-##  6     6       7       83       368            0.671            1.03   3.59
-##  7     7       6       83       200            0.671            0.161  3.53
-##  8     8       6       91        71            0.895           -0.505  4.28
-##  9     9       5       88        42            0.811           -0.655  3.96
+##  4     4       9       88        64            0.811           -0.542  3.98
+##  5     5       8       89        43            0.839           -0.650  4.08
+##  6     6       7       83       368            0.671            1.03   3.60
+##  7     7       6       83       200            0.671            0.161  3.54
+##  8     8       6       91        71            0.895           -0.505  4.29
+##  9     9       5       88        42            0.811           -0.655  3.97
 ## 10    10       5       90       551            0.867            1.98   4.38
 ## # … with 37 more rows, and 2 more variables: low.89 <dbl>, high.89 <dbl>
 ```
@@ -842,7 +1228,7 @@ pred_obs %>%
   geom_pointrange(aes(y=predicted, ymin=low.89, ymax=high.89), color="blue")
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-38-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-55-1.png)<!-- -->
 
 
 ```r
@@ -850,9 +1236,9 @@ compare(m10h4.1.stan, m10h4.2)
 ```
 
 ```
-##                  WAIC    pWAIC    dWAIC    weight       SE      dSE
-## m10h4.1.stan 215.0212 3.846960 0.000000 0.8816176 24.47587       NA
-## m10h4.2      219.0368 6.773962 4.015676 0.1183824 25.29934 1.452989
+##                  WAIC    pWAIC    dWAIC   weight       SE      dSE
+## m10h4.1.stan 215.0667 4.055079 0.000000 0.852044 24.58128       NA
+## m10h4.2      218.5682 6.420401 3.501447 0.147956 25.13470 1.219609
 ```
 
 interaction model:
@@ -886,10 +1272,10 @@ precis(m10h4.3)
 
 ```
 ##                  mean        sd        5.5%       94.5%    n_eff     Rhat
-## alpha       0.9080070 0.1880808  0.60741822  1.20403913 393.5606 1.015805
-## beta_pct_f -0.5170528 0.2884790 -0.98543635 -0.07105061 369.3854 1.012130
-## beta_f      0.4199057 0.2438022  0.03573056  0.80979773 356.5620 1.014765
-## beta_pct    0.5859567 0.2346886  0.20437666  0.95389616 358.6015 1.017234
+## alpha       0.9107869 0.1821801  0.62454831  1.19990467 388.1683 1.004211
+## beta_pct_f -0.5088073 0.2708950 -0.94385352 -0.07895737 370.0958 1.001334
+## beta_f      0.4156641 0.2315581  0.05218414  0.79801988 360.4152 1.002120
+## beta_pct    0.5838703 0.2367277  0.20434173  0.95797008 372.1728 1.002778
 ```
 
 
@@ -897,14 +1283,14 @@ precis(m10h4.3)
 pairs(m10h4.3)
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-42-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-59-1.png)<!-- -->
 
 ```r
 trankplot(m10h4.3)
 traceplot(m10h4.3)
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-42-2.png)<!-- -->![](Chapter11_files/figure-html/unnamed-chunk-42-3.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-59-2.png)<!-- -->![](Chapter11_files/figure-html/unnamed-chunk-59-3.png)<!-- -->
 
 plot observed and expected
 
@@ -924,14 +1310,14 @@ pred_obs
 ##    <int>   <int>    <int>     <int>            <dbl>            <dbl> <dbl>
 ##  1     1      13       85       316            0.727            0.761  3.95
 ##  2     2      11       86        88            0.755           -0.418  3.84
-##  3     3      11       90       548            0.867            1.96   3.96
+##  3     3      11       90       548            0.867            1.96   3.99
 ##  4     4       9       88        64            0.811           -0.542  4.02
 ##  5     5       8       89        43            0.839           -0.650  4.13
-##  6     6       7       83       368            0.671            1.03   3.99
+##  6     6       7       83       368            0.671            1.03   4.00
 ##  7     7       6       83       200            0.671            0.161  3.74
 ##  8     8       6       91        71            0.895           -0.505  4.32
 ##  9     9       5       88        42            0.811           -0.655  4.03
-## 10    10       5       90       551            0.867            1.98   3.95
+## 10    10       5       90       551            0.867            1.98   3.99
 ## # … with 37 more rows, and 2 more variables: low.89 <dbl>, high.89 <dbl>
 ```
 
@@ -945,7 +1331,7 @@ pred_obs %>%
   geom_pointrange(aes(y=predicted, ymin=low.89, ymax=high.89), color="blue")
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-44-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-61-1.png)<!-- -->
 
 
 ```r
@@ -953,9 +1339,9 @@ compare(m10h4.1.stan, m10h4.2)
 ```
 
 ```
-##                  WAIC    pWAIC    dWAIC    weight       SE      dSE
-## m10h4.1.stan 215.0212 3.846960 0.000000 0.8816176 24.47587       NA
-## m10h4.2      219.0368 6.773962 4.015676 0.1183824 25.29934 1.452989
+##                  WAIC    pWAIC    dWAIC   weight       SE      dSE
+## m10h4.1.stan 215.0667 4.055079 0.000000 0.852044 24.58128       NA
+## m10h4.2      218.5682 6.420401 3.501447 0.147956 25.13470 1.219609
 ```
 
 ## Week6 PDF # 3 
@@ -970,7 +1356,7 @@ _First, model the number of observations of social_learning for each species as 
 ```r
 data("Primates301")
 p <- Primates301 %>% 
-  select(genus, species, social_learning, brain, research_effort) %>%
+  dplyr::select(genus, species, social_learning, brain, research_effort) %>%
   mutate(l_brain_std = scale(log(brain)),
          l_research_effort_std = scale(log(research_effort)),
          gen_spec = str_c(genus, "_", species)) %>%
@@ -1008,7 +1394,7 @@ head(p)
 
 ```r
 p %>%
-  select(social_learning, l_brain_std, l_research_effort_std) %>%
+  dplyr::select(social_learning, l_brain_std, l_research_effort_std) %>%
   ggpairs()
 ```
 
@@ -1023,7 +1409,7 @@ p %>%
 ## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-47-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-64-1.png)<!-- -->
 
 
 ```r
@@ -1046,15 +1432,21 @@ m3 <- ulam(
 ## http://mc-stan.org/misc/warnings.html#bulk-ess
 ```
 
+```
+## Warning: Tail Effective Samples Size (ESS) is too low, indicating posterior variances and tail quantiles may be unreliable.
+## Running the chains for more iterations may help. See
+## http://mc-stan.org/misc/warnings.html#tail-ess
+```
+
 
 ```r
 precis(m3)
 ```
 
 ```
-##                 mean         sd      5.5%      94.5%    n_eff     Rhat
-## alpha      -1.053739 0.11178253 -1.236772 -0.8751897 370.6354 1.010051
-## beta_brain  2.710217 0.07354519  2.591235  2.8286189 355.5379 1.011461
+##                 mean        sd      5.5%      94.5%    n_eff     Rhat
+## alpha      -1.046116 0.1112733 -1.223817 -0.8678478 359.6889 1.007003
+## beta_brain  2.704313 0.0745816  2.583570  2.8220920 351.7492 1.005476
 ```
 
 each std deviation increase in log brain size causes a 14.8797317 fold increase in social learning
@@ -1064,14 +1456,14 @@ each std deviation increase in log brain size causes a 14.8797317 fold increase 
 pairs(m3)
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-50-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-67-1.png)<!-- -->
 
 ```r
 trankplot(m3)
 traceplot(m3)
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-50-2.png)<!-- -->![](Chapter11_files/figure-html/unnamed-chunk-50-3.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-67-2.png)<!-- -->![](Chapter11_files/figure-html/unnamed-chunk-67-3.png)<!-- -->
 
 
 ```r
@@ -1092,7 +1484,7 @@ pred_obs %>%
   scale_x_log10()
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-52-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-69-1.png)<!-- -->
 
 
 _Second, some species are studied much more than others. So the number of reported instances of social_learning could be a product of research effort. Use the research_effort variable, specifically its logarithm, as an additional predictor variable. Interpret the coefficient for log research_effort. Does this model disagree with the previous one?_
@@ -1120,9 +1512,9 @@ precis(m3.2)
 
 ```
 ##                  mean         sd       5.5%      94.5%    n_eff     Rhat
-## alpha      -1.5756558 0.13865020 -1.8040054 -1.3646796 747.8917 1.002623
-## beta_brain  0.4509311 0.08228079  0.3246575  0.5803572 656.6966 1.002026
-## beta_r      1.9510119 0.08217136  1.8190257  2.0883603 608.8215 1.001842
+## alpha      -1.5729360 0.13698835 -1.7930772 -1.3516361 745.0240 1.002845
+## beta_brain  0.4533455 0.07939778  0.3250634  0.5785741 792.4698 1.004110
+## beta_r      1.9475900 0.07980390  1.8169763  2.0717989 702.4556 1.000889
 ```
 
 The brain size effect is now much smaller, and research effort has a large effect
@@ -1137,19 +1529,19 @@ each std deviation increase in log research effort is associated with a 6.958751
 pairs(m3.2)
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-55-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-72-1.png)<!-- -->
 
 ```r
 trankplot(m3.2)
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-55-2.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-72-2.png)<!-- -->
 
 ```r
 traceplot(m3.2)
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-55-3.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-72-3.png)<!-- -->
 
 
 ```r
@@ -1170,7 +1562,7 @@ pred_obs %>%
   scale_x_log10()
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-57-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-74-1.png)<!-- -->
 
 
 ```r
@@ -1181,7 +1573,7 @@ pred_obs %>%
   scale_x_log10()
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-58-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-75-1.png)<!-- -->
 
 
 ```r
@@ -1196,7 +1588,7 @@ pred_obs %>%
 ## Warning: Transformation introduced infinite values in continuous x-axis
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-59-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-76-1.png)<!-- -->
 
 
 _Third, draw a DAG to represent how you think the variables social_learning, brain, and research_effort interact. Justify the DAG with the measured associations in the two models above (and any other models you used)._
@@ -1215,6 +1607,6 @@ coordinates(g) <- list(x=c(brain_size=1, learning=1, research=2),
 plot(g)
 ```
 
-![](Chapter11_files/figure-html/unnamed-chunk-60-1.png)<!-- -->
+![](Chapter11_files/figure-html/unnamed-chunk-77-1.png)<!-- -->
 
 
