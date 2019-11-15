@@ -149,20 +149,152 @@ While model h1.2 shows strong support for a non-zero beta (effect of feminity), 
 
 _Counts are nearly always over-dispersed relative to Poisson. So fit a gamma-Poisson (aka negative-binomial) model to predict deaths using femininity. Show that the over-dispersed model no longer shows as precise a positive association between femininity and deaths, with an 89% interval that overlaps zero. Can you explain why the association diminished in strength?_
 
+```{r}
+mh2 <- ulam(alist( 
+  deaths ~ dgampois(lambda, phi),
+  log(lambda) <- alpha + b*femininity,
+  alpha ~ dnorm(3, .5),
+  b ~ dnorm(0, 0.2),
+  phi ~ dexp(1)),
+  data=Hurricanes,
+  chains = 4,
+  cores = 4,
+  log_lik = TRUE)
+```
+
+```{r}
+traceplot(mh2)
+trankplot(mh2)
+pairs(mh2)
+```
+
+```{r}
+precis(mh2)
+```
+
+Now we are much less certain about `b` being positive.  The support interval crosses 0.
+
+
 ## 11H6
 
-_The data in data(Fish) are records of visits to a national park. See ?Fish for details. The question of interest is how many fish an average visitor takes per hour, when fishing. The problem is that not everyone tried to fish, so the fish_caught numbers are zero-inflated. As with the monks example in the chapter, there is a process that determines who is fishing (working) and another pro- cess that determines fish per hour (manuscripts per day), conditional on fishing (working). We want to model both. Otherwise we’ll end up with an underestimate of rate of fish extraction from the park._
+_The data in data(Fish) are records of visits to a national park. See ?Fish for details. The question of interest is how many fish an average visitor takes per hour, when fishing. The problem is that not everyone tried to fish, so the fish_caught numbers are zero-inflated. As with the monks example in the chapter, there is a process that determines who is fishing (working) and another process that determines fish per hour (manuscripts per day), conditional on fishing (working). We want to model both. Otherwise we’ll end up with an underestimate of rate of fish extraction from the park._
 
 _You will model these data using zero-inflated Poisson GLMs. Predict fish_caught as a function of any of the other variables you think are relevant. One thing you must do, however, is use a proper Poisson offset/exposure in the Poisson portion of the zero-inflated model. Then use the hours variable to construct the offset. This will adjust the model for the differing amount of time individuals spent in the park._
+
+```{r}
+data(Fish)
+?Fish
+head(Fish)
+summary(Fish)
+```
+
+Livebait could be important as could child, and, of course, persons.  If I am including children then persons should get split into adults, because otherwise children are getting counted twice.
+
+First fit this without ZI:
+
+```{r}
+f <- Fish
+f$log_hours <- log(f$hours)
+f$adults <- f$persons - f$child
+mh6.1 <- ulam(alist(
+  fish_caught ~ dpois(lambda),
+  log(lambda) <- log_hours + a + bLive*livebait + bAdult*adults + bChild*child,
+  a ~ dnorm(3, .5),
+  c(bLive, bAdult, bChild) ~ dnorm(0, .5)),
+  data = f,
+  chains = 4,
+  cores = 4,
+  log_lik = TRUE)
+```
+
+```{r}
+traceplot(mh6.1)
+trankplot(mh6.1)
+pairs(mh6.1)
+```
+
+```{r}
+precis(mh6.1)
+```
+
+
+Now the zero inflated
+```{r}
+mh6.2 <- ulam(alist(
+  fish_caught ~ dzipois(p, lambda),
+  logit(p) <- ap,
+  log(lambda) <- log_hours + a + bLive*livebait + bAdult*adults + bChild*child,
+  ap ~ dnorm(0, 1.5),
+  a ~ dnorm(3, .5),
+  c(bLive, bAdult, bChild) ~ dnorm(0, .5)),
+  data = f,
+  chains = 4,
+  cores = 4,
+  log_lik = TRUE)
+```
+
+```{r}
+traceplot(mh6.2)
+trankplot(mh6.2)
+pairs(mh6.2)
+```
+```{r}
+precis(mh6.1)
+```
+
+
+```{r}
+precis(mh6.2)
+```
+
+```{r}
+inv_logit(-1.07) # estimate 25% of parties don't fish
+exp(-2.45) # average fish caught per hour at intercept condition.  Hmm this should be 0.  Center predictors?
+exp(-2.45+.57) # acerage fish caught per hour by adult
+```
+
+Let's look at predictions
+
+```{r}
+pred1 <- link(mh6.1)
+pred2 <- link(mh6.2)
+pred2_fish <- pred2$lambda*pred2$p[,1] # have to multiple fishing success by probability of fishing
+pred_obs <- as_tibble(
+  cbind(f, 
+        pred1=colMeans(pred1),
+        pred2=colMeans(pred2_fish),
+        low.89.1=apply(pred1,2,HPDI)[1,],
+        high.89.1=apply(pred1,2,HPDI)[2,],
+        low.89.2=apply(pred2_fish,2,HPDI)[1,],
+        high.89.2=apply(pred2_fish,2,HPDI)[2,]))
+head(pred_obs)
+```
+
+```{r}
+pl <- pred_obs %>% 
+  select(fish_caught, ends_with("1"), ends_with("2")) %>%
+  gather(key="model", value="predicted", pred1, pred2) %>%
+  ggplot(aes(x=fish_caught, y=predicted, color=model)) +
+  geom_point(alpha=.5) +
+  geom_abline(intercept=0, slope=1) +
+  coord_fixed() +
+  facet_wrap(~model)
+pl
+```
+
+```{r}
+pl + coord_cartesian(xlim=c(0,50))
+```
+
+```{r}
+f %>% arrange(desc(fish_caught)) %>% head(20)
+```
 
 
 # Book Code
 
-```{r setup2, include=FALSE}
-knitr::opts_chunk$set(eval = FALSE)
-```
 
-```{r}
+```{r, eval=FALSE}
 ## R code 12.1
 pbar <- 0.5
 theta <- 5
@@ -171,7 +303,7 @@ curve( dbeta2(x,pbar,theta) , from=0 , to=1 ,
 ```
 
 
-```{r}
+```{r, eval=FALSE}
 ## R code 12.2
 library(rethinking)
 data(UCBadmit)
@@ -188,7 +320,7 @@ m12.1 <- ulam(
 ```
 
 
-```{r}
+```{r, eval=FALSE}
 ## R code 12.3
 post <- extract.samples( m12.1 )
 post$da <- post$a[,1] - post$a[,2]
@@ -196,7 +328,7 @@ precis( post , depth=2 )
 ```
 
 
-```{r}
+```{r, eval=FALSE}
 ## R code 12.4
 gid <- 2
 # draw posterior mean beta distribution
@@ -213,13 +345,13 @@ mtext( "distribution of female admission rates" )
 ```
 
 
-```{r}
+```{r, eval=FALSE}
 ## R code 12.5
-postcheck( m12.1 )
+#postcheck( m12.1 )
 ```
 
 
-```{r}
+```{r, eval=FALSE}
 ## R code 12.6
 library(rethinking)
 data(Kline)
@@ -244,7 +376,7 @@ m12.3 <- ulam(
 ```
 
 
-```{r}
+```{r, eval=FALSE}
 ## R code 12.7
 # define parameters
 prob_drink <- 0.2 # 20% of days
@@ -262,7 +394,7 @@ y <- (1-drink)*rpois( N , rate_work )
 ```
 
 
-```{r}
+```{r, eval=FALSE}
 ## R code 12.8
 simplehist( y , xlab="manuscripts completed" , lwd=4 )
 zeros_drink <- sum(drink)
@@ -272,7 +404,7 @@ lines( c(0,0) , c(zeros_work,zeros_total) , lwd=4 , col=rangi2 )
 ```
 
 
-```{r}
+```{r, eval=FALSE}
 ## R code 12.9
 m12.4 <- ulam(
   alist(
@@ -286,7 +418,7 @@ precis( m12.4 )
 ```
 
 
-```{r}
+```{r, eval=FALSE}
 ## R code 12.10
 inv_logit(-1.28) # probability drink
 exp(0.01)       # rate finish manuscripts, when not drinking
@@ -304,7 +436,7 @@ m12.4_alt <- ulam(
 ```
 
 
-```{r}
+```{r, eval=FALSE}
 ## R code 12.12
 library(rethinking)
 data(Trolley)
