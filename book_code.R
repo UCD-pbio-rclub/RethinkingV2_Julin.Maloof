@@ -3072,7 +3072,7 @@ dat <- list(
     intention = d$intention,
     contact = d$contact,
     E = as.integer( d$edu_new ), # edu_new as an index
-    alpha = rep(2,7) )           # delta prior
+    alpha = rep(2.1,7) )           # delta prior
 
 m12.5 <- ulam(
     alist(
@@ -3096,7 +3096,7 @@ pairs( m12.5 , pars="delta" , labels=delta_labels )
 dat$edu_norm <- normalize( d$edu_new )
 m12.6 <- ulam(
     alist(
-        y ~ ordered_logistic( mu , cutpoints ),
+        R ~ ordered_logistic( mu , cutpoints ),
         mu <- bE*edu_norm + bA*action + bI*intention + bC*contact,
         c(bA,bI,bC,bE) ~ normal( 0 , 1 ),
         cutpoints ~ normal( 0 , 1.5 )

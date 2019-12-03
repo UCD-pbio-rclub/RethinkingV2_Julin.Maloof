@@ -441,10 +441,16 @@ m12.4_alt <- ulam(
 library(rethinking)
 data(Trolley)
 d <- Trolley
+```
 
+
+```{r, eval=FALSE}
 ## R code 12.13
 simplehist( d$response , xlim=c(1,7) , xlab="response" )
+```
 
+
+```{r, eval=FALSE}
 ## R code 12.14
 # discrete proportion of each response value
 pr_k <- table( d$response ) / nrow(d)
@@ -455,19 +461,28 @@ cum_pr_k <- cumsum( pr_k )
 # plot
 plot( 1:7 , cum_pr_k , type="b" , xlab="response" ,
       ylab="cumulative proportion" , ylim=c(0,1) )
+```
 
+
+```{r, eval=FALSE}
 ## R code 12.15
 logit <- function(x) log(x/(1-x)) # convenience function
 ( lco <- logit( cum_pr_k ) )
+```
 
+
+```{r, eval=FALSE}
 ## R code 12.16
 m12.5 <- ulam(
   alist(
     R ~ dordlogit( 0 , cutpoints ),
     cutpoints ~ dnorm( 0 , 1.5 )
   ) ,
-  data=list( R=d$response ), chains=4 , cores=3 )
+  data=list( R=d$response ), chains=4 , cores=4 )
+```
 
+
+```{r, eval=FALSE}
 ## R code 12.17
 m12.5q <- quap(
   alist(
@@ -475,25 +490,46 @@ m12.5q <- quap(
     c(a1,a2,a3,a4,a5,a6) ~ dnorm( 0 , 1.5 )
   ) , data=d ,
   start=list(a1=-2,a2=-1,a3=0,a4=1,a5=2,a6=2.5) )
+```
 
+
+```{r, eval=FALSE}
 ## R code 12.18
 precis( m12.5 , depth=2 )
+```
 
+
+```{r, eval=FALSE}
 ## R code 12.19
 inv_logit(coef(m12.5))
+```
 
+
+```{r, eval=FALSE}
 ## R code 12.20
 ( pk <- dordlogit( 1:7 , 0 , coef(m12.5) ) )
+```
 
+
+```{r, eval=FALSE}
 ## R code 12.21
 sum( pk*(1:7) )
+```
 
+
+```{r, eval=FALSE}
 ## R code 12.22
 ( pk <- dordlogit( 1:7 , 0 , coef(m12.5)-0.5 ) )
+```
 
+
+```{r, eval=FALSE}
 ## R code 12.23
 sum( pk*(1:7) )
+```
 
+
+```{r, eval=FALSE}
 ## R code 12.24
 dat <- list(
   R = d$response,
@@ -509,10 +545,16 @@ m12.6 <- ulam(
     cutpoints ~ dnorm( 0 , 1.5 )
   ) , data=dat , chains=4 , cores=4 )
 precis( m12.6 )
+```
 
+
+```{r, eval=FALSE}
 ## R code 12.25
 plot( precis(m12.6) , xlim=c(-1.4,0) )
+```
 
+
+```{r, eval=FALSE}
 ## R code 12.26
 plot( NULL , type="n" , xlab="intention" , ylab="probability" ,
       xlim=c(0,1) , ylim=c(0,1) , xaxp=c(0,1,1) , yaxp=c(0,1,2) )
@@ -530,7 +572,10 @@ for ( s in 1:50 ) {
   pk <- pordlogit( 1:6 , phi[s,] , post$cutpoints[s,] )
   for ( i in 1:6 ) lines( kI , pk[,i] , col=col.alpha("black",0.1) )
 }
+```
 
+
+```{r, eval=FALSE}
 ## R code 12.29
 kA <- 0     # value for action
 kC <- 1     # value for contact
@@ -538,30 +583,45 @@ kI <- 0:1   # values of intention to calculate over
 pdat <- data.frame(A=kA,C=kC,I=kI)
 s <- sim( m12.6 , data=pdat )
 simplehist( s , xlab="response" )
+```
 
+
+```{r, eval=FALSE}
 ## R code 12.30
 library(rethinking)
 data(Trolley)
 d <- Trolley
 levels(d$edu)
+```
 
+
+```{r, eval=FALSE}
 ## R code 12.31
 edu_levels <- c( 6 , 1 , 8 , 4 , 7 , 2 , 5 , 3 )
 d$edu_new <- edu_levels[ d$edu ]
+```
 
+
+```{r, eval=FALSE}
 ## R code 12.32
 library(gtools)
 set.seed(1805)
 delta <- rdirichlet( 10 , alpha=rep(2,7) )
 str(delta)
+```
 
+
+```{r, eval=FALSE}
 ## R code 12.33
 h <- 3
 plot( NULL , xlim=c(1,7) , ylim=c(0,0.4) , xlab="index" , ylab="probability" )
 for ( i in 1:nrow(delta) ) lines( 1:7 , delta[i,] , type="b" ,
                                   pch=ifelse(i==h,16,1) , lwd=ifelse(i==h,4,1.5) ,
                                   col=ifelse(i==h,"black",col.alpha("black",0.7)) )
+```
 
+
+```{r, eval=FALSE}
 ## R code 12.34
 dat <- list(
   R = d$response ,
@@ -581,14 +641,23 @@ m12.5 <- ulam(
     simplex[7]: delta ~ dirichlet( alpha )
   ),
   data=dat , chains=3 , cores=3 )
+```
 
+
+```{r, eval=FALSE}
 ## R code 12.35
 precis( m12.5 , depth=2 , omit="cutpoints" )
+```
 
+
+```{r, eval=FALSE}
 ## R code 12.36
 delta_labels <- c("Elem","MidSch","SHS","HSG","SCol","Bach","Mast","Grad")
 pairs( m12.5 , pars="delta" , labels=delta_labels )
+```
 
+
+```{r, eval=FALSE}
 ## R code 12.37
 dat$edu_norm <- normalize( d$edu_new )
 m12.6 <- ulam(
@@ -599,10 +668,5 @@ m12.6 <- ulam(
     cutpoints ~ normal( 0 , 1.5 )
   ), data=dat , chains=3 , cores=3 )
 precis( m12.6 )
-
-## R code 12.38
-library(rethinking)
-data(Hurricanes)
-
 ```
 
