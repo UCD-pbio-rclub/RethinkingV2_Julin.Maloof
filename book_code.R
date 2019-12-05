@@ -314,8 +314,8 @@ dens( sample.mu )
 dens( sample.sigma )
 
 ## R code 4.22
-HPDI( sample.mu )
-HPDI( sample.sigma )
+PI( sample.mu )
+PI( sample.sigma )
 
 ## R code 4.23
 d3 <- sample( d2$height , size=20 )
@@ -451,7 +451,7 @@ m4.3b <- quap(
     alist(
         height ~ dnorm( mu , sigma ) ,
         mu <- a + exp(log_b)*( weight - xbar ),
-        a ~ dnorm( 178 , 100 ) ,
+        a ~ dnorm( 178 , 20 ) ,
         log_b ~ dnorm( 0 , 1 ) ,
         sigma ~ dunif( 0 , 50 )
     ) ,
@@ -556,7 +556,7 @@ mu.link <- function(weight) post$a + post$b*( weight - xbar )
 weight.seq <- seq( from=25 , to=70 , by=1 )
 mu <- sapply( weight.seq , mu.link )
 mu.mean <- apply( mu , 2 , mean )
-mu.HPDI <- apply( mu , 2 , HPDI , prob=0.89 )
+mu.CI <- apply( mu , 2 , PI , prob=0.89 )
 
 ## R code 4.59
 sim.height <- sim( m4.3 , data=list(weight=weight.seq) )
@@ -768,7 +768,6 @@ m5.2 <- quap(
     ) , data = d )
 
 ## R code 5.7
-install.packages('dagitty')
 library(dagitty)
 dag5.1 <- dagitty( "dag {
     A -> D
@@ -776,9 +775,17 @@ dag5.1 <- dagitty( "dag {
     M -> D
 }")
 coordinates(dag5.1) <- list( x=c(A=0,D=1,M=2) , y=c(A=0,D=1,M=0) )
-plot( dag5.1 )
+drawdag( dag5.1 )
 
 ## R code 5.8
+DMA_dag2 <- dagitty('dag{ D <- A -> M }')
+impliedConditionalIndependencies( DMA_dag2 )
+
+## R code 5.9
+DMA_dag1 <- dagitty('dag{ D <- A -> M -> D }')
+impliedConditionalIndependencies( DMA_dag1 )
+
+## R code 5.10
 m5.3 <- quap(
     alist(
         D ~ dnorm( mu , sigma ) ,
@@ -790,16 +797,16 @@ m5.3 <- quap(
     ) , data = d )
 precis( m5.3 )
 
-## R code 5.9
+## R code 5.11
 plot( coeftab(m5.1,m5.2,m5.3), par=c("bA","bM") )
 
-## R code 5.10
+## R code 5.12
 N <- 50 # number of simulated States
 age <- rnorm( N )        # sim A
-mar <- rnorm( N , age )  # sim A -> M
+mar <- rnorm( N , -age )  # sim A -> M
 div <- rnorm( N , age )  # sim A -> D
 
-## R code 5.11
+## R code 5.13
 m5.4 <- quap(
     alist(
         M ~ dnorm( mu , sigma ) ,
@@ -809,33 +816,12 @@ m5.4 <- quap(
         sigma ~ dexp( 1 )
     ) , data = d )
 
-## R code 5.12
+## R code 5.14
 mu <- link(m5.4)
 mu_mean <- apply( mu , 2 , mean )
 mu_resid <- d$M - mu_mean
 
-## R code 5.13
-# prepare new counterfactual data
-M_seq <- seq( from=-2 , to=3 , length.out=30 )
-pred_data <- data.frame( M = M_seq , A = 0 )
-
-# compute counterfactual mean divorce (mu)
-mu <- link( m5.3 , data=pred_data )
-mu_mean <- apply( mu , 2 , mean )
-mu_PI <- apply( mu , 2 , PI )
-
-# simulate counterfactual divorce outcomes
-D_sim <- sim( m5.3 , data=pred_data , n=1e4 )
-D_PI <- apply( D_sim , 2 , PI )
-
-# display predictions, hiding raw data with type="n"
-plot( D ~ M , data=d , type="n" )
-mtext( "Median age marriage (std) = 0" )
-lines( M_seq , mu_mean )
-shade( mu_PI , M_seq )
-shade( D_PI , M_seq )
-
-## R code 5.14
+## R code 5.15
 # call link without specifying new data
 # so it uses original data
 mu <- link( m5.3 )
@@ -849,34 +835,96 @@ mu_PI <- apply( mu , 2 , PI )
 D_sim <- sim( m5.3 , n=1e4 )
 D_PI <- apply( D_sim , 2 , PI )
 
-## R code 5.15
+## R code 5.16
 plot( mu_mean ~ d$D , col=rangi2 , ylim=range(mu_PI) ,
     xlab="Observed divorce" , ylab="Predicted divorce" )
 abline( a=0 , b=1 , lty=2 )
 for ( i in 1:nrow(d) ) lines( rep(d$D[i],2) , mu_PI[,i] , col=rangi2 )
 
-## R code 5.16
+## R code 5.17
 identify( x=d$D , y=mu_mean , labels=d$Loc )
 
-## R code 5.17
+## R code 5.18
 N <- 100                         # number of cases
 x_real <- rnorm( N )             # x_real as Gaussian with mean 0 and stddev 1
 x_spur <- rnorm( N , x_real )    # x_spur as Gaussian with mean=x_real
 y <- rnorm( N , x_real )         # y as Gaussian with mean=x_real
 d <- data.frame(y,x_real,x_spur) # bind all together in data frame
 
-## R code 5.18
+## R code 5.19
+data(WaffleDivorce)
+d <- list()
+d$A <- standardize( WaffleDivorce$MedianAgeMarriage )
+d$D <- standardize( WaffleDivorce$Divorce )
+d$M <- standardize( WaffleDivorce$Marriage )
+
+m5.3_A <- quap(
+    alist(
+      ## A -> D <- M
+        D ~ dnorm( mu , sigma ) ,
+        mu <- a + bM*M + bA*A ,
+        a ~ dnorm( 0 , 0.2 ) ,
+        bM ~ dnorm( 0 , 0.5 ) ,
+        bA ~ dnorm( 0 , 0.5 ) ,
+        sigma ~ dexp( 1 ),
+      ## A -> M
+        M ~ dnorm( mu_M , sigma_M ),
+        mu_M <- aM + bAM*A,
+        aM ~ dnorm( 0 , 0.2 ),
+        bAM ~ dnorm( 0 , 0.5 ),
+        sigma_M ~ dexp( 1 )
+    ) , data = d )
+
+## R code 5.20
+A_seq <- seq( from=-2 , to=2 , length.out=30 )
+
+## R code 5.21
+# prep data
+sim_dat <- data.frame( A=A_seq )
+
+# simulate M and then D, using A_seq
+s <- sim( m5.3_A , data=sim_dat , vars=c("M","D") )
+
+## R code 5.22
+# display counterfactual predictions
+plot( sim_dat$A , colMeans(s$D) , ylim=c(-2,2) , type="l" ,
+    xlab="manipulated A" , ylab="counterfactual D"  )
+shade( apply(s$D,2,PI) , sim_dat$A )
+mtext( "Total counterfactual effect of A on D" )
+
+## R code 5.23
+sim_dat <- data.frame( M=seq(from=-2,to=2,length.out=30) , A=0 )
+s <- sim( m5.3_A , data=sim_dat , vars="D" )
+
+plot( sim_dat$M , colMeans(s) , ylim=c(-2,2) , type="l" ,
+    xlab="manipulated M" , ylab="counterfactual D"  )
+shade( apply(s,2,PI) , sim_dat$M )
+mtext( "Total counterfactual effect of M on D" )
+
+## R code 5.24
+A_seq <- seq( from=-2 , to=2 , length.out=30 )
+
+## R code 5.25
+post <- extract.samples( m5.3\_A )
+M_sim <- with( post , sapply( 1:30 ,
+    function(i) rnorm( 1e3 , aM + bAM*A_seq[i] , sigma_M ) ) )
+
+## R code 5.26
+D_sim <- with( post , sapply( 1:30 ,
+    function(i) rnorm( 1e3 , a + bA*A_seq[i] + bM*M_sim[,i] , sigma ) ) )
+
+## R code 5.27
 library(rethinking)
 data(milk)
 d <- milk
 str(d)
 
-## R code 5.19
+## R code 5.28
 d$K <- scale( d$kcal.per.g )
 d$N <- scale( d$neocortex.perc )
 d$M <- scale( log(d$mass) )
 
-## R code 5.20
+## R code 5.29
 m5.5_draft <- quap(
     alist(
         K ~ dnorm( mu , sigma ) ,
@@ -886,13 +934,13 @@ m5.5_draft <- quap(
         sigma ~ dexp( 1 )
     ) , data=d )
 
-## R code 5.21
+## R code 5.30
 d$neocortex.perc
 
-## R code 5.22
+## R code 5.31
 dcc <- d[ complete.cases(d$K,d$N,d$M) , ]
 
-## R code 5.23
+## R code 5.32
 m5.5_draft <- quap(
     alist(
         K ~ dnorm( mu , sigma ) ,
@@ -902,14 +950,14 @@ m5.5_draft <- quap(
         sigma ~ dexp( 1 )
     ) , data=dcc )
 
-## R code 5.24
+## R code 5.33
 prior <- extract.prior( m5.5_draft )
 xseq <- c(-2,2)
 mu <- link( m5.5_draft , post=prior , data=list(N=xseq) )
 plot( NULL , xlim=xseq , ylim=xseq )
 for ( i in 1:50 ) lines( xseq , mu[i,] , col=col.alpha("black",0.3) )
 
-## R code 5.25
+## R code 5.34
 m5.5 <- quap(
     alist(
         K ~ dnorm( mu , sigma ) ,
@@ -919,10 +967,10 @@ m5.5 <- quap(
         sigma ~ dexp( 1 )
     ) , data=dcc )
 
-## R code 5.26
+## R code 5.35
 precis( m5.5 )
 
-## R code 5.27
+## R code 5.36
 xseq <- seq( from=min(dcc$N)-0.15 , to=max(dcc$N)+0.15 , length.out=30 )
 mu <- link( m5.5 , data=list(N=xseq) )
 mu_mean <- apply(mu,2,mean)
@@ -931,7 +979,7 @@ plot( K ~ N , data=dcc )
 lines( xseq , mu_mean , lwd=2 )
 shade( mu_PI , xseq )
 
-## R code 5.28
+## R code 5.37
 m5.6 <- quap(
     alist(
         K ~ dnorm( mu , sigma ) ,
@@ -942,7 +990,7 @@ m5.6 <- quap(
     ) , data=dcc )
 precis(m5.6)
 
-## R code 5.29
+## R code 5.38
 m5.7 <- quap(
     alist(
         K ~ dnorm( mu , sigma ) ,
@@ -954,10 +1002,10 @@ m5.7 <- quap(
     ) , data=dcc )
 precis(m5.7)
 
-## R code 5.30
+## R code 5.39
 plot( coeftab( m5.5 , m5.6 , m5.7 ) , pars=c("bM","bN") )
 
-## R code 5.31
+## R code 5.40
 xseq <- seq( from=min(dcc$M)-0.15 , to=max(dcc$M)+0.15 , length.out=30 )
 mu <- link( m5.7 , data=data.frame( M=xseq , N=0 ) )
 mu_mean <- apply(mu,2,mean)
@@ -966,7 +1014,7 @@ plot( NULL , xlim=range(dcc$M) , ylim=range(dcc$K) )
 lines( xseq , mu_mean , lwd=2 )
 shade( mu_PI , xseq )
 
-## R code 5.32
+## R code 5.41
 # M -> K <- N
 # M -> N
 n <- 100
@@ -975,7 +1023,7 @@ N <- rnorm( n , M )
 K <- rnorm( n , N - M )
 d_sim <- data.frame(K=K,N=N,M=M)
 
-## R code 5.33
+## R code 5.42
 # M -> K <- N
 # N -> M
 n <- 100
@@ -993,21 +1041,28 @@ M <- rnorm( n , U )
 K <- rnorm( n , N - M )
 d_sim3 <- data.frame(K=K,N=N,M=M)
 
-## R code 5.34
+## R code 5.43
+dag5.7 <- dagitty( "dag{
+    M -> K <- N
+    M -> N }" )
+coordinates(dag5.7) <- list( x=c(M=0,K=1,N=2) , y=c(M=0.5,K=1,N=0.5) )
+MElist <- equivalentDAGs(dag5.7)
+
+## R code 5.44
 data(Howell1)
 d <- Howell1
 str(d)
 
-## R code 5.35
+## R code 5.45
 mu_female <- rnorm(1e4,178,20)
 mu_male <- rnorm(1e4,178,20) + rnorm(1e4,0,10)
 precis( data.frame( mu_female , mu_male ) )
 
-## R code 5.36
+## R code 5.46
 d$sex <- ifelse( d$male==1 , 2 , 1 )
 str( d$sex )
 
-## R code 5.37
+## R code 5.47
 m5.8 <- quap(
     alist(
         height ~ dnorm( mu , sigma ) ,
@@ -1017,20 +1072,20 @@ m5.8 <- quap(
     ) , data=d )
 precis( m5.8 , depth=2 )
 
-## R code 5.38
+## R code 5.48
 post <- extract.samples(m5.8)
 post$diff_fm <- post$a[,1] - post$a[,2]
 precis( post , depth=2 )
 
-## R code 5.39
+## R code 5.49
 data(milk)
 d <- milk
 unique(d$clade)
 
-## R code 5.40
+## R code 5.50
 d$clade_id <- as.integer( d$clade )
 
-## R code 5.41
+## R code 5.51
 d$K <- scale( d$kcal.per.g )
 m5.9 <- quap(
     alist(
@@ -1043,11 +1098,11 @@ labels <- paste( "a[" , 1:4 , "]:" , levels(d$clade) , sep="" )
 plot( precis( m5.9 , depth=2 , pars="a" ) , labels=labels ,
     xlab="expected kcal (std)" )
 
-## R code 5.42
+## R code 5.52
 set.seed(63)
 d$house <- sample( rep(1:4,each=8) , size=nrow(d) )
 
-## R code 5.43
+## R code 5.53
 m5.10 <- quap(
     alist(
         K ~ dnorm( mu , sigma ),
@@ -1167,9 +1222,6 @@ precis( m6.5 )
 pairs( ~ kcal.per.g + perc.fat + perc.lactose , data=d , col=rangi2 )
 
 ## R code 6.12
-cor( d$perc.fat , d$perc.lactose )
-
-## R code 6.13
 library(rethinking)
 data(milk)
 d <- milk
@@ -1187,7 +1239,7 @@ r.seq <- seq(from=0,to=0.99,by=0.01)
 stddev <- sapply( r.seq , function(z) rep.sim.coll(r=z,n=100) )
 plot( stddev ~ r.seq , type="l" , col=rangi2, lwd=2 , xlab="correlation" )
 
-## R code 6.14
+## R code 6.13
 set.seed(71)
 # number of plants
 N <- 100
@@ -1204,11 +1256,11 @@ h1 <- h0 + rnorm(N, 5 - 3*fungus)
 d <- data.frame( h0=h0 , h1=h1 , treatment=treatment , fungus=fungus )
 precis(d)
 
-## R code 6.15
+## R code 6.14
 sim_p <- rlnorm( 1e4 , 0 , 0.25 )
 precis( data.frame(sim_p) )
 
-## R code 6.16
+## R code 6.15
 m6.6 <- quap(
     alist(
         h1 ~ dnorm( mu , sigma ),
@@ -1218,7 +1270,7 @@ m6.6 <- quap(
     ), data=d )
 precis(m6.6)
 
-## R code 6.17
+## R code 6.16
 m6.7 <- quap(
     alist(
         h1 ~ dnorm( mu , sigma ),
@@ -1231,7 +1283,7 @@ m6.7 <- quap(
     ), data=d )
 precis(m6.7)
 
-## R code 6.18
+## R code 6.17
 m6.8 <- quap(
     alist(
         h1 ~ dnorm( mu , sigma ),
@@ -1243,34 +1295,40 @@ m6.8 <- quap(
     ), data=d )
 precis(m6.8)
 
-## R code 6.19
+## R code 6.18
 library(dagitty)
 plant_dag <- dagitty( "dag {
-    H0 -> H1
-    F -> H1
+    H_0 -> H_1
+    F -> H_1
     T -> F
 }")
-coordinates( plant_dag ) <- list( x=c(H0=0,T=2,F=1.5,H1=1) ,
-                                  y=c(H0=0,T=0,F=1,H1=2) )
-plot( plant_dag )
+coordinates( plant_dag ) <- list( x=c(H_0=0,T=2,F=1.5,H_1=1) ,
+                                  y=c(H_0=0,T=0,F=0,H_1=0) )
+drawdag( plant_dag )
+
+## R code 6.19
+impliedConditionalIndependencies(plant_dag)
 
 ## R code 6.20
-dseparated( plant_dag , "T" , "H1" )
-dseparated( plant_dag , "T" , "H1" , "F" )
+set.seed(71)
+N <- 1000
+h0 <- rnorm(N,10,2)
+treatment <- rep( 0:1 , each=N/2 )
+M <- rbern(N)
+fungus <- rbinom( N , size=1 , prob=0.5 - treatment*0.4 + 0.4*M )
+h1 <- h0 + rnorm( N , 5 + 3*M )
+d2 <- data.frame( h0=h0 , h1=h1 , treatment=treatment , fungus=fungus )
 
 ## R code 6.21
-impliedConditionalIndependencies( plant_dag )
-
-## R code 6.22
 library(rethinking)
 d <- sim_happiness( seed=1977 , N_years=1000 )
 precis(d)
 
-## R code 6.23
+## R code 6.22
 d2 <- d[ d$age>17 , ] # only adults
 d2$A <- ( d2$age - 18 ) / ( 65 - 18 )
 
-## R code 6.24
+## R code 6.23
 d2$mid <- d2$married + 1
 m6.9 <- quap(
     alist(
@@ -1282,7 +1340,7 @@ m6.9 <- quap(
     ) , data=d2 )
 precis(m6.9,depth=2)
 
-## R code 6.25
+## R code 6.24
 m6.10 <- quap(
     alist(
         happiness ~ dnorm( mu , sigma ),
@@ -1293,14 +1351,14 @@ m6.10 <- quap(
     ) , data=d2 )
 precis(m6.10)
 
-## R code 6.26
+## R code 6.25
 N <- 200  # number of grandparent-parent-child triads
 b_GP <- 1 # direct effect of G on P
 b_GC <- 0 # direct effect of G on C
 b_PC <- 1 # direct effect of P on C
 b_U <- 2  # direct effect of U on P and C
 
-## R code 6.27
+## R code 6.26
 set.seed(1)
 U <- 2*rbern( N , 0.5 ) - 1
 G <- rnorm( N )
@@ -1308,7 +1366,7 @@ P <- rnorm( N , b_GP*G + b_U*U )
 C <- rnorm( N , b_PC*P + b_GC*G + b_U*U )
 d <- data.frame( C=C , P=P , G=G , U=U )
 
-## R code 6.28
+## R code 6.27
 m6.11 <- quap(
     alist(
         C ~ dnorm( mu , sigma ),
@@ -1319,7 +1377,7 @@ m6.11 <- quap(
     ), data=d )
 precis(m6.11)
 
-## R code 6.29
+## R code 6.28
 m6.12 <- quap(
     alist(
         C ~ dnorm( mu , sigma ),
@@ -1330,27 +1388,27 @@ m6.12 <- quap(
     ), data=d )
 precis(m6.12)
 
-## R code 6.30
+## R code 6.29
 library(dagitty)
 dag_6.1 <- dagitty( "dag {
-    X -> Y <- C
-    X <- U -> B
-    U <- A -> C
+    U [unobserved]
+    X -> Y
+    X <- U <- A -> C -> Y
     U -> B <- C
 }")
 adjustmentSets( dag_6.1 , exposure="X" , outcome="Y" )
 
-## R code 6.31
+## R code 6.30
 library(dagitty)
 dag_6.2 <- dagitty( "dag {
-    S -> A -> D
-    S -> M -> D
+    A -> D
+    A -> M -> D
+    A <- S -> M
     S -> W -> D
-    A -> M
 }")
 adjustmentSets( dag_6.2 , exposure="W" , outcome="D" )
 
-## R code 6.32
+## R code 6.31
 impliedConditionalIndependencies( dag_6.2 )
 
 ## R code 7.1
@@ -1375,6 +1433,10 @@ m7.1 <- quap(
     ), data=d )
 
 ## R code 7.4
+m7.1_OLS <- lm( brain_std ~ mass_std , data=d )
+post <- extract.samples( m7.1_OLS )
+
+## R code 7.5
 set.seed(12)
 s <- sim( m7.1 )
 r <- apply(s,2,mean) - d$brain_std
@@ -1382,14 +1444,14 @@ resid_var <- var2(r)
 outcome_var <- var2( d$brain_std )
 1 - resid_var/outcome_var
 
-## R code 7.5
+## R code 7.6
 R2_is_bad <- function( quap_fit ) {
     s <- sim( quap_fit , refresh=0 )
     r <- apply(s,2,mean) - d$brain_std
     1 - var2(r)/var2(d$brain_std)
 }
 
-## R code 7.6
+## R code 7.7
 m7.2 <- quap(
     alist(
         brain_std ~ dnorm( mu , exp(log_sigma) ),
@@ -1399,7 +1461,7 @@ m7.2 <- quap(
         log_sigma ~ dnorm( 0 , 1 )
     ), data=d , start=list(b=rep(0,2)) )
 
-## R code 7.7
+## R code 7.8
 m7.3 <- quap(
     alist(
         brain_std ~ dnorm( mu , exp(log_sigma) ),
@@ -1431,7 +1493,7 @@ m7.5 <- quap(
         log_sigma ~ dnorm( 0 , 1 )
     ), data=d , start=list(b=rep(0,5)) )
 
-## R code 7.8
+## R code 7.9
 m7.6 <- quap(
     alist(
         brain_std ~ dnorm( mu , 0.001 ),
@@ -1442,7 +1504,7 @@ m7.6 <- quap(
         b ~ dnorm( 0 , 10 )
     ), data=d , start=list(b=rep(0,6)) )
 
-## R code 7.9
+## R code 7.10
 post <- extract.samples(m7.1)
 mass_seq <- seq( from=min(d$mass_std) , to=max(d$mass_std) , length.out=100 )
 l <- link( m7.1 , data=list( mass_std=mass_seq ) )
@@ -1452,31 +1514,18 @@ plot( brain_std ~ mass_std , data=d )
 lines( mass_seq , mu )
 shade( ci , mass_seq )
 
-## R code 7.10
-m7.1_OLS <- lm( brain_std ~ mass_std , data=d )
-post <- extract.samples( m7.1_OLS )
-
 ## R code 7.11
-m7.7 <- quap(
-    alist(
-        brain_std ~ dnorm( mu , exp(log_sigma) ),
-        mu <- a,
-        a ~ dnorm( 0.5 , 1 ),
-        log_sigma ~ dnorm( 0 , 1 )
-    ), data=d )
-
-## R code 7.12
 d_minus_i <- d[ -i , ]
 
-## R code 7.13
+## R code 7.12
 p <- c( 0.3 , 0.7 )
 -sum( p*log(p) )
 
-## R code 7.14
+## R code 7.13
 set.seed(1)
 lppd( m7.1 , n=1e4 )
 
-## R code 7.15
+## R code 7.14
 set.seed(1)
 logprob <- sim( m7.1 , ll=TRUE , n=1e4 )
 n <- ncol(logprob)
@@ -1484,11 +1533,11 @@ ns <- nrow(logprob)
 f <- function( i ) log_sum_exp( logprob[,i] ) - log(ns)
 ( lppd <- sapply( 1:n , f ) )
 
-## R code 7.16
+## R code 7.15
 set.seed(1)
 sapply( list(m7.1,m7.2,m7.3,m7.4,m7.5,m7.6) , function(m) sum(lppd(m)) )
 
-## R code 7.17
+## R code 7.16
 N <- 20
 kseq <- 1:5
 dev <- sapply( kseq , function(k) {
@@ -1497,10 +1546,10 @@ dev <- sapply( kseq , function(k) {
         c( mean(r[1,]) , mean(r[2,]) , sd(r[1,]) , sd(r[2,]) )
     } )
 
-## R code 7.18
+## R code 7.17
         r <- mcreplicate( 1e4 , sim_train_test( N=N, k=k ) , mc.cores=4 )
 
-## R code 7.19
+## R code 7.18
 plot( 1:5 , dev[1,] , ylim=c( min(dev[1:2,])-5 , max(dev[1:2,])+10 ) ,
     xlim=c(1,5.1) , xlab="number of parameters" , ylab="deviance" ,
     pch=16 , col=rangi2 )
@@ -1513,7 +1562,7 @@ for ( i in kseq ) {
     lines( c(i,i)+0.1 , pts_out )
 }
 
-## R code 7.20
+## R code 7.19
 data(cars)
 m <- quap(
     alist(
@@ -1526,7 +1575,7 @@ m <- quap(
 set.seed(94)
 post <- extract.samples(m,n=1000)
 
-## R code 7.21
+## R code 7.20
 n_samples <- 1000
 logprob <- sapply( 1:n_samples ,
     function(s) {
@@ -1534,150 +1583,110 @@ logprob <- sapply( 1:n_samples ,
         dnorm( cars$dist , mu , post$sigma[s] , log=TRUE )
     } )
 
-## R code 7.22
+## R code 7.21
 n_cases <- nrow(cars)
 lppd <- sapply( 1:n_cases , function(i) log_sum_exp(logprob[i,]) - log(n_samples) )
 
-## R code 7.23
+## R code 7.22
 pWAIC <- sapply( 1:n_cases , function(i) var(logprob[i,]) )
 
-## R code 7.24
+## R code 7.23
 -2*( sum(lppd) - sum(pWAIC) )
 
-## R code 7.25
+## R code 7.24
 waic_vec <- -2*( lppd - pWAIC )
 sqrt( n_cases*var(waic_vec) )
 
-## R code 7.26
+## R code 7.25
 set.seed(11)
 WAIC( m6.7 )
 
-## R code 7.27
+## R code 7.26
 set.seed(77)
 compare( m6.6 , m6.7 , m6.8 )
 
-## R code 7.28
+## R code 7.27
 set.seed(91)
-waic_m6.7 <- WAIC( m6.7 , pointwise=TRUE )
-waic_m6.8 <- WAIC( m6.8 , pointwise=TRUE )
-n <- length(waic_m6.6)
+waic_m6.7 <- WAIC( m6.7 , pointwise=TRUE )$WAIC
+waic_m6.8 <- WAIC( m6.8 , pointwise=TRUE )$WAIC
+n <- length(waic_m6.7)
 diff_m6.7_m6.8 <- waic_m6.7 - waic_m6.8
+sqrt( n*var( diff_m6.7_m6.8 ) )
 
-## R code 7.29
+## R code 7.28
 40.0 + c(-1,1)*10.4*2.6
 
-## R code 7.30
+## R code 7.29
 plot( compare( m6.6 , m6.7 , m6.8 ) )
 
-## R code 7.31
+## R code 7.30
 set.seed(92)
-waic_m6.6 <- WAIC( m6.6 , pointwise=TRUE )
+waic_m6.6 <- WAIC( m6.6 , pointwise=TRUE )$WAIC
 diff_m6.6_m6.8 <- waic_m6.6 - waic_m6.8
 sqrt( n*var( diff_m6.6_m6.8 ) )
 
-## R code 7.32
+## R code 7.31
 set.seed(93)
 compare( m6.6 , m6.7 , m6.8 )@dSE
 
+## R code 7.32
+library(rethinking)
+data(WaffleDivorce)
+d <- WaffleDivorce
+d$A <- standardize( d$MedianAgeMarriage )
+d$D <- standardize( d$Divorce )
+d$M <- standardize( d$Marriage )
+
+m5.1 <- quap(
+    alist(
+        D ~ dnorm( mu , sigma ) ,
+        mu <- a + bA * A ,
+        a ~ dnorm( 0 , 0.2 ) ,
+        bA ~ dnorm( 0 , 0.5 ) ,
+        sigma ~ dexp( 1 )
+    ) , data = d )
+
+m5.2 <- quap(
+    alist(
+        D ~ dnorm( mu , sigma ) ,
+        mu <- a + bM * M ,
+        a ~ dnorm( 0 , 0.2 ) ,
+        bM ~ dnorm( 0 , 0.5 ) ,
+        sigma ~ dexp( 1 )
+    ) , data = d )
+
+m5.3 <- quap(
+    alist(
+        D ~ dnorm( mu , sigma ) ,
+        mu <- a + bM*M + bA*A ,
+        a ~ dnorm( 0 , 0.2 ) ,
+        bM ~ dnorm( 0 , 0.5 ) ,
+        bA ~ dnorm( 0 , 0.5 ) ,
+        sigma ~ dexp( 1 )
+    ) , data = d )
+
 ## R code 7.33
-data(Primates301)
-d <- Primates301
+set.seed(24071847)
+compare( m5.1 , m5.2 , m5.3 , func=PSIS )
 
 ## R code 7.34
-d$log_L <- scale( log(d$longevity) )
-d$log_B <- scale( log(d$brain) )
-d$log_M <- scale( log(d$body) )
+set.seed(24071847)
+PSIS_m5.3 <- PSIS(m5.3,pointwise=TRUE)
+set.seed(24071847)
+WAIC_m5.3 <- WAIC(m5.3,pointwise=TRUE)
+plot( PSIS_m5.3$k , WAIC_m5.3$penalty , xlab="PSIS Pareto k" ,
+    ylab="WAIC penalty" , col=rangi2 , lwd=2 )
 
 ## R code 7.35
-sapply( d[,c("log_L","log_B","log_M")] , function(x) sum(is.na(x)) )
-
-## R code 7.36
-d2 <- d[ complete.cases( d$log_L , d$log_M , d$log_B ) , ]
-nrow(d2)
-
-## R code 7.37
-m7.8 <- quap(
+m5.3t <- quap(
     alist(
-        log_L ~ dnorm( mu , sigma ),
-        mu <- a + bM*log_M + bB*log_B,
-        a ~ dnorm(0,0.1),
-        bM ~ dnorm(0,0.5),
-        bB ~ dnorm(0,0.5),
-        sigma ~ dexp(1)
-    ) , data=d2 )
-
-## R code 7.38
-m7.9 <- quap(
-    alist(
-        log_L ~ dnorm( mu , sigma ),
-        mu <- a + bB*log_B,
-        a ~ dnorm(0,0.1),
-        bB ~ dnorm(0,0.5),
-        sigma ~ dexp(1)
-    ) , data=d2 )
-m7.10 <- quap(
-    alist(
-        log_L ~ dnorm( mu , sigma ),
-        mu <- a + bM*log_M,
-        a ~ dnorm(0,0.1),
-        bM ~ dnorm(0,0.5),
-        sigma ~ dexp(1)
-    ) , data=d2 )
-
-## R code 7.39
-set.seed(301)
-compare( m7.8 , m7.9 , m7.10 )
-
-## R code 7.40
-plot( compare( m7.8 , m7.9 , m7.10 ) )
-
-## R code 7.41
-plot( coeftab( m7.8 , m7.9 , m7.10 ) , pars=c("bM","bB") )
-
-## R code 7.42
-cor( d2$log_B , d2$log_M )
-
-## R code 7.43
-waic_m7.8 <- WAIC( m7.8 , pointwise=TRUE )
-waic_m7.9 <- WAIC( m7.9 , pointwise=TRUE )
-
-## R code 7.44
-# compute point scaling
-x <- d2$log_B - d2$log_M
-x <- x - min(x)
-x <- x / max(x)
-
-# draw the plot
-plot( waic_m7.8 - waic_m7.9 , d2$log_L ,
-    xlab="pointwise difference in WAIC" , ylab="log longevity (std)" , pch=21 ,
-    col=col.alpha("black",0.8) , cex=1+x , lwd=2 , bg=col.alpha(rangi2,0.4) )
-abline( v=0 , lty=2 )
-abline( h=0 , lty=2 )
-
-## R code 7.45
-m7.11 <- quap(
-    alist(
-        log_B ~ dnorm( mu , sigma ),
-        mu <- a + bM*log_M + bL*log_L,
-        a ~ dnorm(0,0.1),
-        bM ~ dnorm(0,0.5),
-        bL ~ dnorm(0,0.5),
-        sigma ~ dexp(1)
-    ) , data=d2 )
-precis( m7.11 )
-
-## R code 7.46
-library(rethinking)
-data(Howell1)
-d <- Howell1
-d$age <- (d$age - mean(d$age))/sd(d$age)
-set.seed( 1000 )
-i <- sample(1:nrow(d),size=nrow(d)/2)
-d1 <- d[ i , ]
-d2 <- d[ -i , ]
-
-## R code 7.47
-sum( dnorm( d2$height , mu , sigma , log=TRUE ) )
+        D ~ dstudent( 2 , mu , sigma ) ,
+        mu <- a + bM*M + bA*A ,
+        a ~ dnorm( 0 , 0.2 ) ,
+        bM ~ dnorm( 0 , 0.5 ) ,
+        bA ~ dnorm( 0 , 0.5 ) ,
+        sigma ~ dexp( 1 )
+    ) , data = d )
 
 ## R code 8.1
 library(rethinking)
@@ -1694,10 +1703,6 @@ dd <- d[ complete.cases(d$rgdppc_2000) , ]
 dd$log_gdp_std <- dd$log_gdp / mean(dd$log_gdp)
 dd$rugged_std <- dd$rugged / max(dd$rugged)
 
-# split countries into Africa and not-Africa
-d.A1 <- dd[ dd$cont_africa==1 , ] # Africa
-d.A0 <- dd[ dd$cont_africa==0 , ] # not Africa
-
 ## R code 8.2
 m8.1 <- quap(
     alist(
@@ -1706,7 +1711,7 @@ m8.1 <- quap(
         a ~ dnorm( 1 , 1 ) ,
         b ~ dnorm( 0 , 1 ) ,
         sigma ~ dexp( 1 )
-    ) , data=d.A1 )
+    ) , data=dd )
 
 ## R code 8.3
 set.seed(7)
@@ -1724,7 +1729,7 @@ mu <- link( m8.1 , post=prior , data=data.frame(rugged_std=rugged_seq) )
 for ( i in 1:50 ) lines( rugged_seq , mu[i,] , col=col.alpha("black",0.3) )
 
 ## R code 8.4
-sum( abs(prior$b) > 0.6 ) / length(prior$bR)
+sum( abs(prior$b) > 0.6 ) / length(prior$b)
 
 ## R code 8.5
 m8.1 <- quap(
@@ -1734,61 +1739,45 @@ m8.1 <- quap(
         a ~ dnorm( 1 , 0.1 ) ,
         b ~ dnorm( 0 , 0.3 ) ,
         sigma ~ dexp(1)
-    ) , data=d.A1 )
+    ) , data=dd )
 
 ## R code 8.6
-# Non-African nations
-m8.2 <- quap(
-    alist(
-        log_gdp_std ~ dnorm( mu , sigma ) ,
-        mu <- a + b*( rugged_std - 0.215 ) ,
-        a ~ dnorm( 1 , 0.1 ) ,
-        b ~ dnorm( 0 , 0.25 ) ,
-        sigma ~ dexp(1)
-    ) ,
-    data=d.A0 )
+precis( m8.1 )
 
 ## R code 8.7
-m8.3 <- quap(
-    alist(
-        log_gdp_std ~ dnorm( mu , sigma ) ,
-        mu <- a + b*( rugged_std - 0.215 ) ,
-        a ~ dnorm( 1 , 0.1 ) ,
-        b ~ dnorm( 0 , 0.3 ) ,
-        sigma ~ dexp( 1 )
-    ) ,
-    data=dd )
-
-## R code 8.8
 # make variable to index Africa (1) or not (2)
 dd$cid <- ifelse( dd$cont_africa==1 , 1 , 2 )
 
-## R code 8.9
-m8.4 <- quap(
+## R code 8.8
+m8.2 <- quap(
     alist(
         log_gdp_std ~ dnorm( mu , sigma ) ,
         mu <- a[cid] + b*( rugged_std - 0.215 ) ,
         a[cid] ~ dnorm( 1 , 0.1 ) ,
         b ~ dnorm( 0 , 0.3 ) ,
         sigma ~ dexp( 1 )
-    ) ,
-    data=dd )
+    ) , data=dd )
+
+## R code 8.9
+compare( m8.1 , m8.2 )
 
 ## R code 8.10
-compare( m8.3 , m8.4 )
+precis( m8.2 , depth=2 )
 
 ## R code 8.11
-precis( m8.4 , depth=2 )
+post <- extract.samples(m8.2)
+diff_a1_a2 <- post$a[,1] - post$a[,2]
+PI( diff_a1_a2 )
 
 ## R code 8.12
 rugged.seq <- seq( from=-0.1 , to=1.1 , length.out=30 )
 
 # compute mu over samples, fixing cid=2
-mu.NotAfrica <- link( m8.4 ,
+mu.NotAfrica <- link( m8.2 ,
     data=data.frame( cid=2 , rugged_std=rugged.seq ) )
 
 # compute mu over samples, fixing cid=1
-mu.Africa <- link( m8.4 ,
+mu.Africa <- link( m8.2 ,
     data=data.frame( cid=1 , rugged_std=rugged.seq ) )
 
 # summarize to means and intervals
@@ -1798,31 +1787,31 @@ mu.Africa_mu <- apply( mu.Africa , 2 , mean )
 mu.Africa_ci <- apply( mu.Africa , 2 , PI , prob=0.97 )
 
 ## R code 8.13
-m8.5 <- quap(
+m8.3 <- quap(
     alist(
         log_gdp_std ~ dnorm( mu , sigma ) ,
         mu <- a[cid] + b[cid]*( rugged_std - 0.215 ) ,
         a[cid] ~ dnorm( 1 , 0.1 ) ,
         b[cid] ~ dnorm( 0 , 0.3 ) ,
         sigma ~ dexp( 1 )
-    ) ,
-    data=dd )
+    ) , data=dd )
 
 ## R code 8.14
 precis( m8.5 , depth=2 )
 
 ## R code 8.15
-compare( m8.3 , m8.4 , m8.5 )
+compare( m8.1 , m8.2 , m8.3 , func=PSIS )
 
 ## R code 8.16
-waic_list <- WAIC( m8.5 , pointwise=TRUE )
+plot( PSIS( m8.3 , pointwise=TRUE )$k )
 
 ## R code 8.17
 # plot Africa - cid=1
+d.A1 <- dd[ dd$cid==1 , ]
 plot( d.A1$rugged_std , d.A1$log_gdp_std , pch=16 , col=rangi2 ,
     xlab="ruggedness (standardized)" , ylab="log GDP (as proportion of mean)" ,
     xlim=c(0,1) )
-mu <- link( m8.5 , data=data.frame( cid=1 , rugged_std=rugged_seq ) )
+mu <- link( m8.3 , data=data.frame( cid=1 , rugged_std=rugged_seq ) )
 mu_mean <- apply( mu , 2 , mean )
 mu_ci <- apply( mu , 2 , PI , prob=0.97 )
 lines( rugged_seq , mu_mean , lwd=2 )
@@ -1830,10 +1819,11 @@ shade( mu_ci , rugged_seq , col=col.alpha(rangi2,0.3) )
 mtext("African nations")
 
 # plot non-Africa - cid=2
+d.A0 <- dd[ dd$cid==2 , ]
 plot( d.A0$rugged_std , d.A0$log_gdp_std , pch=1 , col="black" ,
     xlab="ruggedness (standardized)" , ylab="log GDP (as proportion of mean)" ,
     xlim=c(0,1) )
-mu <- link( m8.5 , data=data.frame( cid=2 , rugged_std=rugged_seq ) )
+mu <- link( m8.3 , data=data.frame( cid=2 , rugged_std=rugged_seq ) )
 mu_mean <- apply( mu , 2 , mean )
 mu_ci <- apply( mu , 2 , PI , prob=0.97 )
 lines( rugged_seq , mu_mean , lwd=2 )
@@ -1842,8 +1832,8 @@ mtext("Non-African nations")
 
 ## R code 8.18
 rugged_seq <- seq(from=-0.2,to=1.2,length.out=30)
-muA <- link( m8.5 , data=data.frame(cid=1,rugged_std=rugged_seq) )
-muN <- link( m8.5 , data=data.frame(cid=2,rugged_std=rugged_seq) )
+muA <- link( m8.3 , data=data.frame(cid=1,rugged_std=rugged_seq) )
+muN <- link( m8.3 , data=data.frame(cid=2,rugged_std=rugged_seq) )
 delta <- muA - muN
 
 ## R code 8.19
@@ -1866,7 +1856,7 @@ a <- rnorm( 1e4 , 0.5 , 0.25 )
 sum( a < 0 | a > 1 ) / length( a )
 
 ## R code 8.23
-m8.6 <- quap(
+m8.4 <- quap(
     alist(
         blooms_std ~ dnorm( mu , sigma ) ,
         mu <- a + bw*water_cent + bs*shade_cent ,
@@ -1874,11 +1864,10 @@ m8.6 <- quap(
         bw ~ dnorm( 0 , 0.25 ) ,
         bs ~ dnorm( 0 , 0.25 ) ,
         sigma ~ dexp( 1 )
-    ) ,
-    data=d )
+    ) , data=d )
 
 ## R code 8.24
-m8.7 <- quap(
+m8.5 <- quap(
     alist(
         blooms_std ~ dnorm( mu , sigma ) ,
         mu <- a + bw*water_cent + bs*shade_cent + bws*water_cent*shade_cent ,
@@ -1887,8 +1876,7 @@ m8.7 <- quap(
         bs ~ dnorm( 0 , 0.25 ) ,
         bws ~ dnorm( 0 , 0.25 ) ,
         sigma ~ dexp( 1 )
-    ) ,
-    data=d )
+    ) , data=d )
 
 ## R code 8.25
 par(mfrow=c(1,3)) # 3 plots in 1 row
@@ -1896,13 +1884,13 @@ for ( s in -1:1 ) {
     idx <- which( d$shade_cent==s )
     plot( d$water_cent[idx] , d$blooms_std[idx] , xlim=c(-1,1) , ylim=c(0,1) ,
         xlab="water" , ylab="blooms" , pch=16 , col=rangi2 )
-    mu <- link( m8.6 , data=data.frame( shade_cent=s , water_cent=-1:1 ) )
+    mu <- link( m8.4 , data=data.frame( shade_cent=s , water_cent=-1:1 ) )
     for ( i in 1:20 ) lines( -1:1 , mu[i,] , col=col.alpha("black",0.3) )
 }
 
 ## R code 8.26
 set.seed(7)
-prior <- extract.prior(m8.6)
+prior <- extract.prior(m8.5)
 
 ## R code 8.27
 d$lang.per.cap <- d$num.lang / d$k.pop
@@ -1927,6 +1915,12 @@ for ( i in 1:num_weeks ) {
 }
 
 ## R code 9.2
+plot( 1:100 , positions[1:100] )
+
+## R code 9.3
+plot( table( positions ) )
+
+## R code 9.4
 D <- 10
 T <- 1e3
 Y <- rmvnorm(T,rep(0,D),diag(D))
@@ -1934,9 +1928,9 @@ rad_dist <- function( Y ) sqrt( sum(Y^2) )
 Rd <- sapply( 1:T , function(i) rad_dist( Y[i,] ) )
 dens( Rd )
 
-## R code 9.3
+## R code 9.5
 # U needs to return neg-log-probability
-myU4 <- function( q , a=0 , b=1 , k=0 , d=1 ) {
+U <- function( q , a=0 , b=1 , k=0 , d=1 ) {
     muy <- q[1]
     mux <- q[2]
     U <- sum( dnorm(y,muy,1,log=TRUE) ) + sum( dnorm(x,mux,1,log=TRUE) ) +
@@ -1944,14 +1938,14 @@ myU4 <- function( q , a=0 , b=1 , k=0 , d=1 ) {
     return( -U )
 }
 
-## R code 9.4
+## R code 9.6
 # gradient function
 # need vector of partial derivatives of U with respect to vector q
-myU_grad4 <- function( q , a=0 , b=1 , k=0 , d=1 ) {
+U_gradient <- function( q , a=0 , b=1 , k=0 , d=1 ) {
     muy <- q[1]
     mux <- q[2]
     G1 <- sum( y - muy ) + (a - muy)/b^2 #dU/dmuy
-    G2 <- sum( x - mux ) + (k - mux)/d^2 #dU/dmuy
+    G2 <- sum( x - mux ) + (k - mux)/d^2 #dU/dmux
     return( c( -G1 , -G2 ) ) # negative bc energy is neg-log-prob
 }
 # test data
@@ -1961,7 +1955,7 @@ x <- rnorm(50)
 x <- as.numeric(scale(x))
 y <- as.numeric(scale(y))
 
-## R code 9.5
+## R code 9.7
 library(shape) # for fancy arrows
 Q <- list()
 Q$q <- c(-0.1,0.2)
@@ -1973,7 +1967,7 @@ n_samples <- 4
 path_col <- col.alpha("black",0.5)
 points( Q$q[1] , Q$q[2] , pch=4 , col="black" )
 for ( i in 1:n_samples ) {
-    Q <- HMC2( myU4 , myU_grad4 , step , L , Q$q )
+    Q <- HMC2( U , U_gradient , step , L , Q$q )
     if ( n_samples < 10 ) {
       for ( j in 1:L ) {
         K0 <- sum(Q$ptraj[j,]^2)/2 # kinetic energy
@@ -1988,7 +1982,7 @@ for ( i in 1:n_samples ) {
         col=ifelse( abs(Q$dH)>0.1 , "red" , "black" ) )
 }
 
-## R code 9.6
+## R code 9.8
 HMC2 <- function (U, grad_U, epsilon, L, current_q) {
   q = current_q
   p = rnorm(length(q),0,1) # random flick - p is momentum.
@@ -2001,7 +1995,7 @@ HMC2 <- function (U, grad_U, epsilon, L, current_q) {
   qtraj[1,] <- current_q
   ptraj[1,] <- p
 
-## R code 9.7
+## R code 9.9
   # Alternate full steps for position and momentum
   for ( i in 1:L ) {
     q = q + epsilon * p # Full step for the position
@@ -2013,7 +2007,7 @@ HMC2 <- function (U, grad_U, epsilon, L, current_q) {
     qtraj[i+1,] <- q
   }
 
-## R code 9.8
+## R code 9.10
   # Make a half step for momentum at the end
   p = p - epsilon * grad_U(q) / 2
   ptraj[L+1,] <- p
@@ -2034,7 +2028,7 @@ HMC2 <- function (U, grad_U, epsilon, L, current_q) {
   return(list( q=new_q, traj=qtraj, ptraj=ptraj, accept=accept ))
 }
 
-## R code 9.9
+## R code 9.11
 library(rethinking)
 data(rugged)
 d <- rugged
@@ -2044,39 +2038,24 @@ dd$log_gdp_std <- dd$log_gdp / mean(dd$log_gdp)
 dd$rugged_std <- dd$rugged / max(dd$rugged)
 dd$cid <- ifelse( dd$cont_africa==1 , 1 , 2 )
 
-## R code 9.10
-m8.5 <- quap(
+## R code 9.12
+m8.3 <- quap(
     alist(
         log_gdp_std ~ dnorm( mu , sigma ) ,
         mu <- a[cid] + b[cid]*( rugged_std - 0.215 ) ,
         a[cid] ~ dnorm( 1 , 0.1 ) ,
         b[cid] ~ dnorm( 0 , 0.3 ) ,
         sigma ~ dexp( 1 )
-    ) ,
-    data=dd )
-precis( m8.5 , depth=2 )
+    ) , data=dd )
+precis( m8.3 , depth=2 )
 
-## R code 9.11
+## R code 9.13
 dat_slim <- list(
     log_gdp_std = dd$log_gdp_std,
     rugged_std = dd$rugged_std,
     cid = as.integer( dd$cid )
 )
 str(dat_slim)
-
-## R code 9.12
-m9.1 <- ulam(
-    alist(
-        log_gdp_std ~ dnorm( mu , sigma ) ,
-        mu <- a[cid] + b[cid]*( rugged_std - 0.215 ) ,
-        a[cid] ~ dnorm( 1 , 0.1 ) ,
-        b[cid] ~ dnorm( 0 , 0.3 ) ,
-        sigma ~ dexp( 1 )
-    ) ,
-    data=dat_slim , chains=1 )
-
-## R code 9.13
-precis( m9.1 , depth=2 )
 
 ## R code 9.14
 m9.1 <- ulam(
@@ -2086,25 +2065,37 @@ m9.1 <- ulam(
         a[cid] ~ dnorm( 1 , 0.1 ) ,
         b[cid] ~ dnorm( 0 , 0.3 ) ,
         sigma ~ dexp( 1 )
-    ) ,
-    data=dat_slim , chains=4 , cores=4 , iter=1000 )
+    ) , data=dat_slim , chains=1 )
 
 ## R code 9.15
-show( m9.1 )
+precis( m9.1 , depth=2 )
 
 ## R code 9.16
-precis( m9.1 , 2 )
+m9.1 <- ulam(
+    alist(
+        log_gdp_std ~ dnorm( mu , sigma ) ,
+        mu <- a[cid] + b[cid]*( rugged_std - 0.215 ) ,
+        a[cid] ~ dnorm( 1 , 0.1 ) ,
+        b[cid] ~ dnorm( 0 , 0.3 ) ,
+        sigma ~ dexp( 1 )
+    ) , data=dat_slim , chains=4 , cores=4 )
 
 ## R code 9.17
-pairs( m9.1 )
+show( m9.1 )
 
 ## R code 9.18
-traceplot( m9.1 )
+precis( m9.1 , 2 )
 
 ## R code 9.19
-trankplot( m9.1 , n_cols=2 )
+pairs( m9.1 )
 
 ## R code 9.20
+traceplot( m9.1 )
+
+## R code 9.21
+trankplot( m9.1 , n_cols=2 )
+
+## R code 9.22
 y <- c(-1,1)
 set.seed(11)
 m9.2 <- ulam(
@@ -2113,13 +2104,12 @@ m9.2 <- ulam(
         mu <- alpha ,
         alpha ~ dnorm( 0 , 1000 ) ,
         sigma ~ dexp( 0.0001 )
-    ) ,
-    data=list(y=y) , chains=2 )
+    ) , data=list(y=y) , chains=3 )
 
-## R code 9.21
+## R code 9.23
 precis( m9.2 )
 
-## R code 9.22
+## R code 9.24
 set.seed(11)
 m9.3 <- ulam(
     alist(
@@ -2127,15 +2117,15 @@ m9.3 <- ulam(
         mu <- alpha ,
         alpha ~ dnorm( 1 , 10 ) ,
         sigma ~ dexp( 1 )
-    ) ,
-    data=list(y=y) , chains=2 )
+    ) , data=list(y=y) , chains=3 )
 precis( m9.3 )
 
-## R code 9.23
+## R code 9.25
 set.seed(41)
 y <- rnorm( 100 , mean=0 , sd=1 )
 
-## R code 9.24
+## R code 9.26
+set.seed(384)
 m9.4 <- ulam(
     alist(
         y ~ dnorm( mu , sigma ) ,
@@ -2143,11 +2133,10 @@ m9.4 <- ulam(
         a1 ~ dnorm( 0 , 1000 ),
         a2 ~ dnorm( 0 , 1000 ),
         sigma ~ dexp( 1 )
-    ) ,
-    data=list(y=y) , chains=2 )
+    ) , data=list(y=y) , chains=3 )
 precis( m9.4 )
 
-## R code 9.25
+## R code 9.27
 m9.5 <- ulam(
     alist(
         y ~ dnorm( mu , sigma ) ,
@@ -2155,11 +2144,10 @@ m9.5 <- ulam(
         a1 ~ dnorm( 0 , 10 ),
         a2 ~ dnorm( 0 , 10 ),
         sigma ~ dexp( 1 )
-    ) ,
-    data=list(y=y) , chains=2 )
+    ) , data=list(y=y) , chains=3 )
 precis( m9.5 )
 
-## R code 9.26
+## R code 9.28
 mp <- map2stan(
     alist(
         a ~ dnorm(0,1),
@@ -2169,7 +2157,7 @@ mp <- map2stan(
     start=list(a=0,b=0),
     iter=1e4, warmup=100 , WAIC=FALSE )
 
-## R code 9.27
+## R code 9.29
 N <- 100                          # number of individuals
 height <- rnorm(N,10,2)           # sim total height of each
 leg_prop <- runif(N,0.4,0.5)      # leg as proportion of height
@@ -2180,31 +2168,32 @@ leg_right <- leg_prop*height +    # sim right leg as proportion + error
                                   # combine into data frame
 d <- data.frame(height,leg_left,leg_right)
 
-## R code 9.28
-m5.8s <- map2stan(
+## R code 9.30
+m5.8s <- ulam(
     alist(
         height ~ dnorm( mu , sigma ) ,
         mu <- a + bl*leg_left + br*leg_right ,
         a ~ dnorm( 10 , 100 ) ,
         bl ~ dnorm( 2 , 10 ) ,
         br ~ dnorm( 2 , 10 ) ,
-        sigma ~ dcauchy( 0 , 1 )
+        sigma ~ dexp( 1 )
     ) ,
     data=d, chains=4,
-    start=list(a=10,bl=0,br=0,sigma=1) )
+    start=list(a=10,bl=0,br=0.1,sigma=1) )
 
-## R code 9.29
-m5.8s2 <- map2stan(
+## R code 9.31
+m5.8s2 <- ulam(
     alist(
         height ~ dnorm( mu , sigma ) ,
         mu <- a + bl*leg_left + br*leg_right ,
         a ~ dnorm( 10 , 100 ) ,
         bl ~ dnorm( 2 , 10 ) ,
-        br ~ dnorm( 2 , 10 ) & T[0,] ,
-        sigma ~ dcauchy( 0 , 1 )
+        br ~ dnorm( 2 , 10 ) ,
+        sigma ~ dexp( 1 )
     ) ,
     data=d, chains=4,
-    start=list(a=10,bl=0,br=0,sigma=1) )
+    constraints=list(br="lower=0"),
+    start=list(a=10,bl=0,br=0.1,sigma=1) )
 
 ## R code 10.1
 p <- list()
@@ -2331,37 +2320,36 @@ dat_list <- list(
     actor = d$actor,
     treatment = as.integer(d$treatment) )
 
-# particles in 11-dimensional space
+## R code 11.11
 m11.4 <- ulam(
     alist(
         pulled_left ~ dbinom( 1 , p ) ,
         logit(p) <- a[actor] + b[treatment] ,
         a[actor] ~ dnorm( 0 , 1.5 ),
         b[treatment] ~ dnorm( 0 , 0.5 )
-    ) ,
-    data=dat_list , chains=4 )
+    ) , data=dat_list , chains=4 , log_lik=TRUE )
 precis( m11.4 , depth=2 )
 
-## R code 11.11
+## R code 11.12
 post <- extract.samples(m11.4)
 p_left <- inv_logit( post$a )
 plot( precis( as.data.frame(p_left) ) , xlim=c(0,1) )
 
-## R code 11.12
+## R code 11.13
 labs <- c("R/N","L/N","R/P","L/P")
 plot( precis( m11.4 , depth=2 , pars="b" ) , labels=labs )
 
-## R code 11.13
+## R code 11.14
 diffs <- list(
     db13 = post$b[,1] - post$b[,3],
     db24 = post$b[,2] - post$b[,4] )
 plot( precis(diffs) )
 
-## R code 11.14
+## R code 11.15
 pl <- by( d$pulled_left , list( d$actor , d$treatment ) , mean )
 pl[1,]
 
-## R code 11.15
+## R code 11.16
 plot( NULL , xlim=c(1,28) , ylim=c(0,1) , xlab="" ,
     ylab="proportion left lever" , xaxt="n" , yaxt="n" )
 axis( 2 , at=c(0,0.5,1) , labels=c(0,0.5,1) )
@@ -2381,17 +2369,17 @@ text( 3 , pl[1,3]-yoff , "R/P" , pos=1 , cex=0.8 )
 text( 4 , pl[1,4]+yoff , "L/P" , pos=3 , cex=0.8 )
 mtext( "observed proportions\n" )
 
-## R code 11.16
+## R code 11.17
 dat <- list( actor=rep(1:7,each=4) , treatment=rep(1:4,times=7) )
-p_post <- link_ulam( m11.4 , data=dat )
+p_post <- link( m11.4 , data=dat )
 p_mu <- apply( p_post , 2 , mean )
 p_ci <- apply( p_post , 2 , PI )
 
-## R code 11.17
+## R code 11.18
 d$side <- d$prosoc_left + 1 # right 1, left 2
 d$cond <- d$condition + 1 # no partner 1, partner 2
 
-## R code 11.18
+## R code 11.19
 dat_list2 <- list(
     pulled_left = d$pulled_left,
     actor = d$actor,
@@ -2404,26 +2392,25 @@ m11.5 <- ulam(
         a[actor] ~ dnorm( 0 , 1.5 ),
         bs[side] ~ dnorm( 0 , 0.5 ),
         bc[cond] ~ dnorm( 0 , 0.5 )
-    ) ,
-    data=dat_list2 , chains=4 , log_lik=TRUE )
-
-## R code 11.19
-compare( m11.5 , m11.4 , func=LOO )
+    ) , data=dat_list2 , chains=4 , log_lik=TRUE )
 
 ## R code 11.20
+compare( m11.5 , m11.4 , func=PSIS )
+
+## R code 11.21
 post <- extract.samples( m11.4 , clean=FALSE )
 str(post)
 
-## R code 11.21
+## R code 11.22
 m11.4_stan_code <- stancode(m11.4)
 m11.4_stan <- stan( model_code=m11.4_stan_code , data=dat_list , chains=4 )
 compare( m11.4_stan , m11.4 )
 
-## R code 11.22
+## R code 11.23
 post <- extract.samples(m11.4)
 mean( exp(post$b[,4]-post$b[,2]) )
 
-## R code 11.23
+## R code 11.24
 data(chimpanzees)
 d <- chimpanzees
 d$treatment <- 1 + d$prosoc_left + 2*d$condition
@@ -2436,7 +2423,7 @@ d_aggregated <- aggregate(
     sum )
 colnames(d_aggregated)[5] <- "left_pulls"
 
-## R code 11.24
+## R code 11.25
 dat <- with( d_aggregated , list(
     left_pulls = left_pulls,
     treatment = treatment,
@@ -2450,20 +2437,16 @@ m11.6 <- ulam(
         logit(p) <- a[actor] + b[treatment] ,
         a[actor] ~ dnorm( 0 , 1.5 ) ,
         b[treatment] ~ dnorm( 0 , 0.5 )
-    ) ,
-    data=dat , chains=4 , log_lik=TRUE )
-
-## R code 11.25
-compare( m11.6 , m11.4 , func=LOO )
+    ) , data=dat , chains=4 , log_lik=TRUE )
 
 ## R code 11.26
+compare( m11.6 , m11.4 , func=PSIS )
+
+## R code 11.27
 # deviance of aggregated 6-in-9
 -2*dbinom(6,9,0.2,log=TRUE)
 # deviance of dis-aggregated
 -2*sum(dbern(c(1,1,1,1,1,1,0,0,0),0.2,log=TRUE))
-
-## R code 11.27
-( k <- LOOPk(m11.6) )
 
 ## R code 11.28
 library(rethinking)
@@ -2471,13 +2454,17 @@ data(UCBadmit)
 d <- UCBadmit
 
 ## R code 11.29
-d$gid <- ifelse( d$applicant.gender=="male" , 1 , 2 )
-m11.7 <- quap(
+dat_list <- list(
+    admit = d$admit,
+    applications = d$applications,
+    gid = ifelse( d$applicant.gender=="male" , 1 , 2 )
+)
+m11.7 <- ulam(
     alist(
         admit ~ dbinom( applications , p ) ,
         logit(p) <- a[gid] ,
         a[gid] ~ dnorm( 0 , 1.5 )
-    ) , data=d )
+    ) , data=dat_list , chains=4 )
 precis( m11.7 , depth=2 )
 
 ## R code 11.30
@@ -2487,9 +2474,8 @@ diff_p <- inv_logit(post$a[,1]) - inv_logit(post$a[,2])
 precis( list( diff_a=diff_a , diff_p=diff_p ) )
 
 ## R code 11.31
-postcheck( m11.7 , n=1e4 )
+postcheck( m11.7 )
 # draw lines connecting points from same dept
-d$dept_id <- rep( 1:7 , each=2 )
 for ( i in 1:6 ) {
     x <- 1 + 2*(i-1)
     y1 <- d$admit[x]/d$applications[x]
@@ -2499,14 +2485,14 @@ for ( i in 1:6 ) {
 }
 
 ## R code 11.32
-d$dept_id <- rep(1:6,each=2)
-m11.8 <- quap(
+dat_list$dept_id <- rep(1:6,each=2)
+m11.8 <- ulam(
     alist(
         admit ~ dbinom( applications , p ) ,
         logit(p) <- a[gid] + delta[dept_id] ,
         a[gid] ~ dnorm( 0 , 1.5 ) ,
         delta[dept_id] ~ dnorm( 0 , 1.5 )
-    ) , data=d )
+    ) , data=dat_list , chains=4 , iter=4000 )
 precis( m11.8 , depth=2 )
 
 ## R code 11.33
@@ -2516,110 +2502,65 @@ diff_p <- inv_logit(post$a[,1]) - inv_logit(post$a[,2])
 precis( list( diff_a=diff_a , diff_p=diff_p ) )
 
 ## R code 11.34
-pg <- sapply( 1:6 , function(k)
-    d$applications[d$dept_id==k]/sum(d$applications[d$dept_id==k]) )
+pg <- with( dat_list , sapply( 1:6 , function(k)
+    applications[dept_id==k]/sum(applications[dept_id==k]) ) )
 rownames(pg) <- c("male","female")
 colnames(pg) <- unique(d$dept)
 round( pg , 2 )
 
 ## R code 11.35
-# simulate career choices among 500 individuals
-N <- 500             # number of individuals
-income <- 1:3        # expected income of each career
-score <- 0.5*income  # scores for each career, based on income
-# next line converts scores to probabilities
-p <- softmax(score[1],score[2],score[3])
-
-# now simulate choice
-# outcome career holds event type values, not counts
-career <- rep(NA,N)  # empty vector of choices for each individual
-# sample chosen career for each individual
-for ( i in 1:N ) career[i] <- sample( 1:3 , size=1 , prob=p )
-
-## R code 11.36
-# fit the model, using dcategorical and softmax link
-m10.16 <- map(
-    alist(
-        career ~ dcategorical( softmax(0,s2,s3) ),
-        s2 <- b*2,    # linear model for event type 2
-        s3 <- b*3,    # linear model for event type 3
-        b ~ dnorm(0,5)
-    ) ,
-    data=list(career=career) )
-
-## R code 11.37
-N <- 100
-# simulate family incomes for each individual
-family_income <- runif(N)
-# assign a unique coefficient for each type of event
-b <- (1:-1)
-career <- rep(NA,N)  # empty vector of choices for each individual
-for ( i in 1:N ) {
-    score <- 0.5*(1:3) + b*family_income[i]
-    p <- softmax(score[1],score[2],score[3])
-    career[i] <- sample( 1:3 , size=1 , prob=p )
-}
-
-m10.17 <- map(
-    alist(
-        career ~ dcategorical( softmax(0,s2,s3) ),
-        s2 <- a2 + b2*family_income,
-        s3 <- a3 + b3*family_income,
-        c(a2,a3,b2,b3) ~ dnorm(0,5)
-    ) ,
-    data=list(career=career,family_income=family_income) )
-
-## R code 11.38
 y <- rbinom(1e5,1000,1/1000)
 c( mean(y) , var(y) )
 
-## R code 11.39
+## R code 11.36
 library(rethinking)
 data(Kline)
 d <- Kline
 d
 
-## R code 11.40
+## R code 11.37
 d$P <- scale( log(d$population) )
 d$contact_id <- ifelse( d$contact=="high" , 2 , 1 )
 
-## R code 11.41
+## R code 11.38
 curve( dlnorm( x , 0 , 10 ) , from=0 , to=100 , n=200 )
 
-## R code 11.42
+## R code 11.39
 a <- rnorm(1e4,0,10)
 lambda <- exp(a)
 mean( lambda )
 
-## R code 11.43
+## R code 11.40
 curve( dlnorm( x , 3 , 0.5 ) , from=0 , to=100 , n=200 )
 
-## R code 11.44
+## R code 11.41
 N <- 100
 a <- rnorm( N , 3 , 0.5 )
 b <- rnorm( N , 0 , 10 )
 plot( NULL , xlim=c(-2,2) , ylim=c(0,100) )
-for ( i in 1:N ) curve( exp( a[i] + b[i]*x ) , add=TRUE , col=col.alpha("black",0.5) )
+for ( i in 1:N ) curve( exp( a[i] + b[i]*x ) , add=TRUE , col=grau() )
 
-## R code 11.45
+## R code 11.42
 set.seed(10)
 N <- 100
 a <- rnorm( N , 3 , 0.5 )
 b <- rnorm( N , 0 , 0.2 )
 plot( NULL , xlim=c(-2,2) , ylim=c(0,100) )
-for ( i in 1:N ) curve( exp( a[i] + b[i]*x ) , add=TRUE , col=col.alpha("black",0.5) )
+for ( i in 1:N ) curve( exp( a[i] + b[i]*x ) , add=TRUE , col=grau() )
 
-## R code 11.46
+## R code 11.43
 x_seq <- seq( from=log(100) , to=log(200000) , length.out=100 )
 lambda <- sapply( x_seq , function(x) exp( a + b*x ) )
-plot( NULL , xlim=range(x_seq) , ylim=c(0,500) , xlab="log population" , ylab="total tools" )
-for ( i in 1:N ) lines( x_seq , lambda[i,] , col=col.alpha("black",0.5) , lwd=1.5 )
+plot( NULL , xlim=range(x_seq) , ylim=c(0,500) , xlab="log population" ,
+    ylab="total tools" )
+for ( i in 1:N ) lines( x_seq , lambda[i,] , col=grau() , lwd=1.5 )
 
-## R code 11.47
-plot( NULL , xlim=range(exp(x_seq)) , ylim=c(0,500) , xlab="population" , ylab="total tools" )
-for ( i in 1:N ) lines( exp(x_seq) , lambda[i,] , col=col.alpha("black",0.5) , lwd=1.5 )
+## R code 11.44
+plot( NULL , xlim=range(exp(x_seq)) , ylim=c(0,500) , xlab="population" ,
+    ylab="total tools" )
+for ( i in 1:N ) lines( exp(x_seq) , lambda[i,] , col=grau() , lwd=1.5 )
 
-## R code 11.48
+## R code 11.45
 dat <- list(
     T = d$total_tools ,
     P = d$P ,
@@ -2642,11 +2583,11 @@ m11.10 <- ulam(
         b[cid] ~ dnorm( 0 , 0.2 )
     ), data=dat , chains=4 , log_lik=TRUE )
 
-## R code 11.49
-compare( m11.9 , m11.10 , func=LOO )
+## R code 11.46
+compare( m11.9 , m11.10 , func=PSIS )
 
-## R code 11.50
-k <- LOOPk(m11.10)
+## R code 11.47
+k <- PSIS( m11.10 , pointwise=TRUE )$k
 plot( dat$P , dat$T , xlab="log population (std)" , ylab="total tools" ,
     col=rangi2 , pch=ifelse( dat$cid==1 , 1 , 16 ) , lwd=2 ,
     ylim=c(0,75) , cex=1+normalize(k) )
@@ -2669,7 +2610,7 @@ lci <- apply( lambda , 2 , PI )
 lines( P_seq , lmu , lty=1 , lwd=1.5 )
 shade( lci , P_seq , xpd=TRUE )
 
-## R code 11.51
+## R code 11.48
 plot( d$population , d$total_tools , xlab="population" , ylab="total tools" ,
     col=rangi2 , pch=ifelse( dat$cid==1 , 1 , 16 ) , lwd=2 ,
     ylim=c(0,75) , cex=1+normalize(k) )
@@ -2692,7 +2633,7 @@ lci <- apply( lambda , 2 , PI )
 lines( pop_seq , lmu , lty=1 , lwd=1.5 )
 shade( lci , pop_seq , xpd=TRUE )
 
-## R code 11.52
+## R code 11.49
 dat2 <- list( T=d$total_tools, P=d$population, cid=d$contact_id )
 m11.11 <- ulam(
     alist(
@@ -2703,21 +2644,21 @@ m11.11 <- ulam(
         g ~ dexp(1)
     ), data=dat2 , chains=4 , log_lik=TRUE )
 
-## R code 11.53
+## R code 11.50
 num_days <- 30
 y <- rpois( num_days , 1.5 )
 
-## R code 11.54
+## R code 11.51
 num_weeks <- 4
 y_new <- rpois( num_weeks , 0.5*7 )
 
-## R code 11.55
+## R code 11.52
 y_all <- c( y , y_new )
 exposure <- c( rep(1,30) , rep(7,4) )
 monastery <- c( rep(0,30) , rep(1,4) )
 d <- data.frame( y=y_all , days=exposure , monastery=monastery )
 
-## R code 11.56
+## R code 11.53
 # compute the offset
 d$log_days <- log( d$days )
 
@@ -2730,56 +2671,162 @@ m11.12 <- quap(
         b ~ dnorm( 0 , 1 )
     ), data=d )
 
-## R code 11.57
+## R code 11.54
 post <- extract.samples( m10.15 )
 lambda_old <- exp( post$a )
 lambda_new <- exp( post$a + post$b )
 precis( data.frame( lambda_old , lambda_new ) )
 
+## R code 11.55
+# simulate career choices among 500 individuals
+N <- 500             # number of individuals
+income <- c(1,2,5)   # expected income of each career
+score <- 0.5*income  # scores for each career, based on income
+# next line converts scores to probabilities
+p <- softmax(score[1],score[2],score[3])
+
+# now simulate choice
+# outcome career holds event type values, not counts
+career <- rep(NA,N)  # empty vector of choices for each individual
+# sample chosen career for each individual
+set.seed(34302)
+for ( i in 1:N ) career[i] <- sample( 1:3 , size=1 , prob=p )
+
+## R code 11.56
+code_m11.13 <- "
+data{
+    int N; // number of individuals
+    int K; // number of possible careers
+    int career[N]; // outcome
+    vector[K] career_income;
+}
+parameters{
+    vector[K-1] a; // intercepts
+    real<lower=0> b; // association of income with choice
+}
+model{
+    vector[K] p;
+    vector[K] s;
+    a ~ normal( 0 , 1 );
+    b ~ normal( 0 , 0.5 );
+    s[1] = a[1] + b*career_income[1];
+    s[2] = a[2] + b*career_income[2];
+    s[3] = 0; // pivot
+    p = softmax( s );
+    career ~ categorical( p );
+}
+"
+
+## R code 11.57
+dat_list <- list( N=N , K=3 , career=career , career_income=income )
+m11.13 <- stan( model_code=code_m11.13 , data=dat_list , chains=4 )
+precis( m11.13 , 2 )
+
 ## R code 11.58
+post <- extract.samples( m11.13 )
+
+# set up logit scores
+s1 <- with( post , a[,1] + b*income[1] )
+s2_orig <- with( post , a[,2] + b*income[2] )
+s2_new <- with( post , a[,2] + b*income[2]*2 )
+
+# compute probabilities for original and counterfactual
+p_orig <- sapply( 1:length(post$b) , function(i)
+    softmax( c(s1[i],s2_orig[i],0) ) )
+p_new <- sapply( 1:length(post$b) , function(i)
+    softmax( c(s1[i],s2_new[i],0) ) )
+
+# summarize
+p_diff <- p_new[2,] - p_orig[2,]
+precis( p_diff )
+
+## R code 11.59
+N <- 500
+# simulate family incomes for each individual
+family_income <- runif(N)
+# assign a unique coefficient for each type of event
+b <- c(-2,0,2)
+career <- rep(NA,N)  # empty vector of choices for each individual
+for ( i in 1:N ) {
+    score <- 0.5*(1:3) + b*family_income[i]
+    p <- softmax(score[1],score[2],score[3])
+    career[i] <- sample( 1:3 , size=1 , prob=p )
+}
+
+code_m11.14 <- "
+data{
+    int N; // number of observations
+    int K; // number of outcome values
+    int career[N]; // outcome
+    real family_income[N];
+}
+parameters{
+    vector[K-1] a; // intercepts
+    vector[K-1] b; // coefficients on family income
+}
+model{
+    vector[K] p;
+    vector[K] s;
+    a ~ normal(0,1.5);
+    b ~ normal(0,1);
+    for ( i in 1:N ) {
+        for ( j in 1:(K-1) ) s[j] = a[j] + b[j]*family_income[i];
+        s[K] = 0; // the pivot
+        p = softmax( s );
+        career[i] ~ categorical( p );
+    }
+}
+"
+
+dat_list <- list( N=N , K=3 , career=career , family_income=family_income )
+m11.14 <- stan( model_code=code_m11.14 , data=dat_list , chains=4 )
+precis( m11.14 , 2 )
+
+## R code 11.60
 library(rethinking)
 data(UCBadmit)
 d <- UCBadmit
 
-## R code 11.59
+## R code 11.61
 # binomial model of overall admission probability
-m_binom <- map(
+m_binom <- quap(
     alist(
         admit ~ dbinom(applications,p),
         logit(p) <- a,
-        a ~ dnorm(0,100)
-    ),
-    data=d )
+        a ~ dnorm( 0 , 1.5 )
+    ), data=d )
 
 # Poisson model of overall admission rate and rejection rate
-d$rej <- d$reject # 'reject' is a reserved word
-m_pois <- map2stan(
+# 'reject' is a reserved word in Stan, cannot use as variable name
+dat <- list( admit=d$admit , rej=d$reject )
+m_pois <- ulam(
     alist(
         admit ~ dpois(lambda1),
         rej ~ dpois(lambda2),
         log(lambda1) <- a1,
         log(lambda2) <- a2,
-        c(a1,a2) ~ dnorm(0,100)
-    ),
-    data=d , chains=3 , cores=3 )
-
-## R code 11.60
-logistic(coef(m_binom))
-
-## R code 11.61
-k <- as.numeric(coef(m_pois))
-exp(k[1])/(exp(k[1])+exp(k[2]))
+        c(a1,a2) ~ dnorm(0,1.5)
+    ), data=dat , chains=3 , cores=3 )
 
 ## R code 11.62
-N <- 2
-x <- replicate( 1e5 , min(runif(N,1,100)) )
+inv_logit(coef(m_binom))
 
 ## R code 11.63
+k <- coef(m_pois)
+a1 <- k['a1']
+a2 <- k['a2']
+exp(a1)/(exp(a1)+exp(a2))
+
+## R code 11.64
+x2 <- replicate( 1e5 , min(runif( 2 , 1 , 100 )) )
+x5 <- replicate( 1e5 , min(runif( 5 , 1 , 100 )) )
+
+## R code 11.65
 N <- 10
 M <- 2
 x <- replicate( 1e5 , sort(runif(N,1,100))[M] )
 
-## R code 11.64
+## R code 11.66
 library(rethinking)
 data(AustinCats)
 d <- AustinCats
@@ -2791,7 +2838,7 @@ dat <- list(
     adopted = d$adopt
 )
 
-m11.14 <- ulam(
+m11.15 <- ulam(
     alist(
         days_to_event|adopted==1 ~ exponential( lambda ),
         days_to_event|adopted==0 ~ custom(exponential_lccdf( !Y | lambda )),
@@ -2800,14 +2847,14 @@ m11.14 <- ulam(
         a[color_id] ~ normal(0,1)
     ), data=dat , chains=4 , cores=4 )
 
-precis( m11.14 , 2 )
+precis( m11.15 , 2 )
 
-## R code 11.65
-post <- extract.samples( m11.14 )
+## R code 11.67
+post <- extract.samples( m11.15 )
 post$D <- exp(post$a)
 precis( post , 2 )
 
-## R code 11.66
+## R code 11.68
 model{
     vector[22356] lambda;
     b ~ normal( 0 , 1 );
@@ -2822,7 +2869,7 @@ model{
         if ( adopted[i] == 1 ) days_to_event[i] ~ exponential( lambda[i] );
 }
 
-## R code 11.67
+## R code 11.69
     for ( i in 1:22356 ) {
         if ( adopted[i] == 0 ) target += -lambda[i]*days_to_event[i];
         if ( adopted[i] == 1 ) target += log(lambda[i]) - lambda[i]*days_to_event[i];
@@ -2845,7 +2892,8 @@ m12.1 <- ulam(
         A ~ dbetabinom( N , pbar , theta ),
         logit(pbar) <- a[gid],
         a[gid] ~ dnorm( 0 , 1.5 ),
-        theta ~ dexp(1)
+        transpars> theta <<- phi + 2.0,
+        phi ~ dexp(1)
     ), data=dat , chains=4 )
 
 ## R code 12.3
@@ -2882,7 +2930,7 @@ dat2 <- list(
     P = d$population,
     cid = d$contact_id )
 
-m12.3 <- ulam(
+m12.2 <- ulam(
     alist(
         T ~ dgampois( lambda , phi ),
         lambda <- exp(a[cid])*P^b[cid] / g,
@@ -2915,22 +2963,23 @@ zeros_total <- sum(y==0)
 lines( c(0,0) , c(zeros_work,zeros_total) , lwd=4 , col=rangi2 )
 
 ## R code 12.9
-m12.4 <- ulam(
+m12.3 <- ulam(
     alist(
         y ~ dzipois( p , lambda ),
         logit(p) <- ap,
         log(lambda) <- al,
         ap ~ dnorm( -1.5 , 1 ),
         al ~ dnorm( 1 , 0.5 )
-    ) , data=list(y=as.integer(y)) , chains=4 )
-precis( m12.4 )
+    ) , data=list(y=y) , chains=4 )
+precis( m12.3 )
 
 ## R code 12.10
-inv_logit(-1.28) # probability drink
-exp(0.01)       # rate finish manuscripts, when not drinking
+post <- extract.samples( m12.3 )
+mean( inv_logit( post$ap ) ) # probability drink
+mean( exp( post$al ) )       # rate finish manuscripts, when not drinking
 
 ## R code 12.11
-m12.4_alt <- ulam(
+m12.3_alt <- ulam(
     alist(
         y|y>0 ~ custom( log1m(p) + poisson_lpmf(y|lambda) ),
         y|y==0 ~ custom( log_mix( p , 0 , poisson_lpmf(0|lambda) ) ),
@@ -2961,38 +3010,36 @@ ylab="cumulative proportion" , ylim=c(0,1) )
 
 ## R code 12.15
 logit <- function(x) log(x/(1-x)) # convenience function
-( lco <- logit( cum_pr_k ) )
+round( lco <- logit( cum_pr_k ) , 2 )
 
 ## R code 12.16
-m12.5 <- ulam(
+m12.4 <- ulam(
     alist(
         R ~ dordlogit( 0 , cutpoints ),
         cutpoints ~ dnorm( 0 , 1.5 )
-    ) ,
-    data=list( R=d$response ), chains=4 , cores=3 )
+    ) , data=list( R=d$response ), chains=4 , cores=4 )
 
 ## R code 12.17
-m12.5q <- quap(
+m12.4q <- quap(
     alist(
         response ~ dordlogit( 0 , c(a1,a2,a3,a4,a5,a6) ),
         c(a1,a2,a3,a4,a5,a6) ~ dnorm( 0 , 1.5 )
-    ) , data=d ,
-    start=list(a1=-2,a2=-1,a3=0,a4=1,a5=2,a6=2.5) )
+    ) , data=d , start=list(a1=-2,a2=-1,a3=0,a4=1,a5=2,a6=2.5) )
 
 ## R code 12.18
-precis( m12.5 , depth=2 )
+precis( m12.4 , depth=2 )
 
 ## R code 12.19
-inv_logit(coef(m12.5))
+round( inv_logit(coef(m12.4)) , 3 )
 
 ## R code 12.20
-( pk <- dordlogit( 1:7 , 0 , coef(m12.5) ) )
+round( pk <- dordlogit( 1:7 , 0 , coef(m12.4) ) , 2 )
 
 ## R code 12.21
 sum( pk*(1:7) )
 
 ## R code 12.22
-( pk <- dordlogit( 1:7 , 0 , coef(m12.5)-0.5 ) )
+round( pk <- dordlogit( 1:7 , 0 , coef(m12.4)-0.5 ) , 2 )
 
 ## R code 12.23
 sum( pk*(1:7) )
@@ -3003,7 +3050,7 @@ dat <- list(
     A = d$action,
     I = d$intention,
     C = d$contact )
-m12.6 <- ulam(
+m12.5 <- ulam(
     alist(
         R ~ dordlogit( phi , cutpoints ),
         phi <- bA*A + bC*C + BI*I ,
@@ -3011,10 +3058,10 @@ m12.6 <- ulam(
         c(bA,bI,bC,bIA,bIC) ~ dnorm( 0 , 0.5 ),
         cutpoints ~ dnorm( 0 , 1.5 )
     ) , data=dat , chains=4 , cores=4 )
-precis( m12.6 )
+precis( m12.5 )
 
 ## R code 12.25
-plot( precis(m12.6) , xlim=c(-1.4,0) )
+plot( precis(m12.5) , xlim=c(-1.4,0) )
 
 ## R code 12.26
 plot( NULL , type="n" , xlab="intention" , ylab="probability" ,
@@ -3025,13 +3072,13 @@ kA <- 0     # value for action
 kC <- 0     # value for contact
 kI <- 0:1   # values of intention to calculate over
 pdat <- data.frame(A=kA,C=kC,I=kI)
-phi <- link( m12.6 , data=pdat )$phi
+phi <- link( m12.5 , data=pdat )$phi
 
 ## R code 12.28
-post <- extract.samples( m12.6 )
+post <- extract.samples( m12.5 )
 for ( s in 1:50 ) {
     pk <- pordlogit( 1:6 , phi[s,] , post$cutpoints[s,] )
-    for ( i in 1:6 ) lines( kI , pk[,i] , col=col.alpha("black",0.1) )
+    for ( i in 1:6 ) lines( kI , pk[,i] , col=grau(0.1) )
 }
 
 ## R code 12.29
@@ -3039,7 +3086,7 @@ kA <- 0     # value for action
 kC <- 1     # value for contact
 kI <- 0:1   # values of intention to calculate over
 pdat <- data.frame(A=kA,C=kC,I=kI)
-s <- sim( m12.6 , data=pdat )
+s <- sim( m12.5 , data=pdat )
 simplehist( s , xlab="response" )
 
 ## R code 12.30
@@ -3071,10 +3118,10 @@ dat <- list(
     action = d$action,
     intention = d$intention,
     contact = d$contact,
-    E = as.integer( d$edu_new ), # edu_new as an index
-    alpha = rep(2.1,7) )           # delta prior
+    E = as.integer( d$edu_new ),   # edu_new as an index
+    alpha = rep( 2 , 7 ) )      # delta prior
 
-m12.5 <- ulam(
+m12.6 <- ulam(
     alist(
         R ~ ordered_logistic( phi , kappa ),
         phi <- bE*sum( delta_j[1:E] ) + bA*action + bI*intention + bC*contact,
@@ -3082,26 +3129,25 @@ m12.5 <- ulam(
         c(bA,bI,bC,bE) ~ normal( 0 , 1 ),
         vector[8]: delta_j <<- append_row( 0 , delta ),
         simplex[7]: delta ~ dirichlet( alpha )
-    ),
-    data=dat , chains=3 , cores=3 )
+    ), data=dat , chains=4 , cores=4 , coerce_int=FALSE )
 
 ## R code 12.35
-precis( m12.5 , depth=2 , omit="cutpoints" )
+precis( m12.6 , depth=2 , omit="kappa" )
 
 ## R code 12.36
 delta_labels <- c("Elem","MidSch","SHS","HSG","SCol","Bach","Mast","Grad")
-pairs( m12.5 , pars="delta" , labels=delta_labels )
+pairs( m12.6 , pars="delta" , labels=delta_labels )
 
 ## R code 12.37
 dat$edu_norm <- normalize( d$edu_new )
-m12.6 <- ulam(
+m12.7 <- ulam(
     alist(
         R ~ ordered_logistic( mu , cutpoints ),
         mu <- bE*edu_norm + bA*action + bI*intention + bC*contact,
         c(bA,bI,bC,bE) ~ normal( 0 , 1 ),
         cutpoints ~ normal( 0 , 1.5 )
-    ), data=dat , chains=3 , cores=3 )
-precis( m12.6 )
+    ), data=dat , chains=4 , cores=4 )
+precis( m12.7 )
 
 ## R code 12.38
 library(rethinking)
@@ -3323,19 +3369,35 @@ m13.6 <- ulam(
 coeftab(m13.4,m13.6)
 
 ## R code 13.26
-divergent(m13.4)
+m13x <- ulam(
+    alist(
+        v ~ normal(0,3),
+        x ~ normal(0,exp(v))
+    ), data=list(N=1) , chains=4 )
+precis(m13x)
 
 ## R code 13.27
+m13y <- ulam(
+    alist(
+        v ~ normal(0,3),
+        z ~ normal(0,1),
+        gq> real[1]:x <<- z*exp(v)
+    ), data=list(N=1) , chains=4 )
+precis(m13y)
+
+## R code 13.28
 set.seed(13)
 m13.4b <- ulam( m13.4 , chains=4 , cores=4 , control=list(adapt_delta=0.99) )
 divergent(m13.4b)
 
-## R code 13.28
+## R code 13.29
 set.seed(13)
 m13.4nc <- ulam(
     alist(
         pulled_left ~ dbinom( 1 , p ) ,
-        logit(p) <- a_bar + z[actor]*sigma_a + x[block_id]*sigma_g + b[treatment] ,
+        logit(p) <- a_bar + z[actor]*sigma_a + # actor intercepts
+                    x[block_id]*sigma_g +      # block intercepts
+                    b[treatment] ,
         b[treatment] ~ dnorm( 0 , 0.5 ),
         z[actor] ~ dnorm( 0 , 1 ),
         x[block_id] ~ dnorm( 0 , 1 ),
@@ -3344,7 +3406,7 @@ m13.4nc <- ulam(
         sigma_g ~ dexp(1)
     ) , data=dat_list , chains=4 , cores=4 )
 
-## R code 13.29
+## R code 13.30
 neff_c <- precis( m13.4 , depth=2 )[['n_eff']]
 neff_nc <- precis( m13.4nc , depth=2 )[['n_eff']]
 par_names <- rownames( precis( m13.4 , depth=2 ) )
@@ -3352,7 +3414,7 @@ neff_table <- cbind( neff_c , neff_nc )
 rownames(neff_table) <- par_names
 round(t(neff_table))
 
-## R code 13.30
+## R code 13.31
 chimp <- 2
 d_pred <- list(
     actor = rep(chimp,4),
@@ -3363,32 +3425,32 @@ p <- link( m13.4 , data=d_pred )
 p_mu <- apply( p , 2 , mean )
 p_ci <- apply( p , 2 , PI )
 
-## R code 13.31
+## R code 13.32
 post <- extract.samples(m13.4)
 str(post)
 
-## R code 13.32
+## R code 13.33
 dens( post$a[,5] )
 
-## R code 13.33
+## R code 13.34
 p_link <- function( treatment , actor=1 , block_id=1 ) {
     logodds <- with( post ,
         a[,actor] + g[,block_id] + b[,treatment] )
     return( inv_logit(logodds) )
 }
 
-## R code 13.34
+## R code 13.35
 p_raw <- sapply( 1:4 , function(i) p_link( i , actor=2 , block_id=1 ) )
 p_mu <- apply( p_raw , 2 , mean )
 p_ci <- apply( p_raw , 2 , PI )
 
-## R code 13.35
+## R code 13.36
 p_link_abar <- function( treatment ) {
     logodds <- with( post , a_bar + b[,treatment] )
     return( inv_logit(logodds) )
 }
 
-## R code 13.36
+## R code 13.37
 p_raw <- sapply( 1:4 , function(i) p_link_abar( i ) )
 p_mu <- apply( p_raw , 2 , mean )
 p_ci <- apply( p_raw , 2 , PI )
@@ -3399,7 +3461,7 @@ axis( 1 , at=1:4 , labels=c("R/N","L/N","R/P","L/P") )
 lines( 1:4 , p_mu )
 shade( p_ci , 1:4 )
 
-## R code 13.37
+## R code 13.38
 a_sim <- with( post , rnorm( length(post$a_bar) , a_bar , sigma_a ) )
 p_link_asim <- function( treatment ) {
     logodds <- with( post , a_sim + b[,treatment] )
@@ -3407,16 +3469,16 @@ p_link_asim <- function( treatment ) {
 }
 p_raw_asim <- sapply( 1:4 , function(i) p_link_asim( i ) )
 
-## R code 13.38
+## R code 13.39
 plot( NULL , xlab="treatment" , ylab="proportion pulled left" ,
     ylim=c(0,1) , xaxt="n" , xlim=c(1,4) )
 axis( 1 , at=1:4 , labels=c("R/N","L/N","R/P","L/P") )
 for ( i in 1:100 ) lines( 1:4 , p_raw_asim[i,] , col=col.alpha("black",0.25) , lwd=2 )
 
-## R code 13.39
+## R code 13.40
 sort(unique(d$district))
 
-## R code 13.40
+## R code 13.41
 d$district_id <- as.integer(as.factor(d$district))
 sort(unique(d$district_id))
 
@@ -3954,9 +4016,10 @@ library(rethinking)
 data(Primates301)
 data(Primates301_nex)
 
-# plot it
+# plot it using ape package - install.packages('ape') if needed
 library(ape)
-plot( ladderize(Primates301_nex) , type="fan" , font=1 , no.margin=TRUE , label.offset=1 , cex=0.5 )
+plot( ladderize(Primates301_nex) , type="fan" , font=1 , no.margin=TRUE ,
+    label.offset=1 , cex=0.5 )
 
 ## R code 14.47
 d <- Primates301
@@ -3975,16 +4038,17 @@ dat_list <- list(
 
 m14.8 <- ulam(
     alist(
-        G ~ multi_normal( mu , SIGMA ),
-        mu <- a + bM*M + bB*B,
+        B ~ multi_normal( mu , SIGMA ),
+        mu <- a + bM*M + bG*G,
         matrix[N_spp,N_spp]: SIGMA <- Imat * sigma_sq,
         a ~ normal( 0 , 1 ),
-        c(bM,bB) ~ normal( 0 , 0.5 ),
+        c(bM,bG) ~ normal( 0 , 0.5 ),
         sigma_sq ~ exponential( 1 )
     ), data=dat_list , chains=4 , cores=4 )
 precis( m14.8 )
 
 ## R code 14.49
+library(ape)
 tree_trimmed <- keep.tip( Primates301_nex, spp_obs )
 Rbm <- corBrownian( phy=tree_trimmed )
 V <- vcv(Rbm)
@@ -4000,11 +4064,11 @@ dat_list$R <- dat_list$V / max(V)
 # Brownian motion model
 m14.9 <- ulam(
     alist(
-        G ~ multi_normal( mu , SIGMA ),
-        mu <- a + bM*M + bB*B,
+        B ~ multi_normal( mu , SIGMA ),
+        mu <- a + bM*M + bG*G,
         matrix[N_spp,N_spp]: SIGMA <- R * sigma_sq,
         a ~ normal( 0 , 1 ),
-        c(bM,bB) ~ normal( 0 , 0.5 ),
+        c(bM,bG) ~ normal( 0 , 0.5 ),
         sigma_sq ~ exponential( 1 )
     ), data=dat_list , chains=4 , cores=4 )
 precis( m14.9 )
@@ -4015,21 +4079,34 @@ dat_list$Dmat <- Dmat[ spp_obs , spp_obs ] / max(Dmat)
 
 m14.10 <- ulam(
     alist(
-        G ~ multi_normal( mu , SIGMA ),
-        mu <- a + bM*M + bB*B,
-        matrix[N_spp,N_spp]: SIGMA <- cov_GPL2( Dmat , etasq , rhosq , 0.01 ),
+        B ~ multi_normal( mu , SIGMA ),
+        mu <- a + bM*M + bG*G,
+        matrix[N_spp,N_spp]: SIGMA <- cov_GPL1( Dmat , etasq , rhosq , 0.01 ),
         a ~ normal(0,1),
-        c(bM,bB) ~ normal(0,0.5),
-        etasq ~ exponential(1),
-        rhosq ~ exponential(1)
+        c(bM,bG) ~ normal(0,0.5),
+        etasq ~ half_normal(1,0.25),
+        rhosq ~ half_normal(3,0.25)
     ), data=dat_list , chains=4 , cores=4 )
 precis( m14.10 )
 
 ## R code 14.52
 post <- extract.samples(m14.10)
-plot( NULL , xlim=c(0,max(dat_list$Dmat)) , ylim=c(0,5) ,
+plot( NULL , xlim=c(0,max(dat_list$Dmat)) , ylim=c(0,1.5) ,
     xlab="phylogenetic distance" , ylab="covariance" )
-for ( i in 1:50 ) curve( post$etasq[i]*exp(-post$rhosq[i]*x^2) , add=TRUE , col=grau() )
+
+# posterior
+for ( i in 1:30 )
+    curve( post$etasq[i]*exp(-post$rhosq[i]*x) , add=TRUE , col=rangi2 )
+
+# prior mean and 89% interval
+eta <- abs(rnorm(1e3,1,0.25))
+rho <- abs(rnorm(1e3,3,0.25))
+d_seq <- seq(from=0,to=1,length.out=50)
+K <- sapply( d_seq , function(x) eta*exp(-rho*x) )
+lines( d_seq , colMeans(K) , lwd=2 )
+shade( apply(K,2,PI) , d_seq )
+text( 0.5 , 0.5 , "prior" )
+text( 0.2 , 0.1 , "posterior" , col=rangi2 )
 
 ## R code 14.53
 S <- matrix( c( sa^2 , sa*sb*rho , sa*sb*rho , sb^2 ) , nrow=2 )

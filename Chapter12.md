@@ -46,7 +46,18 @@ library(rethinking)
 ```
 
 ```
-## rethinking (Version 1.90)
+## rethinking (Version 1.91)
+```
+
+```
+## 
+## Attaching package: 'rethinking'
+```
+
+```
+## The following object is masked from 'package:stats':
+## 
+##     rstudent
 ```
 
 ```r
@@ -54,7 +65,7 @@ library(tidyverse)
 ```
 
 ```
-## ── Attaching packages ────────────
+## ── Attaching packages ───────────────────────────────────────────── tidyverse 1.2.1 ──
 ```
 
 ```
@@ -65,7 +76,7 @@ library(tidyverse)
 ```
 
 ```
-## ── Conflicts ─────────────────────
+## ── Conflicts ──────────────────────────────────────────────── tidyverse_conflicts() ──
 ## ✖ tidyr::extract() masks rstan::extract()
 ## ✖ dplyr::filter()  masks stats::filter()
 ## ✖ dplyr::lag()     masks stats::lag()
@@ -73,6 +84,21 @@ library(tidyverse)
 ```
 
 # Problems
+
+## 11E1
+_What is the difference between an ordered categorical variable and an unordered one? Define and then give an example of each._
+
+An unordered categorical variable is a grouping variable where the groups do not have any particular relationship to one another.  Example: US states.
+
+An ordered categorical cariable is a goruping variable where the different groups do have a relationship with one another (can be sorted) but the step size between groups is unknown.  Example: small, medium, large.
+
+
+## 11E2
+
+_What kind of link function does an ordered logistic regression employ? How does it differ from an ordinary logit link?_
+
+Still a logit, but here the we are using cumulative probabilities.  The probability of obserbing that outcome or any "lesser" outcome.
+
 
 ## 11E3
 _When count data are zero-inflated, using a model that ignores zero-inflation will tend to induce which kind of inferential error?_
@@ -85,6 +111,102 @@ _Over-dispersion is common in count data. Give an example of a natural process t
 The rate of leaves falling off of a evergeen tree could be overdispersed if you did not take weather/wind conditions into account.
 
 One would expect underdispersion to occur in a system that has a negative feedback loop (depending on the time delay)
+
+## 11M1
+
+_At a certain university, employees are annually rated from 1 to 4 on their productivity, with 1 being least productive and 4 most productive. In a certain department at this certain university in a certain year, the numbers of employees receiving each rating were (from 1 to 4): 12, 36, 7, 41. Compute the log cumulative odds of each rating._
+
+
+```r
+ratings <- c(12,36,7,41)
+names(ratings) <- as.character(1:4)
+ratings
+```
+
+```
+##  1  2  3  4 
+## 12 36  7 41
+```
+
+```r
+probs <- ratings / sum(ratings) # probability of each rating
+cumprobs <- cumsum(probs)
+cumprobs
+```
+
+```
+##         1         2         3         4 
+## 0.1250000 0.5000000 0.5729167 1.0000000
+```
+
+
+
+```r
+cum_odds <- map_dbl(1:4, ~ cumprobs[.]/ (1-cumprobs[.]) )
+cum_odds
+```
+
+```
+## [1] 0.1428571 1.0000000 1.3414634       Inf
+```
+
+```r
+log(cum_odds)
+```
+
+```
+## [1] -1.9459101  0.0000000  0.2937611        Inf
+```
+
+or...
+
+```r
+cum_log_odds <- map_dbl(1:4, ~ log(cumprobs[.]) - log(1-cumprobs[.]))
+
+cum_log_odds
+```
+
+```
+## [1] -1.9459101  0.0000000  0.2937611        Inf
+```
+
+## 11M2
+_Make a version of Figure 12.5 for the employee ratings data given just above._
+
+```r
+dat <- tibble(
+  rating = names(probs),
+  probability = probs,
+  cumulative = cumprobs
+)
+dat
+```
+
+```
+## # A tibble: 4 x 3
+##   rating probability cumulative
+##   <chr>        <dbl>      <dbl>
+## 1 1           0.125       0.125
+## 2 2           0.375       0.5  
+## 3 3           0.0729      0.573
+## 4 4           0.427       1
+```
+
+
+```r
+dat %>% 
+  ggplot(aes(x=rating, xend=rating)) +
+  geom_segment(aes(yend=cumulative), y=0, col="gray70", lwd=2, position=position_nudge(x=-0.02)) +
+  geom_segment(aes(y=cumulative-probability, yend=cumulative), col="skyblue", lwd=2, position = position_nudge(x=.02)) +
+  geom_line(aes(x=rating, y = cumulative), group=1) +
+  geom_point(aes(y = cumulative), shape=21, fill="white", size=2) +
+  geom_text(aes(y = (cumulative - probability/2), label=rating), color="skyblue", position=position_nudge(x=.1)) +
+  ylab("cumulative proportion") +
+  theme_bw()
+```
+
+![](Chapter12_files/figure-html/unnamed-chunk-6-1.png)<!-- -->
+
 
 ## 11M3 (optional)
 
@@ -130,7 +252,7 @@ Hurricanes %>%
 ## `geom_smooth()` using method = 'loess' and formula 'y ~ x'
 ```
 
-![](Chapter12_files/figure-html/unnamed-chunk-3-1.png)<!-- -->
+![](Chapter12_files/figure-html/unnamed-chunk-8-1.png)<!-- -->
 
 ```r
 Hurricanes %>%
@@ -144,7 +266,7 @@ Hurricanes %>%
 ## `geom_smooth()` using method = 'loess' and formula 'y ~ x'
 ```
 
-![](Chapter12_files/figure-html/unnamed-chunk-3-2.png)<!-- -->
+![](Chapter12_files/figure-html/unnamed-chunk-8-2.png)<!-- -->
 
 Doesn't look very promising...
 
@@ -156,7 +278,7 @@ curve(dlnorm(x, 3, .5), from=0, to=100, n=200, add=TRUE, col="blue")
 curve(dlnorm(x, 3, 1), from=0, to=100, n=200, add=TRUE, col="red")
 ```
 
-![](Chapter12_files/figure-html/unnamed-chunk-4-1.png)<!-- -->
+![](Chapter12_files/figure-html/unnamed-chunk-9-1.png)<!-- -->
 
 But, we are really thinking about average rate of deaths, which is around 20, so seems OK
 
@@ -173,13 +295,21 @@ mh1 <- ulam(alist(
   log_lik = TRUE)
 ```
 
+```
+## Removing one or more character or factor variables:
+```
+
+```
+## name
+```
+
 
 ```r
 trankplot(mh1)
 traceplot(mh1)
 ```
 
-![](Chapter12_files/figure-html/unnamed-chunk-6-1.png)<!-- -->![](Chapter12_files/figure-html/unnamed-chunk-6-2.png)<!-- -->
+![](Chapter12_files/figure-html/unnamed-chunk-11-1.png)<!-- -->![](Chapter12_files/figure-html/unnamed-chunk-11-2.png)<!-- -->
 
 
 ```r
@@ -187,8 +317,8 @@ precis(mh1)
 ```
 
 ```
-##           mean         sd     5.5%    94.5%    n_eff     Rhat
-## alpha 3.028115 0.02301902 2.991376 3.064096 606.5901 1.005308
+##           mean        sd     5.5%    94.5%    n_eff     Rhat
+## alpha 3.026922 0.0221155 2.990693 3.062752 541.6453 1.005434
 ```
 
 
@@ -221,7 +351,7 @@ plot( NULL , xlim=c(1,10) , ylim=c(0,500) )
 for ( i in 1:N ) curve( exp( a[i] + b[i]*x ) , add=TRUE , col=col.alpha("black",0.5) )
 ```
 
-![](Chapter12_files/figure-html/unnamed-chunk-9-1.png)<!-- -->
+![](Chapter12_files/figure-html/unnamed-chunk-14-1.png)<!-- -->
 
 Seems reasonable
 
@@ -238,19 +368,27 @@ mh1.2 <- ulam(alist(
   log_lik = TRUE)
 ```
 
+```
+## Removing one or more character or factor variables:
+```
+
+```
+## name
+```
+
 
 ```r
 traceplot(mh1.2)
 trankplot(mh1.2)
 ```
 
-![](Chapter12_files/figure-html/unnamed-chunk-11-1.png)<!-- -->
+![](Chapter12_files/figure-html/unnamed-chunk-16-1.png)<!-- -->
 
 ```r
 pairs(mh1.2)
 ```
 
-![](Chapter12_files/figure-html/unnamed-chunk-11-2.png)<!-- -->![](Chapter12_files/figure-html/unnamed-chunk-11-3.png)<!-- -->
+![](Chapter12_files/figure-html/unnamed-chunk-16-2.png)<!-- -->![](Chapter12_files/figure-html/unnamed-chunk-16-3.png)<!-- -->
 
 
 ```r
@@ -270,9 +408,9 @@ compare(mh1, mh1.2)
 ```
 
 ```
-##           WAIC     pWAIC    dWAIC       weight        SE      dSE
-## mh1.2 4402.113 129.93623  0.00000 1.000000e+00  990.5732       NA
-## mh1   4451.735  80.64279 49.62132 1.678293e-11 1076.3798 150.0824
+##           WAIC     pWAIC    dWAIC       weight        SE     dSE
+## mh1.2 4402.113 129.93623  0.00000 1.000000e+00  990.5732      NA
+## mh1   4445.656  74.43536 43.54242 3.506577e-10 1074.8293 149.057
 ```
 
 
@@ -296,24 +434,32 @@ mh2 <- ulam(alist(
   log_lik = TRUE)
 ```
 
+```
+## Removing one or more character or factor variables:
+```
+
+```
+## name
+```
+
 
 ```r
 traceplot(mh2)
 ```
 
-![](Chapter12_files/figure-html/unnamed-chunk-15-1.png)<!-- -->
+![](Chapter12_files/figure-html/unnamed-chunk-20-1.png)<!-- -->
 
 ```r
 trankplot(mh2)
 ```
 
-![](Chapter12_files/figure-html/unnamed-chunk-15-2.png)<!-- -->
+![](Chapter12_files/figure-html/unnamed-chunk-20-2.png)<!-- -->
 
 ```r
 pairs(mh2)
 ```
 
-![](Chapter12_files/figure-html/unnamed-chunk-15-3.png)<!-- -->
+![](Chapter12_files/figure-html/unnamed-chunk-20-3.png)<!-- -->
 
 
 ```r
@@ -329,6 +475,7 @@ precis(mh2)
 
 Now we are much less certain about `b` being positive.  The support interval crosses 0.
 
+Optional: 11H3, 11H4
 
 ## 11H6
 
@@ -400,13 +547,13 @@ traceplot(mh6.1)
 trankplot(mh6.1)
 ```
 
-![](Chapter12_files/figure-html/unnamed-chunk-19-1.png)<!-- -->
+![](Chapter12_files/figure-html/unnamed-chunk-24-1.png)<!-- -->
 
 ```r
 pairs(mh6.1)
 ```
 
-![](Chapter12_files/figure-html/unnamed-chunk-19-2.png)<!-- -->![](Chapter12_files/figure-html/unnamed-chunk-19-3.png)<!-- -->
+![](Chapter12_files/figure-html/unnamed-chunk-24-2.png)<!-- -->![](Chapter12_files/figure-html/unnamed-chunk-24-3.png)<!-- -->
 
 
 ```r
@@ -444,13 +591,13 @@ traceplot(mh6.2)
 trankplot(mh6.2)
 ```
 
-![](Chapter12_files/figure-html/unnamed-chunk-22-1.png)<!-- -->
+![](Chapter12_files/figure-html/unnamed-chunk-27-1.png)<!-- -->
 
 ```r
 pairs(mh6.2)
 ```
 
-![](Chapter12_files/figure-html/unnamed-chunk-22-2.png)<!-- -->![](Chapter12_files/figure-html/unnamed-chunk-22-3.png)<!-- -->
+![](Chapter12_files/figure-html/unnamed-chunk-27-2.png)<!-- -->![](Chapter12_files/figure-html/unnamed-chunk-27-3.png)<!-- -->
 
 ```r
 precis(mh6.1)
@@ -549,7 +696,7 @@ pl <- pred_obs %>%
 pl
 ```
 
-![](Chapter12_files/figure-html/unnamed-chunk-27-1.png)<!-- -->
+![](Chapter12_files/figure-html/unnamed-chunk-32-1.png)<!-- -->
 
 
 ```r
@@ -560,7 +707,7 @@ pl + coord_cartesian(xlim=c(0,50))
 ## Coordinate system already present. Adding new coordinate system, which will replace the existing one.
 ```
 
-![](Chapter12_files/figure-html/unnamed-chunk-28-1.png)<!-- -->
+![](Chapter12_files/figure-html/unnamed-chunk-33-1.png)<!-- -->
 
 
 ```r
@@ -591,6 +738,230 @@ f %>% arrange(desc(fish_caught)) %>% head(20)
 ## 20           9        1      0       2     0 11.008  2.3986223      2
 ```
 
+
+## PDF week 7 problem 1
+_1. In the Trolley data—data(Trolley)—we saw how education level (modeled as an ordered category) is associated with responses. Is this association causal? One plausible confound is that education is also associated with age, through a causal process: People are older when they finish school than when they begin it._
+
+_Reconsider the Trolley data in this light. Draw a DAG that represents hypothetical causal relationships among response, education, and age. Which statical model or models do you need to evaluate the causal influence of education on responses?_
+
+
+```r
+library(dagitty)
+g <- dagitty("dag{
+  E -> R;
+  A -> R;
+  A -> E
+}")
+
+coordinates(g) <- list(
+  x=c(A=1,R=2,E=3),
+  y=c(A=0,R=1,E=0))
+plot(g)
+```
+
+![](Chapter12_files/figure-html/unnamed-chunk-35-1.png)<!-- -->
+
+
+_Fit these models to the trolley data. What do you conclude about the causal relationships among these three variables?_
+
+
+
+```r
+data(Trolley)
+d <- Trolley
+levels(d$edu)
+```
+
+```
+## [1] "Bachelor's Degree"    "Elementary School"    "Graduate Degree"     
+## [4] "High School Graduate" "Master's Degree"      "Middle School"       
+## [7] "Some College"         "Some High School"
+```
+
+```r
+edu_levels <- c( 6 , 1 , 8 , 4 , 7 , 2 , 5 , 3 )
+d$edu_new <- edu_levels[ d$edu ]
+```
+
+
+
+```r
+library(gtools)
+```
+
+```
+## 
+## Attaching package: 'gtools'
+```
+
+```
+## The following object is masked from 'package:rethinking':
+## 
+##     logit
+```
+
+```r
+set.seed(999)
+delta <- rdirichlet( 10 , alpha=rep(2,7) )
+```
+
+
+```r
+dat <- list(
+  R = d$response ,
+  action = d$action,
+  intention = d$intention,
+  contact = d$contact,
+  age = scale(d$age),
+  E = as.integer( d$edu_new ), # edu_new as an index
+  alpha = rep(2.1,7) )           # delta prior
+
+system.time({
+  mpdf1 <- ulam(
+  alist(
+    R ~ ordered_logistic( phi , kappa ),
+    phi <- bE*sum( delta_j[1:E] ) + bA*action + bI*intention + bC*contact + bAge*age,
+    kappa ~ normal( 0 , 1.5 ),
+    c(bA,bI,bC,bE, bAge) ~ normal( 0 , 1 ),
+    vector[8]: delta_j <<- append_row( 0 , delta ),
+    simplex[7]: delta ~ dirichlet( alpha )
+  ),
+  data=dat , chains=3 , cores=3, iter = 2000 )
+})
+```
+
+```
+##     user   system  elapsed 
+## 6117.620   19.593 2272.519
+```
+
+
+
+```r
+precis(mpdf1, depth = 2, omit="kappa")
+```
+
+```
+##                 mean         sd        5.5%       94.5%     n_eff
+## bAge     -0.09830503 0.02185515 -0.13179314 -0.06199679 1183.7318
+## bE        0.22642606 0.11682570  0.01543113  0.36153309  417.8293
+## bC       -0.96103295 0.05000238 -1.04071704 -0.88199433 2092.7430
+## bI       -0.71976384 0.03592435 -0.77779644 -0.66370930 2480.0203
+## bA       -0.70831031 0.04062993 -0.77147988 -0.64232019 1890.6350
+## delta[1]  0.11445939 0.07285387  0.02581061  0.24485191 1917.1036
+## delta[2]  0.12232321 0.07330488  0.02914841  0.25824553 2964.6498
+## delta[3]  0.08965884 0.06317212  0.01997806  0.21076977 1450.6375
+## delta[4]  0.06787596 0.05452512  0.01299861  0.16266011 1012.8799
+## delta[5]  0.42134752 0.14394392  0.12967246  0.62073548  574.6148
+## delta[6]  0.08533408 0.05779039  0.01813279  0.19288659 2131.2569
+## delta[7]  0.09900100 0.06453381  0.02153289  0.21711164 2968.5746
+##               Rhat
+## bAge     1.0011455
+## bE       1.0053736
+## bC       0.9999285
+## bI       0.9995776
+## bA       1.0002380
+## delta[1] 1.0004193
+## delta[2] 1.0004271
+## delta[3] 1.0002078
+## delta[4] 1.0010713
+## delta[5] 1.0031456
+## delta[6] 1.0004758
+## delta[7] 0.9995019
+```
+
+OK this quite changes things.  Now education has a postive effect whereas age has a negative effect.  This suggests that indeed the apparent negative education effect was driven by Age and we have closed that backdoor.
+
+
+## PDF week 7 problem  2
+
+_Consider one more variable in the Trolley data: Gender. Suppose that gender might influence education as well as response directly. Draw the DAG now that includes response, education, age, and gender._
+
+
+```r
+g <- dagitty("dag{
+  G -> R;
+  G -> E;
+  E -> R;
+  A -> R;
+  A -> E
+}")
+
+coordinates(g) <- list(
+  x=c(A=1,R=2,E=3,G=4),
+  y=c(A=0,R=1,E=0,G=0))
+plot(g)
+```
+
+![](Chapter12_files/figure-html/unnamed-chunk-40-1.png)<!-- -->
+
+_Using only the DAG, is it possible that the inferences from Problem 1 are confounded by gender? If so, define any additional models you need to infer the causal influence of education on response. What do you conclude?_
+
+I don't think that the inference about age is incorrect, but the one about education could be.
+
+
+```r
+d %>% ggplot(aes(x=as.factor(male), y = edu_new)) +
+  geom_violin()
+```
+
+![](Chapter12_files/figure-html/unnamed-chunk-41-1.png)<!-- -->
+
+
+
+```r
+dat <- list(
+  R = d$response ,
+  action = d$action,
+  intention = d$intention,
+  contact = d$contact,
+  age = scale(d$age),
+  male = d$male,
+  E = as.integer( d$edu_new ), # edu_new as an index
+  alpha = rep(2.1,7) )           # delta prior
+
+system.time({
+  mpdf2 <- ulam(
+  alist(
+    R ~ ordered_logistic( phi , kappa ),
+    phi <- bE*sum( delta_j[1:E] ) + bA*action + bI*intention + bC*contact + bAge*age +bMale*male,
+    kappa ~ normal( 0 , 1.5 ),
+    c(bA,bI,bC,bE, bAge, bMale) ~ normal( 0 , 1 ),
+    vector[8]: delta_j <<- append_row( 0 , delta ),
+    simplex[7]: delta ~ dirichlet( alpha )
+  ),
+  data=dat , chains=3 , cores=3, iter = 2000 )
+})
+```
+
+```
+##     user   system  elapsed 
+## 8098.626   36.741 3088.068
+```
+
+
+```r
+precis(mpdf2, depth = 2, omit = "kappa")
+```
+
+```
+##                mean         sd        5.5%       94.5%    n_eff      Rhat
+## bMale     0.5612431 0.03642281  0.50430659  0.61949639 2996.842 1.0002833
+## bAge     -0.0678461 0.02236658 -0.10277094 -0.03217551 1594.239 1.0013830
+## bE        0.0183066 0.16675162 -0.26415688  0.25364457 1014.515 1.0017617
+## bC       -0.9698278 0.05090900 -1.05364655 -0.89052938 2613.156 0.9997174
+## bI       -0.7260676 0.03558144 -0.78236258 -0.66793342 2883.862 0.9997742
+## bA       -0.7132242 0.04034489 -0.77886073 -0.64834464 2748.150 0.9999117
+## delta[1]  0.1503896 0.09488847  0.03387623  0.32412620 2806.693 1.0010059
+## delta[2]  0.1429294 0.09055660  0.02923997  0.31319173 3269.116 1.0001407
+## delta[3]  0.1327436 0.08761205  0.02621700  0.29741858 3124.726 0.9992908
+## delta[4]  0.1302463 0.09528261  0.02251102  0.30906554 2078.046 0.9998251
+## delta[5]  0.1907443 0.14769086  0.02017377  0.46445252 1034.296 1.0031117
+## delta[6]  0.1225985 0.08162895  0.02481428  0.27578767 2584.536 0.9995830
+## delta[7]  0.1303483 0.08299790  0.02774223  0.28650925 3273.383 0.9991992
+```
+
+Gender plays a major role in the Response.  When both Gender and Age are considered, there is no evidence that education is relevant.  Older people and women are both much more likely to judge a scenario as immoral.
 
 # Book Code
 
@@ -753,10 +1124,18 @@ m12.4_alt <- ulam(
 library(rethinking)
 data(Trolley)
 d <- Trolley
+```
 
+
+
+```r
 ## R code 12.13
 simplehist( d$response , xlim=c(1,7) , xlab="response" )
+```
 
+
+
+```r
 ## R code 12.14
 # discrete proportion of each response value
 pr_k <- table( d$response ) / nrow(d)
@@ -767,19 +1146,31 @@ cum_pr_k <- cumsum( pr_k )
 # plot
 plot( 1:7 , cum_pr_k , type="b" , xlab="response" ,
       ylab="cumulative proportion" , ylim=c(0,1) )
+```
 
+
+
+```r
 ## R code 12.15
 logit <- function(x) log(x/(1-x)) # convenience function
 ( lco <- logit( cum_pr_k ) )
+```
 
+
+
+```r
 ## R code 12.16
 m12.5 <- ulam(
   alist(
     R ~ dordlogit( 0 , cutpoints ),
     cutpoints ~ dnorm( 0 , 1.5 )
   ) ,
-  data=list( R=d$response ), chains=4 , cores=3 )
+  data=list( R=d$response ), chains=4 , cores=4 )
+```
 
+
+
+```r
 ## R code 12.17
 m12.5q <- quap(
   alist(
@@ -787,25 +1178,53 @@ m12.5q <- quap(
     c(a1,a2,a3,a4,a5,a6) ~ dnorm( 0 , 1.5 )
   ) , data=d ,
   start=list(a1=-2,a2=-1,a3=0,a4=1,a5=2,a6=2.5) )
+```
 
+
+
+```r
 ## R code 12.18
 precis( m12.5 , depth=2 )
+```
 
+
+
+```r
 ## R code 12.19
 inv_logit(coef(m12.5))
+```
 
+
+
+```r
 ## R code 12.20
 ( pk <- dordlogit( 1:7 , 0 , coef(m12.5) ) )
+```
 
+
+
+```r
 ## R code 12.21
 sum( pk*(1:7) )
+```
 
+
+
+```r
 ## R code 12.22
 ( pk <- dordlogit( 1:7 , 0 , coef(m12.5)-0.5 ) )
+```
 
+
+
+```r
 ## R code 12.23
 sum( pk*(1:7) )
+```
 
+
+
+```r
 ## R code 12.24
 dat <- list(
   R = d$response,
@@ -821,10 +1240,18 @@ m12.6 <- ulam(
     cutpoints ~ dnorm( 0 , 1.5 )
   ) , data=dat , chains=4 , cores=4 )
 precis( m12.6 )
+```
 
+
+
+```r
 ## R code 12.25
 plot( precis(m12.6) , xlim=c(-1.4,0) )
+```
 
+
+
+```r
 ## R code 12.26
 plot( NULL , type="n" , xlab="intention" , ylab="probability" ,
       xlim=c(0,1) , ylim=c(0,1) , xaxp=c(0,1,1) , yaxp=c(0,1,2) )
@@ -842,7 +1269,11 @@ for ( s in 1:50 ) {
   pk <- pordlogit( 1:6 , phi[s,] , post$cutpoints[s,] )
   for ( i in 1:6 ) lines( kI , pk[,i] , col=col.alpha("black",0.1) )
 }
+```
 
+
+
+```r
 ## R code 12.29
 kA <- 0     # value for action
 kC <- 1     # value for contact
@@ -850,30 +1281,50 @@ kI <- 0:1   # values of intention to calculate over
 pdat <- data.frame(A=kA,C=kC,I=kI)
 s <- sim( m12.6 , data=pdat )
 simplehist( s , xlab="response" )
+```
 
+
+
+```r
 ## R code 12.30
 library(rethinking)
 data(Trolley)
 d <- Trolley
 levels(d$edu)
+```
 
+
+
+```r
 ## R code 12.31
 edu_levels <- c( 6 , 1 , 8 , 4 , 7 , 2 , 5 , 3 )
 d$edu_new <- edu_levels[ d$edu ]
+```
 
+
+
+```r
 ## R code 12.32
 library(gtools)
 set.seed(1805)
 delta <- rdirichlet( 10 , alpha=rep(2,7) )
 str(delta)
+```
 
+
+
+```r
 ## R code 12.33
 h <- 3
 plot( NULL , xlim=c(1,7) , ylim=c(0,0.4) , xlab="index" , ylab="probability" )
 for ( i in 1:nrow(delta) ) lines( 1:7 , delta[i,] , type="b" ,
                                   pch=ifelse(i==h,16,1) , lwd=ifelse(i==h,4,1.5) ,
                                   col=ifelse(i==h,"black",col.alpha("black",0.7)) )
+```
 
+30 minutes!!
+
+```r
 ## R code 12.34
 dat <- list(
   R = d$response ,
@@ -881,7 +1332,7 @@ dat <- list(
   intention = d$intention,
   contact = d$contact,
   E = as.integer( d$edu_new ), # edu_new as an index
-  alpha = rep(2,7) )           # delta prior
+  alpha = rep(2.1,7) )           # delta prior
 
 m12.5 <- ulam(
   alist(
@@ -893,27 +1344,35 @@ m12.5 <- ulam(
     simplex[7]: delta ~ dirichlet( alpha )
   ),
   data=dat , chains=3 , cores=3 )
+```
 
+
+
+```r
 ## R code 12.35
-precis( m12.5 , depth=2 , omit="cutpoints" )
+precis( m12.5 , depth=2 , omit="kappa" )
+```
 
+
+
+```r
 ## R code 12.36
 delta_labels <- c("Elem","MidSch","SHS","HSG","SCol","Bach","Mast","Grad")
 pairs( m12.5 , pars="delta" , labels=delta_labels )
+```
 
+
+
+```r
 ## R code 12.37
 dat$edu_norm <- normalize( d$edu_new )
 m12.6 <- ulam(
   alist(
-    y ~ ordered_logistic( mu , cutpoints ),
+    R ~ ordered_logistic( mu , cutpoints ),
     mu <- bE*edu_norm + bA*action + bI*intention + bC*contact,
     c(bA,bI,bC,bE) ~ normal( 0 , 1 ),
     cutpoints ~ normal( 0 , 1.5 )
   ), data=dat , chains=3 , cores=3 )
 precis( m12.6 )
-
-## R code 12.38
-library(rethinking)
-data(Hurricanes)
 ```
 
