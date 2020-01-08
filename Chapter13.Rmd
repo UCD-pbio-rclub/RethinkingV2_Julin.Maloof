@@ -17,6 +17,11 @@ knitr::opts_chunk$set(echo = TRUE, cache = TRUE, autodep = TRUE)
 
 ## 12E1
 
+_12E1. Which of the following priors will produce more shrinkage in the estimates? (a) αtank ∼
+Normal(0, 1); (b) αtank ∼ Normal(0, 2)._
+
+αtank ∼ Normal(0, 1)
+
 ## 12E2
 
 ## 12E3
@@ -170,7 +175,7 @@ m13.3 <- ulam(
         a_pond[pond] ~ dnorm( a_bar , sigma ),
         a_bar ~ dnorm( 0 , 1.5 ),
         sigma ~ dexp( 1 )
-    ), data=dat , chains=3 )
+    ), data=dat , chains=4 )
 ```
 
 
@@ -197,13 +202,13 @@ plot( 1:60 , nopool_error , xlab="pond" , ylab="absolute error" ,
     col=rangi2 , pch=16 )
 points( 1:60 , partpool_error )
 
+## R code 13.19
 nopool_avg <- aggregate(nopool_error,list(dsim$Ni),mean)
 partpool_avg <- aggregate(partpool_error,list(dsim$Ni),mean)
 ```
 
 
 ```{r}
-## R code 13.19
 
 
 ## R code 13.20
