@@ -2,7 +2,9 @@
 title: "Chapter 13"
 author: "Julin N Maloof"
 date: "1/8/2020"
-output: html_document
+output: 
+  html_document: 
+    keep_md: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -11,9 +13,6 @@ knitr::opts_chunk$set(echo = TRUE, cache = TRUE, autodep = TRUE)
 
 # Problems
 
-12E1-12E3
-12M1-12M2
-12H1
 
 ## 12E1
 
@@ -26,11 +25,11 @@ Normal(0, 1); (b) αtank ∼ Normal(0, 2)._
 
 _Make the following model into a multilevel model._
 
-yi ∼ Binomial(1, pi)
-logit(pi) = αgroup[i] + βxi 
-αgroup ∼ Normal(a_bar, sigma)
-a_bar ~ Normal(0, 1.5)
-sigma ~ dexp(1)
+yi ∼ Binomial(1, pi)  
+logit(pi) = αgroup[i] + βxi   
+αgroup ∼ Normal(a_bar, sigma)  
+a_bar ~ Normal(0, 1.5)  
+sigma ~ dexp(1)  
 β ∼ Normal(0, 1)
 
 
@@ -38,12 +37,12 @@ sigma ~ dexp(1)
 
 _Make the following model into a multilevel model._
 
-yi ∼ Normal(μi, σ)
-μi = αgroup[i] + βxi 
-αgroup ∼ Normal(a_bar, sigma)
-a_bar ~ Normal(0, 10)
-sigma ~ dexp(1)
-β ∼ Normal(0, 1)
+yi ∼ Normal(μi, σ)  
+μi = αgroup[i] + βxi  
+αgroup ∼ Normal(a_bar, sigma)  
+a_bar ~ Normal(0, 10)  
+sigma ~ dexp(1)  
+β ∼ Normal(0, 1)  
 σ ∼ HalfCauchy(0, 2)
 
 ## 12M1
@@ -64,7 +63,7 @@ d$tank <- 1:nrow(d)
 ```
 
 orignal
-```{r}
+```{r, warning=FALSE}
 dat <- list(
     S = d$surv,
     N = d$density,
@@ -81,7 +80,7 @@ m12M1a <- ulam(
     ), data=dat , chains=4 , log_lik=TRUE )
 ```
 
-```{r}
+```{r, warning=FALSE}
 dat <- list(
     S = d$surv,
     N = d$density,
@@ -107,7 +106,7 @@ plot(m12M1_pred)
 
 
 size model
-```{r}
+```{r,  warning=FALSE}
 dat <- list(
     S = d$surv,
     N = d$density,
@@ -134,7 +133,7 @@ precis(m12M1_size)
 
 
 both size and pred
-```{r}
+```{r, warning=FALSE}
 dat <- list(
     S = d$surv,
     N = d$density,
@@ -161,7 +160,7 @@ precis(m12M1_both)
 
 
 interaction
-```{r}
+```{r, warning=FALSE}
 dat <- list(
     S = d$surv,
     N = d$density,
@@ -205,7 +204,7 @@ _Compare the models you fit just above, using WAIC. Can you reconcile the differ
 compare(m12M1a, m12M1_pred, m12M1_size, m12M1_both, m12M1_int)
 ```
 
-I would have thought that the pred or both models would have been notable better than the intervept only model.
+I would have thought that the pred or both models would have been notably better than the intercept only model.
 
 ## 12H1
 
@@ -217,7 +216,7 @@ str(d)
 ```
 
 fixed effect model
-```{r}
+```{r, warning=FALSE}
 dat = list(district_id=d$district_id, contraception=d$use.contraception)
 str(dat)
 M12H1a <- ulam(
@@ -228,11 +227,11 @@ M12H1a <- ulam(
 ```
 
 ```{r}
-precis(M12H1a, depth=2)
+precis(M12H1a, depth=2) %>% head()
 ```
 
 multi-level model:
-```{r}
+```{r, warning=FALSE}
 M12H1b <- ulam(
     alist(contraception ~ dbinom(1, p),
           logit(p) <- a[district_id],
@@ -243,7 +242,7 @@ M12H1b <- ulam(
 ```
 
 ```{r}
-precis(M12H1b, depth=2)
+precis(M12H1b, depth=2) %>% head()
 ```
 
 ```{r}
@@ -258,39 +257,91 @@ First, get posterior samples
 pred.df <- data.frame(district_id=unique(dat$district_id))
 pred1 <- link(M12H1a, pred.df)
 dim(pred1)
-pred1[1:10, 1:10]
+pred1[1:5, 1:5]
 range(pred1) #already transformed
 pred2 <- link(M12H1b, pred.df)
 ```
 
 summarize samples
 ```{r}
-df1 <- data.frame(
+results1 <- data.frame(
     district_id=1:60,
     mu=apply(pred1, 2, mean),
     hdpi.low=apply(pred1, 2, HPDI)[1,],
     hdpi.high=apply(pred1, 2, HPDI)[2,],
     model="fixed")
 
-df2 <- data.frame(
+results2 <- data.frame(
     district_id=1:60,
     mu=apply(pred2, 2, mean),
     hdpi.low=apply(pred2, 2, HPDI)[1,],
     hdpi.high=apply(pred2, 2, HPDI)[2,],
     model="hierarchical")
 
-df <- rbind(df1, df2)
-head(df)
+resultsall <- rbind(results1, results2)
+head(resultsall)
 ```
 
+add sample size per district so that I can use this in plotting:
+```{r}
+resultsall <- d %>% 
+    group_by(district_id) %>%
+    summarize(size=n()) %>%
+    right_join(resultsall)
+```
+
+I want to order the plotting by the differnce between the models
+
+```{r}
+resultsdiff <- 
+    resultsall %>%
+    select(district_id, size, model, mu) %>%
+    spread(key = model, value = mu) %>% 
+    mutate(diff=abs(fixed-hierarchical))
+
+plotorder <- resultsdiff  %>%
+    arrange(diff) %>%
+    pull(district_id) %>% 
+    as.character()
+```
+
+
+
 ```{r, fig.width=10}
-df %>%
-    ggplot(aes(x=district_id, y=mu, ymin=hdpi.low, ymax=hdpi.high, fill=model, color=model, shape=model)) +
-    geom_point(size=3)
+hlines <- data.frame(
+    average=c("fixed", "hierarchical"),
+    estimate=c(mean(d$use.contraception),
+               inv_logit(coef(M12H1b)["a_bar"])
+    ))
+
+resultsall %>%
+    ggplot(aes(x=as.factor(district_id), y=mu, ymin=hdpi.low, ymax=hdpi.high, fill=model, color=model, shape=model, size=size)) +
+    geom_point() +
+    scale_x_discrete(limits=plotorder) +
+    geom_hline(aes(yintercept = estimate, linetype = average), data=hlines) +
+    theme(axis.text.x = element_text(angle=90, hjust=1),panel.grid.major.x = element_blank()) +
+    ylab("proportion using contraception") +
+    xlab("district")
     
 ```
 
-would be nice to add sample size to this...
+Two determinants: sample size and distance from overall mean
+
+```{r}
+resultsdiff %>% 
+    ggplot(aes(x=size,y=diff)) +
+    geom_point() +
+    geom_smooth()
+```
+
+```{r}
+resultsdiff %>% 
+    mutate(distance.from.abar=abs(fixed-inv_logit(coef(M12H1b)["a_bar"]))) %>%
+    ggplot(aes(x=distance.from.abar,y=diff)) +
+    geom_point() +
+    geom_smooth()
+```
+
 
 # Book
 
