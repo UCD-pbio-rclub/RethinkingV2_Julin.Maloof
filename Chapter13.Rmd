@@ -24,14 +24,273 @@ Normal(0, 1); (b) αtank ∼ Normal(0, 2)._
 
 ## 12E2
 
+_Make the following model into a multilevel model._
+
+yi ∼ Binomial(1, pi)
+logit(pi) = αgroup[i] + βxi 
+αgroup ∼ Normal(a_bar, sigma)
+a_bar ~ Normal(0, 1.5)
+sigma ~ dexp(1)
+β ∼ Normal(0, 1)
+
+
 ## 12E3
+
+_Make the following model into a multilevel model._
+
+yi ∼ Normal(μi, σ)
+μi = αgroup[i] + βxi 
+αgroup ∼ Normal(a_bar, sigma)
+a_bar ~ Normal(0, 10)
+sigma ~ dexp(1)
+β ∼ Normal(0, 1)
+σ ∼ HalfCauchy(0, 2)
 
 ## 12M1
 
+_Revisit the Reed frog survival data, data(reedfrogs), and add the predation and size treatment variables to the varying intercepts model. Consider models with either main effect alone, both main effects, as well as a model including both and their interaction. Instead of focusing on inferences about these two predictor variables, focus on the inferred variation across tanks. Explain why it changes as it does across models._
+
+```{r}
+library(rethinking)
+library(tidyverse)
+data(reedfrogs)
+d <- reedfrogs
+str(d)
+
+# make the tank cluster variable
+d$tank <- 1:nrow(d)
+
+
+```
+
+orignal
+```{r}
+dat <- list(
+    S = d$surv,
+    N = d$density,
+    tank = d$tank
+)
+
+m12M1a <- ulam(
+    alist(
+        S ~ dbinom( N , p ) ,
+        logit(p) <- a[tank] ,
+        a[tank] ~ dnorm( a_bar , sigma ) ,
+        a_bar ~ dnorm( 0 , 1.5 ) ,
+        sigma ~ dexp( 1 )
+    ), data=dat , chains=4 , log_lik=TRUE )
+```
+
+```{r}
+dat <- list(
+    S = d$surv,
+    N = d$density,
+    tank = d$tank,
+    pred = ifelse(d$pred=="no", 0, 1)
+)
+
+m12M1_pred <- ulam(
+    alist(
+        S ~ dbinom( N , p ) ,
+        logit(p) <- a[tank] + b_pred*pred,
+        a[tank] ~ dnorm( a_bar , sigma ) ,
+        a_bar ~ dnorm( 0 , 1.5 ) ,
+        b_pred ~ dnorm(0, 1),
+        sigma ~ dexp( 1 )
+    ), data=dat , chains=4 , log_lik=TRUE, iter = 2000 )
+```
+
+```{r}
+precis(m12M1_pred, depth = 2)
+plot(m12M1_pred)
+```
+
+
+size model
+```{r}
+dat <- list(
+    S = d$surv,
+    N = d$density,
+    tank = d$tank,
+    sze = ifelse(d$size=="small", 0, 1)
+)
+
+str(dat)
+
+m12M1_size <- ulam(
+    alist(
+        S ~ dbinom( N , p ) ,
+        logit(p) <- a[tank] + b_size*sze,
+        a[tank] ~ dnorm( a_bar , sigma ) ,
+        a_bar ~ dnorm( 0 , 1.5 ) ,
+        b_size ~ dnorm(0, 1),
+        sigma ~ dexp( 1 )
+    ), data=dat , chains=4 , iter=4000, log_lik=TRUE )
+```
+
+```{r}
+precis(m12M1_size)
+```
+
+
+both size and pred
+```{r}
+dat <- list(
+    S = d$surv,
+    N = d$density,
+    tank = d$tank,
+    sze = ifelse(d$size=="small", 0, 1),
+    pred = ifelse(d$pred=="no", 0, 1)
+)
+
+m12M1_both <- ulam(
+    alist(
+        S ~ dbinom( N , p ) ,
+        logit(p) <- a[tank] + b_pred*pred + b_size*sze,
+        a[tank] ~ dnorm( a_bar , sigma ) ,
+        a_bar ~ dnorm( 0 , 1.5 ) ,
+        b_pred ~ dnorm(0, 1),
+        b_size ~ dnorm(0, 1),
+        sigma ~ dexp( 1 )
+    ), data=dat , chains=4 , log_lik=TRUE, iter=4000 )
+```
+
+```{r}
+precis(m12M1_both)
+```
+
+
+interaction
+```{r}
+dat <- list(
+    S = d$surv,
+    N = d$density,
+    tank = d$tank,
+    sze = ifelse(d$size=="small", 0, 1),
+    pred = ifelse(d$pred=="no", 0, 1)
+)
+
+m12M1_int <- ulam(
+    alist(
+        S ~ dbinom( N , p ) ,
+        logit(p) <- a[tank] + b_pred*pred + b_size*sze +b_int*pred*sze,
+        a[tank] ~ dnorm( a_bar , sigma ) ,
+        a_bar ~ dnorm( 0 , 1.5 ) ,
+        b_pred ~ dnorm(0, 1),
+        b_size ~ dnorm(0, 1),
+        b_int ~ dnorm(0, .5),
+        sigma ~ dexp( 1 )
+    ), data=dat , chains=4 , log_lik=TRUE, iter=4000 )
+```
+
+```{r}
+precis(m12M1_int)
+```
+
+```{r}
+coeftab(m12M1a, m12M1_pred, m12M1_size, m12M1_both, m12M1_int)@coefs %>% 
+    as.data.frame() %>%
+    rownames_to_column(var="coef") %>%
+    filter(str_detect(coef, "\\[", negate = TRUE))
+```
+
+sigma represents the estimated variation (or really the standard deviation) between tanks.  It turns out that some of that variation is caused by differences in predation and size, so when those variables are included in the model, the "residual" tank to tank variation is reduced.
+
+
 ## 12M2
+
+_Compare the models you fit just above, using WAIC. Can you reconcile the differences in WAIC with the posterior distributions of the models?_
+
+```{r}
+compare(m12M1a, m12M1_pred, m12M1_size, m12M1_both, m12M1_int)
+```
+
+I would have thought that the pred or both models would have been notable better than the intervept only model.
 
 ## 12H1
 
+```{r}
+data("bangladesh")
+d <- bangladesh
+d$district_id <- as.integer(as.factor(d$district))
+str(d)
+```
+
+fixed effect model
+```{r}
+dat = list(district_id=d$district_id, contraception=d$use.contraception)
+str(dat)
+M12H1a <- ulam(
+    alist(contraception ~ dbinom(1, p),
+          logit(p) <- a[district_id],
+          a[district_id] ~ dnorm(0, 1.5)),
+    data = dat, chains = 4, log_lik = TRUE)
+```
+
+```{r}
+precis(M12H1a, depth=2)
+```
+
+multi-level model:
+```{r}
+M12H1b <- ulam(
+    alist(contraception ~ dbinom(1, p),
+          logit(p) <- a[district_id],
+          a[district_id] ~ dnorm(a_bar, sigma),
+          a_bar ~ dnorm(0, 1.5),
+          sigma ~ dexp(1)),
+    data = dat, chains = 4, log_lik = TRUE, cores=4 )
+```
+
+```{r}
+precis(M12H1b, depth=2)
+```
+
+```{r}
+compare(M12H1a, M12H1b)
+```
+Hierarchical model strongly preferred
+
+#### make the plots...
+
+First, get posterior samples
+```{r}
+pred.df <- data.frame(district_id=unique(dat$district_id))
+pred1 <- link(M12H1a, pred.df)
+dim(pred1)
+pred1[1:10, 1:10]
+range(pred1) #already transformed
+pred2 <- link(M12H1b, pred.df)
+```
+
+summarize samples
+```{r}
+df1 <- data.frame(
+    district_id=1:60,
+    mu=apply(pred1, 2, mean),
+    hdpi.low=apply(pred1, 2, HPDI)[1,],
+    hdpi.high=apply(pred1, 2, HPDI)[2,],
+    model="fixed")
+
+df2 <- data.frame(
+    district_id=1:60,
+    mu=apply(pred2, 2, mean),
+    hdpi.low=apply(pred2, 2, HPDI)[1,],
+    hdpi.high=apply(pred2, 2, HPDI)[2,],
+    model="hierarchical")
+
+df <- rbind(df1, df2)
+head(df)
+```
+
+```{r, fig.width=10}
+df %>%
+    ggplot(aes(x=district_id, y=mu, ymin=hdpi.low, ymax=hdpi.high, fill=model, color=model, shape=model)) +
+    geom_point(size=3)
+    
+```
+
+would be nice to add sample size to this...
 
 # Book
 
