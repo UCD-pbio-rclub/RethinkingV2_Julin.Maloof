@@ -422,13 +422,14 @@ _Return to the Trolley data, data(Trolley), from Chapter 12. Define and fit a va
 
 ```{r}
 data(Trolley)
+d <- Trolley
 
 dat <- list(
   R = d$response,
   A = d$action,
   I = d$intention,
   C = d$contact,
-  id = d$id)
+  id = as.numeric(d$id))
 
 system.time({
   m12H2a <- ulam(
@@ -442,21 +443,21 @@ system.time({
 })
 ```
 
-
+OK I had to look at McElreath's answers for this one.  I don't understand why he doesn't use an adaptive prior for the mean of a[id] (although I know from trying that it doesn't sample well).
 ```{r}
 system.time({
   m12H2b <- ulam( alist(
   R ~ dordlogit( phi , cutpoints ),
-  phi <- alpha[id] + bA*A + bC*C + BI*I ,
+  phi <- a[id] + bA*A + bC*C + BI*I ,
   BI <- bI + bIA*A + bIC*C , 
-  alpha[id] ~ dnorm(alpha_bar, sigma),
-  alpha_bar ~ dnorm(0, 1.5),
+  a[id] ~ dnorm(0, sigma),
   c(bA,bI,bC,bIA,bIC) ~ dnorm( 0 , 0.5 ), 
   cutpoints ~ dnorm( 0 , 1.5 ),
   sigma ~ dexp(1)) ,
   data=dat, 
   chains=4, 
   cores=4,
+  iter = 2000,
   log_lik = TRUE)
 })
 ```
@@ -466,10 +467,11 @@ precis(m12H2a)
 precis(m12H2b)
 compare(m12H2a, m12H2b)
 ```
-ugggh a_bar not samples well.  Need to rethink this.  
+
+varying inercepts model fits much better!
 
 ```{r}
-plot(coeftab(m12H2a, m12H2b))
+plot(coeftab(m12H2a, m12H2b), pars=names(coef(m12H2a)))
 ```
 
 
