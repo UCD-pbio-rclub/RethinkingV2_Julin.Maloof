@@ -23,11 +23,18 @@ Normal(0, 1); (b) αtank ∼ Normal(0, 2)._
 
 _Make the following model into a multilevel model._
 
+Old:
+yi ∼ Binomial(1, pi)  
+logit(pi) = αgroup[i] + βxi   
+αgroup ∼ Normal(0, 1.5)  
+β ∼ Normal(0, 1)
+
+New:
 yi ∼ Binomial(1, pi)  
 logit(pi) = αgroup[i] + βxi   
 αgroup ∼ Normal(a_bar, sigma)  
 a_bar ~ Normal(0, 1.5)  
-sigma ~ dexp(1)  
+sigma ~ dexp(0,1)  
 β ∼ Normal(0, 1)
 
 
@@ -145,27 +152,27 @@ orignal
 
 ```r
 dat <- list(
-    S = d$surv,
-    N = d$density,
-    tank = d$tank
+  S = d$surv,
+  N = d$density,
+  tank = d$tank
 )
 
 m12M1a <- ulam(
-    alist(
-        S ~ dbinom( N , p ) ,
-        logit(p) <- a[tank] ,
-        a[tank] ~ dnorm( a_bar , sigma ) ,
-        a_bar ~ dnorm( 0 , 1.5 ) ,
-        sigma ~ dexp( 1 )
-    ), data=dat , chains=4 , log_lik=TRUE )
+  alist(
+    S ~ dbinom( N , p ) ,
+    logit(p) <- a[tank] ,
+    a[tank] ~ dnorm( a_bar , sigma ) ,
+    a_bar ~ dnorm( 0 , 1.5 ) ,
+    sigma ~ dexp( 1 )
+  ), data=dat , chains=4 , log_lik=TRUE )
 ```
 
 ```
 ## 
 ## SAMPLING FOR MODEL '71890fa4702bb6983de3ea7367f0b982' NOW (CHAIN 1).
 ## Chain 1: 
-## Chain 1: Gradient evaluation took 2.5e-05 seconds
-## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.25 seconds.
+## Chain 1: Gradient evaluation took 6.6e-05 seconds
+## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.66 seconds.
 ## Chain 1: Adjust your expectations accordingly!
 ## Chain 1: 
 ## Chain 1: 
@@ -182,9 +189,9 @@ m12M1a <- ulam(
 ## Chain 1: Iteration: 900 / 1000 [ 90%]  (Sampling)
 ## Chain 1: Iteration: 1000 / 1000 [100%]  (Sampling)
 ## Chain 1: 
-## Chain 1:  Elapsed Time: 0.097103 seconds (Warm-up)
-## Chain 1:                0.066826 seconds (Sampling)
-## Chain 1:                0.163929 seconds (Total)
+## Chain 1:  Elapsed Time: 0.116483 seconds (Warm-up)
+## Chain 1:                0.070677 seconds (Sampling)
+## Chain 1:                0.18716 seconds (Total)
 ## Chain 1: 
 ## 
 ## SAMPLING FOR MODEL '71890fa4702bb6983de3ea7367f0b982' NOW (CHAIN 2).
@@ -207,15 +214,15 @@ m12M1a <- ulam(
 ## Chain 2: Iteration: 900 / 1000 [ 90%]  (Sampling)
 ## Chain 2: Iteration: 1000 / 1000 [100%]  (Sampling)
 ## Chain 2: 
-## Chain 2:  Elapsed Time: 0.127773 seconds (Warm-up)
-## Chain 2:                0.0675 seconds (Sampling)
-## Chain 2:                0.195273 seconds (Total)
+## Chain 2:  Elapsed Time: 0.12982 seconds (Warm-up)
+## Chain 2:                0.065821 seconds (Sampling)
+## Chain 2:                0.195641 seconds (Total)
 ## Chain 2: 
 ## 
 ## SAMPLING FOR MODEL '71890fa4702bb6983de3ea7367f0b982' NOW (CHAIN 3).
 ## Chain 3: 
-## Chain 3: Gradient evaluation took 1e-05 seconds
-## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.1 seconds.
+## Chain 3: Gradient evaluation took 9e-06 seconds
+## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.09 seconds.
 ## Chain 3: Adjust your expectations accordingly!
 ## Chain 3: 
 ## Chain 3: 
@@ -232,15 +239,15 @@ m12M1a <- ulam(
 ## Chain 3: Iteration: 900 / 1000 [ 90%]  (Sampling)
 ## Chain 3: Iteration: 1000 / 1000 [100%]  (Sampling)
 ## Chain 3: 
-## Chain 3:  Elapsed Time: 0.102868 seconds (Warm-up)
-## Chain 3:                0.066306 seconds (Sampling)
-## Chain 3:                0.169174 seconds (Total)
+## Chain 3:  Elapsed Time: 0.099035 seconds (Warm-up)
+## Chain 3:                0.069829 seconds (Sampling)
+## Chain 3:                0.168864 seconds (Total)
 ## Chain 3: 
 ## 
 ## SAMPLING FOR MODEL '71890fa4702bb6983de3ea7367f0b982' NOW (CHAIN 4).
 ## Chain 4: 
-## Chain 4: Gradient evaluation took 1.6e-05 seconds
-## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.16 seconds.
+## Chain 4: Gradient evaluation took 1.1e-05 seconds
+## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.11 seconds.
 ## Chain 4: Adjust your expectations accordingly!
 ## Chain 4: 
 ## Chain 4: 
@@ -257,38 +264,38 @@ m12M1a <- ulam(
 ## Chain 4: Iteration: 900 / 1000 [ 90%]  (Sampling)
 ## Chain 4: Iteration: 1000 / 1000 [100%]  (Sampling)
 ## Chain 4: 
-## Chain 4:  Elapsed Time: 0.096344 seconds (Warm-up)
-## Chain 4:                0.065153 seconds (Sampling)
-## Chain 4:                0.161497 seconds (Total)
+## Chain 4:  Elapsed Time: 0.111708 seconds (Warm-up)
+## Chain 4:                0.066245 seconds (Sampling)
+## Chain 4:                0.177953 seconds (Total)
 ## Chain 4:
 ```
 
 
 ```r
 dat <- list(
-    S = d$surv,
-    N = d$density,
-    tank = d$tank,
-    pred = ifelse(d$pred=="no", 0, 1)
+  S = d$surv,
+  N = d$density,
+  tank = d$tank,
+  pred = ifelse(d$pred=="no", 0, 1)
 )
 
 m12M1_pred <- ulam(
-    alist(
-        S ~ dbinom( N , p ) ,
-        logit(p) <- a[tank] + b_pred*pred,
-        a[tank] ~ dnorm( a_bar , sigma ) ,
-        a_bar ~ dnorm( 0 , 1.5 ) ,
-        b_pred ~ dnorm(0, 1),
-        sigma ~ dexp( 1 )
-    ), data=dat , chains=4 , log_lik=TRUE, iter = 2000 )
+  alist(
+    S ~ dbinom( N , p ) ,
+    logit(p) <- a[tank] + b_pred*pred,
+    a[tank] ~ dnorm( a_bar , sigma ) ,
+    a_bar ~ dnorm( 0 , 1.5 ) ,
+    b_pred ~ dnorm(0, 1),
+    sigma ~ dexp( 1 )
+  ), data=dat , chains=4 , log_lik=TRUE, iter = 2000 )
 ```
 
 ```
 ## 
 ## SAMPLING FOR MODEL 'aa87ab538ed55c26c71a4153184c550c' NOW (CHAIN 1).
 ## Chain 1: 
-## Chain 1: Gradient evaluation took 2e-05 seconds
-## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.2 seconds.
+## Chain 1: Gradient evaluation took 3e-05 seconds
+## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.3 seconds.
 ## Chain 1: Adjust your expectations accordingly!
 ## Chain 1: 
 ## Chain 1: 
@@ -305,15 +312,15 @@ m12M1_pred <- ulam(
 ## Chain 1: Iteration: 1800 / 2000 [ 90%]  (Sampling)
 ## Chain 1: Iteration: 2000 / 2000 [100%]  (Sampling)
 ## Chain 1: 
-## Chain 1:  Elapsed Time: 0.207125 seconds (Warm-up)
-## Chain 1:                0.221062 seconds (Sampling)
-## Chain 1:                0.428187 seconds (Total)
+## Chain 1:  Elapsed Time: 0.244865 seconds (Warm-up)
+## Chain 1:                0.24336 seconds (Sampling)
+## Chain 1:                0.488225 seconds (Total)
 ## Chain 1: 
 ## 
 ## SAMPLING FOR MODEL 'aa87ab538ed55c26c71a4153184c550c' NOW (CHAIN 2).
 ## Chain 2: 
-## Chain 2: Gradient evaluation took 1.1e-05 seconds
-## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.11 seconds.
+## Chain 2: Gradient evaluation took 1.2e-05 seconds
+## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.12 seconds.
 ## Chain 2: Adjust your expectations accordingly!
 ## Chain 2: 
 ## Chain 2: 
@@ -330,9 +337,9 @@ m12M1_pred <- ulam(
 ## Chain 2: Iteration: 1800 / 2000 [ 90%]  (Sampling)
 ## Chain 2: Iteration: 2000 / 2000 [100%]  (Sampling)
 ## Chain 2: 
-## Chain 2:  Elapsed Time: 0.178479 seconds (Warm-up)
-## Chain 2:                0.160884 seconds (Sampling)
-## Chain 2:                0.339363 seconds (Total)
+## Chain 2:  Elapsed Time: 0.195576 seconds (Warm-up)
+## Chain 2:                0.175589 seconds (Sampling)
+## Chain 2:                0.371165 seconds (Total)
 ## Chain 2: 
 ## 
 ## SAMPLING FOR MODEL 'aa87ab538ed55c26c71a4153184c550c' NOW (CHAIN 3).
@@ -355,15 +362,15 @@ m12M1_pred <- ulam(
 ## Chain 3: Iteration: 1800 / 2000 [ 90%]  (Sampling)
 ## Chain 3: Iteration: 2000 / 2000 [100%]  (Sampling)
 ## Chain 3: 
-## Chain 3:  Elapsed Time: 0.199262 seconds (Warm-up)
-## Chain 3:                0.141047 seconds (Sampling)
-## Chain 3:                0.340309 seconds (Total)
+## Chain 3:  Elapsed Time: 0.223043 seconds (Warm-up)
+## Chain 3:                0.155153 seconds (Sampling)
+## Chain 3:                0.378196 seconds (Total)
 ## Chain 3: 
 ## 
 ## SAMPLING FOR MODEL 'aa87ab538ed55c26c71a4153184c550c' NOW (CHAIN 4).
 ## Chain 4: 
-## Chain 4: Gradient evaluation took 1.2e-05 seconds
-## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.12 seconds.
+## Chain 4: Gradient evaluation took 1.3e-05 seconds
+## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.13 seconds.
 ## Chain 4: Adjust your expectations accordingly!
 ## Chain 4: 
 ## Chain 4: 
@@ -380,9 +387,9 @@ m12M1_pred <- ulam(
 ## Chain 4: Iteration: 1800 / 2000 [ 90%]  (Sampling)
 ## Chain 4: Iteration: 2000 / 2000 [100%]  (Sampling)
 ## Chain 4: 
-## Chain 4:  Elapsed Time: 0.210387 seconds (Warm-up)
-## Chain 4:                0.154707 seconds (Sampling)
-## Chain 4:                0.365094 seconds (Total)
+## Chain 4:  Elapsed Time: 0.225256 seconds (Warm-up)
+## Chain 4:                0.169477 seconds (Sampling)
+## Chain 4:                0.394733 seconds (Total)
 ## Chain 4:
 ```
 
@@ -461,10 +468,10 @@ size model
 
 ```r
 dat <- list(
-    S = d$surv,
-    N = d$density,
-    tank = d$tank,
-    sze = ifelse(d$size=="small", 0, 1)
+  S = d$surv,
+  N = d$density,
+  tank = d$tank,
+  sze = ifelse(d$size=="small", 0, 1)
 )
 
 str(dat)
@@ -480,22 +487,22 @@ str(dat)
 
 ```r
 m12M1_size <- ulam(
-    alist(
-        S ~ dbinom( N , p ) ,
-        logit(p) <- a[tank] + b_size*sze,
-        a[tank] ~ dnorm( a_bar , sigma ) ,
-        a_bar ~ dnorm( 0 , 1.5 ) ,
-        b_size ~ dnorm(0, 1),
-        sigma ~ dexp( 1 )
-    ), data=dat , chains=4 , iter=4000, log_lik=TRUE )
+  alist(
+    S ~ dbinom( N , p ) ,
+    logit(p) <- a[tank] + b_size*sze,
+    a[tank] ~ dnorm( a_bar , sigma ) ,
+    a_bar ~ dnorm( 0 , 1.5 ) ,
+    b_size ~ dnorm(0, 1),
+    sigma ~ dexp( 1 )
+  ), data=dat , chains=4 , iter=4000, log_lik=TRUE )
 ```
 
 ```
 ## 
 ## SAMPLING FOR MODEL '17202027312df8570bfa43f2633214bb' NOW (CHAIN 1).
 ## Chain 1: 
-## Chain 1: Gradient evaluation took 2.7e-05 seconds
-## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.27 seconds.
+## Chain 1: Gradient evaluation took 3.5e-05 seconds
+## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.35 seconds.
 ## Chain 1: Adjust your expectations accordingly!
 ## Chain 1: 
 ## Chain 1: 
@@ -512,15 +519,15 @@ m12M1_size <- ulam(
 ## Chain 1: Iteration: 3600 / 4000 [ 90%]  (Sampling)
 ## Chain 1: Iteration: 4000 / 4000 [100%]  (Sampling)
 ## Chain 1: 
-## Chain 1:  Elapsed Time: 0.453732 seconds (Warm-up)
-## Chain 1:                0.477837 seconds (Sampling)
-## Chain 1:                0.931569 seconds (Total)
+## Chain 1:  Elapsed Time: 0.441655 seconds (Warm-up)
+## Chain 1:                0.476246 seconds (Sampling)
+## Chain 1:                0.917901 seconds (Total)
 ## Chain 1: 
 ## 
 ## SAMPLING FOR MODEL '17202027312df8570bfa43f2633214bb' NOW (CHAIN 2).
 ## Chain 2: 
-## Chain 2: Gradient evaluation took 1.1e-05 seconds
-## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.11 seconds.
+## Chain 2: Gradient evaluation took 1e-05 seconds
+## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.1 seconds.
 ## Chain 2: Adjust your expectations accordingly!
 ## Chain 2: 
 ## Chain 2: 
@@ -537,15 +544,15 @@ m12M1_size <- ulam(
 ## Chain 2: Iteration: 3600 / 4000 [ 90%]  (Sampling)
 ## Chain 2: Iteration: 4000 / 4000 [100%]  (Sampling)
 ## Chain 2: 
-## Chain 2:  Elapsed Time: 0.413484 seconds (Warm-up)
-## Chain 2:                0.484944 seconds (Sampling)
-## Chain 2:                0.898428 seconds (Total)
+## Chain 2:  Elapsed Time: 0.421928 seconds (Warm-up)
+## Chain 2:                0.472823 seconds (Sampling)
+## Chain 2:                0.894751 seconds (Total)
 ## Chain 2: 
 ## 
 ## SAMPLING FOR MODEL '17202027312df8570bfa43f2633214bb' NOW (CHAIN 3).
 ## Chain 3: 
-## Chain 3: Gradient evaluation took 1.2e-05 seconds
-## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.12 seconds.
+## Chain 3: Gradient evaluation took 1.3e-05 seconds
+## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.13 seconds.
 ## Chain 3: Adjust your expectations accordingly!
 ## Chain 3: 
 ## Chain 3: 
@@ -562,9 +569,9 @@ m12M1_size <- ulam(
 ## Chain 3: Iteration: 3600 / 4000 [ 90%]  (Sampling)
 ## Chain 3: Iteration: 4000 / 4000 [100%]  (Sampling)
 ## Chain 3: 
-## Chain 3:  Elapsed Time: 0.513545 seconds (Warm-up)
-## Chain 3:                0.543117 seconds (Sampling)
-## Chain 3:                1.05666 seconds (Total)
+## Chain 3:  Elapsed Time: 0.461151 seconds (Warm-up)
+## Chain 3:                0.541749 seconds (Sampling)
+## Chain 3:                1.0029 seconds (Total)
 ## Chain 3: 
 ## 
 ## SAMPLING FOR MODEL '17202027312df8570bfa43f2633214bb' NOW (CHAIN 4).
@@ -587,9 +594,9 @@ m12M1_size <- ulam(
 ## Chain 4: Iteration: 3600 / 4000 [ 90%]  (Sampling)
 ## Chain 4: Iteration: 4000 / 4000 [100%]  (Sampling)
 ## Chain 4: 
-## Chain 4:  Elapsed Time: 0.474562 seconds (Warm-up)
-## Chain 4:                0.306169 seconds (Sampling)
-## Chain 4:                0.780731 seconds (Total)
+## Chain 4:  Elapsed Time: 0.487776 seconds (Warm-up)
+## Chain 4:                0.300055 seconds (Sampling)
+## Chain 4:                0.787831 seconds (Total)
 ## Chain 4:
 ```
 
@@ -614,31 +621,31 @@ both size and pred
 
 ```r
 dat <- list(
-    S = d$surv,
-    N = d$density,
-    tank = d$tank,
-    sze = ifelse(d$size=="small", 0, 1),
-    pred = ifelse(d$pred=="no", 0, 1)
+  S = d$surv,
+  N = d$density,
+  tank = d$tank,
+  sze = ifelse(d$size=="small", 0, 1),
+  pred = ifelse(d$pred=="no", 0, 1)
 )
 
 m12M1_both <- ulam(
-    alist(
-        S ~ dbinom( N , p ) ,
-        logit(p) <- a[tank] + b_pred*pred + b_size*sze,
-        a[tank] ~ dnorm( a_bar , sigma ) ,
-        a_bar ~ dnorm( 0 , 1.5 ) ,
-        b_pred ~ dnorm(0, 1),
-        b_size ~ dnorm(0, 1),
-        sigma ~ dexp( 1 )
-    ), data=dat , chains=4 , log_lik=TRUE, iter=4000 )
+  alist(
+    S ~ dbinom( N , p ) ,
+    logit(p) <- a[tank] + b_pred*pred + b_size*sze,
+    a[tank] ~ dnorm( a_bar , sigma ) ,
+    a_bar ~ dnorm( 0 , 1.5 ) ,
+    b_pred ~ dnorm(0, 1),
+    b_size ~ dnorm(0, 1),
+    sigma ~ dexp( 1 )
+  ), data=dat , chains=4 , log_lik=TRUE, iter=4000 )
 ```
 
 ```
 ## 
 ## SAMPLING FOR MODEL '09d2323bd23a1ccc5175483b3b026314' NOW (CHAIN 1).
 ## Chain 1: 
-## Chain 1: Gradient evaluation took 2.4e-05 seconds
-## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.24 seconds.
+## Chain 1: Gradient evaluation took 3.9e-05 seconds
+## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.39 seconds.
 ## Chain 1: Adjust your expectations accordingly!
 ## Chain 1: 
 ## Chain 1: 
@@ -655,15 +662,15 @@ m12M1_both <- ulam(
 ## Chain 1: Iteration: 3600 / 4000 [ 90%]  (Sampling)
 ## Chain 1: Iteration: 4000 / 4000 [100%]  (Sampling)
 ## Chain 1: 
-## Chain 1:  Elapsed Time: 0.493382 seconds (Warm-up)
-## Chain 1:                0.62933 seconds (Sampling)
-## Chain 1:                1.12271 seconds (Total)
+## Chain 1:  Elapsed Time: 0.519756 seconds (Warm-up)
+## Chain 1:                0.646106 seconds (Sampling)
+## Chain 1:                1.16586 seconds (Total)
 ## Chain 1: 
 ## 
 ## SAMPLING FOR MODEL '09d2323bd23a1ccc5175483b3b026314' NOW (CHAIN 2).
 ## Chain 2: 
-## Chain 2: Gradient evaluation took 1.7e-05 seconds
-## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.17 seconds.
+## Chain 2: Gradient evaluation took 1.9e-05 seconds
+## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.19 seconds.
 ## Chain 2: Adjust your expectations accordingly!
 ## Chain 2: 
 ## Chain 2: 
@@ -680,15 +687,15 @@ m12M1_both <- ulam(
 ## Chain 2: Iteration: 3600 / 4000 [ 90%]  (Sampling)
 ## Chain 2: Iteration: 4000 / 4000 [100%]  (Sampling)
 ## Chain 2: 
-## Chain 2:  Elapsed Time: 0.481176 seconds (Warm-up)
-## Chain 2:                0.461973 seconds (Sampling)
-## Chain 2:                0.943149 seconds (Total)
+## Chain 2:  Elapsed Time: 0.492823 seconds (Warm-up)
+## Chain 2:                0.4931 seconds (Sampling)
+## Chain 2:                0.985923 seconds (Total)
 ## Chain 2: 
 ## 
 ## SAMPLING FOR MODEL '09d2323bd23a1ccc5175483b3b026314' NOW (CHAIN 3).
 ## Chain 3: 
-## Chain 3: Gradient evaluation took 1.3e-05 seconds
-## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.13 seconds.
+## Chain 3: Gradient evaluation took 1.1e-05 seconds
+## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.11 seconds.
 ## Chain 3: Adjust your expectations accordingly!
 ## Chain 3: 
 ## Chain 3: 
@@ -705,15 +712,15 @@ m12M1_both <- ulam(
 ## Chain 3: Iteration: 3600 / 4000 [ 90%]  (Sampling)
 ## Chain 3: Iteration: 4000 / 4000 [100%]  (Sampling)
 ## Chain 3: 
-## Chain 3:  Elapsed Time: 0.483789 seconds (Warm-up)
-## Chain 3:                0.555777 seconds (Sampling)
-## Chain 3:                1.03957 seconds (Total)
+## Chain 3:  Elapsed Time: 0.514741 seconds (Warm-up)
+## Chain 3:                0.582346 seconds (Sampling)
+## Chain 3:                1.09709 seconds (Total)
 ## Chain 3: 
 ## 
 ## SAMPLING FOR MODEL '09d2323bd23a1ccc5175483b3b026314' NOW (CHAIN 4).
 ## Chain 4: 
-## Chain 4: Gradient evaluation took 1.3e-05 seconds
-## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.13 seconds.
+## Chain 4: Gradient evaluation took 1.8e-05 seconds
+## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.18 seconds.
 ## Chain 4: Adjust your expectations accordingly!
 ## Chain 4: 
 ## Chain 4: 
@@ -730,9 +737,9 @@ m12M1_both <- ulam(
 ## Chain 4: Iteration: 3600 / 4000 [ 90%]  (Sampling)
 ## Chain 4: Iteration: 4000 / 4000 [100%]  (Sampling)
 ## Chain 4: 
-## Chain 4:  Elapsed Time: 0.46321 seconds (Warm-up)
-## Chain 4:                0.431009 seconds (Sampling)
-## Chain 4:                0.894219 seconds (Total)
+## Chain 4:  Elapsed Time: 0.496575 seconds (Warm-up)
+## Chain 4:                0.460645 seconds (Sampling)
+## Chain 4:                0.95722 seconds (Total)
 ## Chain 4:
 ```
 
@@ -758,32 +765,32 @@ interaction
 
 ```r
 dat <- list(
-    S = d$surv,
-    N = d$density,
-    tank = d$tank,
-    sze = ifelse(d$size=="small", 0, 1),
-    pred = ifelse(d$pred=="no", 0, 1)
+  S = d$surv,
+  N = d$density,
+  tank = d$tank,
+  sze = ifelse(d$size=="small", 0, 1),
+  pred = ifelse(d$pred=="no", 0, 1)
 )
 
 m12M1_int <- ulam(
-    alist(
-        S ~ dbinom( N , p ) ,
-        logit(p) <- a[tank] + b_pred*pred + b_size*sze +b_int*pred*sze,
-        a[tank] ~ dnorm( a_bar , sigma ) ,
-        a_bar ~ dnorm( 0 , 1.5 ) ,
-        b_pred ~ dnorm(0, 1),
-        b_size ~ dnorm(0, 1),
-        b_int ~ dnorm(0, .5),
-        sigma ~ dexp( 1 )
-    ), data=dat , chains=4 , log_lik=TRUE, iter=4000 )
+  alist(
+    S ~ dbinom( N , p ) ,
+    logit(p) <- a[tank] + b_pred*pred + b_size*sze +b_int*pred*sze,
+    a[tank] ~ dnorm( a_bar , sigma ) ,
+    a_bar ~ dnorm( 0 , 1.5 ) ,
+    b_pred ~ dnorm(0, 1),
+    b_size ~ dnorm(0, 1),
+    b_int ~ dnorm(0, .5),
+    sigma ~ dexp( 1 )
+  ), data=dat , chains=4 , log_lik=TRUE, iter=4000 )
 ```
 
 ```
 ## 
 ## SAMPLING FOR MODEL 'a9eacd23439d812f0f4b338d47f6c645' NOW (CHAIN 1).
 ## Chain 1: 
-## Chain 1: Gradient evaluation took 3.4e-05 seconds
-## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.34 seconds.
+## Chain 1: Gradient evaluation took 3.7e-05 seconds
+## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.37 seconds.
 ## Chain 1: Adjust your expectations accordingly!
 ## Chain 1: 
 ## Chain 1: 
@@ -800,15 +807,15 @@ m12M1_int <- ulam(
 ## Chain 1: Iteration: 3600 / 4000 [ 90%]  (Sampling)
 ## Chain 1: Iteration: 4000 / 4000 [100%]  (Sampling)
 ## Chain 1: 
-## Chain 1:  Elapsed Time: 0.626707 seconds (Warm-up)
-## Chain 1:                0.643944 seconds (Sampling)
-## Chain 1:                1.27065 seconds (Total)
+## Chain 1:  Elapsed Time: 0.65464 seconds (Warm-up)
+## Chain 1:                0.657894 seconds (Sampling)
+## Chain 1:                1.31253 seconds (Total)
 ## Chain 1: 
 ## 
 ## SAMPLING FOR MODEL 'a9eacd23439d812f0f4b338d47f6c645' NOW (CHAIN 2).
 ## Chain 2: 
-## Chain 2: Gradient evaluation took 1.5e-05 seconds
-## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.15 seconds.
+## Chain 2: Gradient evaluation took 1.6e-05 seconds
+## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.16 seconds.
 ## Chain 2: Adjust your expectations accordingly!
 ## Chain 2: 
 ## Chain 2: 
@@ -825,15 +832,15 @@ m12M1_int <- ulam(
 ## Chain 2: Iteration: 3600 / 4000 [ 90%]  (Sampling)
 ## Chain 2: Iteration: 4000 / 4000 [100%]  (Sampling)
 ## Chain 2: 
-## Chain 2:  Elapsed Time: 0.631538 seconds (Warm-up)
-## Chain 2:                0.719465 seconds (Sampling)
-## Chain 2:                1.351 seconds (Total)
+## Chain 2:  Elapsed Time: 0.650063 seconds (Warm-up)
+## Chain 2:                0.687273 seconds (Sampling)
+## Chain 2:                1.33734 seconds (Total)
 ## Chain 2: 
 ## 
 ## SAMPLING FOR MODEL 'a9eacd23439d812f0f4b338d47f6c645' NOW (CHAIN 3).
 ## Chain 3: 
-## Chain 3: Gradient evaluation took 1.4e-05 seconds
-## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.14 seconds.
+## Chain 3: Gradient evaluation took 1.3e-05 seconds
+## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.13 seconds.
 ## Chain 3: Adjust your expectations accordingly!
 ## Chain 3: 
 ## Chain 3: 
@@ -850,15 +857,15 @@ m12M1_int <- ulam(
 ## Chain 3: Iteration: 3600 / 4000 [ 90%]  (Sampling)
 ## Chain 3: Iteration: 4000 / 4000 [100%]  (Sampling)
 ## Chain 3: 
-## Chain 3:  Elapsed Time: 0.629037 seconds (Warm-up)
-## Chain 3:                0.661575 seconds (Sampling)
-## Chain 3:                1.29061 seconds (Total)
+## Chain 3:  Elapsed Time: 0.649176 seconds (Warm-up)
+## Chain 3:                0.672371 seconds (Sampling)
+## Chain 3:                1.32155 seconds (Total)
 ## Chain 3: 
 ## 
 ## SAMPLING FOR MODEL 'a9eacd23439d812f0f4b338d47f6c645' NOW (CHAIN 4).
 ## Chain 4: 
-## Chain 4: Gradient evaluation took 1.5e-05 seconds
-## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.15 seconds.
+## Chain 4: Gradient evaluation took 1.2e-05 seconds
+## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.12 seconds.
 ## Chain 4: Adjust your expectations accordingly!
 ## Chain 4: 
 ## Chain 4: 
@@ -875,9 +882,9 @@ m12M1_int <- ulam(
 ## Chain 4: Iteration: 3600 / 4000 [ 90%]  (Sampling)
 ## Chain 4: Iteration: 4000 / 4000 [100%]  (Sampling)
 ## Chain 4: 
-## Chain 4:  Elapsed Time: 0.650405 seconds (Warm-up)
-## Chain 4:                0.650275 seconds (Sampling)
-## Chain 4:                1.30068 seconds (Total)
+## Chain 4:  Elapsed Time: 0.678804 seconds (Warm-up)
+## Chain 4:                0.701688 seconds (Sampling)
+## Chain 4:                1.38049 seconds (Total)
 ## Chain 4:
 ```
 
@@ -902,9 +909,9 @@ precis(m12M1_int)
 
 ```r
 coeftab(m12M1a, m12M1_pred, m12M1_size, m12M1_both, m12M1_int)@coefs %>% 
-    as.data.frame() %>%
-    rownames_to_column(var="coef") %>%
-    filter(str_detect(coef, "\\[", negate = TRUE))
+  as.data.frame() %>%
+  rownames_to_column(var="coef") %>%
+  filter(str_detect(coef, "\\[", negate = TRUE))
 ```
 
 ```
@@ -938,6 +945,114 @@ compare(m12M1a, m12M1_pred, m12M1_size, m12M1_both, m12M1_int)
 ```
 
 I would have thought that the pred or both models would have been notably better than the intercept only model.
+
+## 12M3
+
+Re-estimate the basic Reed frog varying intercept model, but now using a Cauchy distribution in place of the Gaussian distribution for the varying intercepts.
+
+Compare the posterior means of the intercepts, αtank, to the posterior means produced in the chapter, using the customary Gaussian prior. Can you explain the pattern of differences?
+
+
+```r
+dat <- list(
+  S = d$surv,
+  N = d$density,
+  tank = d$tank
+)
+
+m12M3 <- ulam(
+  alist(
+    S ~ dbinom( N , p ) ,
+    logit(p) <- a[tank] ,
+    a[tank] ~ dcauchy( a_bar , sigma ) ,
+    a_bar ~ dnorm( 0 , 1.5 ) ,
+    sigma ~ dcauchy(0, 1)
+  ), data=dat , chains=4 , log_lik=TRUE )
+```
+
+now compare the models.
+
+```r
+precis(m12M1a)
+```
+
+```
+## 48 vector or matrix parameters hidden. Use depth=2 to show them.
+```
+
+```
+##           mean        sd      5.5%    94.5%    n_eff      Rhat
+## a_bar 1.345928 0.2583476 0.9476667 1.769309 2346.900 0.9994958
+## sigma 1.615741 0.2177898 1.3087606 1.998601 1682.419 0.9997986
+```
+
+```r
+precis(m12M3)
+```
+
+```
+## 48 vector or matrix parameters hidden. Use depth=2 to show them.
+```
+
+```
+##           mean        sd      5.5%    94.5%    n_eff      Rhat
+## a_bar 1.480348 0.3018419 0.9908556 1.924999 1439.146 0.9992781
+## sigma 1.022501 0.2252542 0.6920955 1.415973 1061.359 1.0039964
+```
+
+```r
+compare(m12M1a, m12M3)
+```
+
+```
+##            WAIC       SE    dWAIC      dSE    pWAIC    weight
+## m12M1a 200.7453 7.404026 0.000000       NA 21.23649 0.7878873
+## m12M3  203.3697 8.416818 2.624474 2.444032 23.00878 0.2121127
+```
+
+
+```r
+pred.orig <- link(m12M1a)
+
+pred.cauchy <- link(m12M3)
+
+results <-rbind(
+  data.frame(
+    tank=1:48,
+    mu=apply(pred.orig, 2, mean),
+    hdpi.low=apply(pred.orig, 2, HPDI)[1,],
+    hdpi.high=apply(pred.orig, 2, HPDI)[2,],
+    model="Gaussian"),
+  data.frame(
+    tank=1:48,
+    mu=apply(pred.cauchy, 2, mean),
+    hdpi.low=apply(pred.cauchy, 2, HPDI)[1,],
+    hdpi.high=apply(pred.cauchy, 2, HPDI)[2,],
+    model="Cauchy")
+)
+```
+
+
+```r
+results %>%
+  ggplot(aes(x=tank, y=mu, ymin=hdpi.low, ymax=hdpi.high, color=model, shape=model)) +
+  geom_point(size=2) +
+  theme(axis.text.x = element_text(angle=90, hjust=1))
+```
+
+![](Chapter13_files/figure-html/unnamed-chunk-16-1.png)<!-- -->
+
+
+```r
+results %>%
+  ggplot(aes(x=model, y=mu, group=tank)) +
+  geom_line()
+```
+
+![](Chapter13_files/figure-html/unnamed-chunk-17-1.png)<!-- -->
+
+Cuachy distribution has fatter tails so we see a bit of a spread in the tank estimates....
+
 
 ## 12H1
 
@@ -975,18 +1090,18 @@ str(dat)
 
 ```r
 M12H1a <- ulam(
-    alist(contraception ~ dbinom(1, p),
-          logit(p) <- a[district_id],
-          a[district_id] ~ dnorm(0, 1.5)),
-    data = dat, chains = 4, log_lik = TRUE)
+  alist(contraception ~ dbinom(1, p),
+        logit(p) <- a[district_id],
+        a[district_id] ~ dnorm(0, 1.5)),
+  data = dat, chains = 4, log_lik = TRUE)
 ```
 
 ```
 ## 
 ## SAMPLING FOR MODEL '7cbae65d12bba671b124e7008347814d' NOW (CHAIN 1).
 ## Chain 1: 
-## Chain 1: Gradient evaluation took 0.000174 seconds
-## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 1.74 seconds.
+## Chain 1: Gradient evaluation took 0.000231 seconds
+## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 2.31 seconds.
 ## Chain 1: Adjust your expectations accordingly!
 ## Chain 1: 
 ## Chain 1: 
@@ -1003,15 +1118,15 @@ M12H1a <- ulam(
 ## Chain 1: Iteration: 900 / 1000 [ 90%]  (Sampling)
 ## Chain 1: Iteration: 1000 / 1000 [100%]  (Sampling)
 ## Chain 1: 
-## Chain 1:  Elapsed Time: 1.39022 seconds (Warm-up)
-## Chain 1:                1.03566 seconds (Sampling)
-## Chain 1:                2.42588 seconds (Total)
+## Chain 1:  Elapsed Time: 1.30631 seconds (Warm-up)
+## Chain 1:                1.13715 seconds (Sampling)
+## Chain 1:                2.44346 seconds (Total)
 ## Chain 1: 
 ## 
 ## SAMPLING FOR MODEL '7cbae65d12bba671b124e7008347814d' NOW (CHAIN 2).
 ## Chain 2: 
-## Chain 2: Gradient evaluation took 0.000116 seconds
-## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 1.16 seconds.
+## Chain 2: Gradient evaluation took 0.000118 seconds
+## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 1.18 seconds.
 ## Chain 2: Adjust your expectations accordingly!
 ## Chain 2: 
 ## Chain 2: 
@@ -1028,15 +1143,15 @@ M12H1a <- ulam(
 ## Chain 2: Iteration: 900 / 1000 [ 90%]  (Sampling)
 ## Chain 2: Iteration: 1000 / 1000 [100%]  (Sampling)
 ## Chain 2: 
-## Chain 2:  Elapsed Time: 1.26482 seconds (Warm-up)
-## Chain 2:                1.037 seconds (Sampling)
-## Chain 2:                2.30182 seconds (Total)
+## Chain 2:  Elapsed Time: 1.3334 seconds (Warm-up)
+## Chain 2:                1.06795 seconds (Sampling)
+## Chain 2:                2.40135 seconds (Total)
 ## Chain 2: 
 ## 
 ## SAMPLING FOR MODEL '7cbae65d12bba671b124e7008347814d' NOW (CHAIN 3).
 ## Chain 3: 
-## Chain 3: Gradient evaluation took 0.000119 seconds
-## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 1.19 seconds.
+## Chain 3: Gradient evaluation took 0.000121 seconds
+## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 1.21 seconds.
 ## Chain 3: Adjust your expectations accordingly!
 ## Chain 3: 
 ## Chain 3: 
@@ -1053,15 +1168,15 @@ M12H1a <- ulam(
 ## Chain 3: Iteration: 900 / 1000 [ 90%]  (Sampling)
 ## Chain 3: Iteration: 1000 / 1000 [100%]  (Sampling)
 ## Chain 3: 
-## Chain 3:  Elapsed Time: 1.31511 seconds (Warm-up)
-## Chain 3:                1.04919 seconds (Sampling)
-## Chain 3:                2.3643 seconds (Total)
+## Chain 3:  Elapsed Time: 1.39015 seconds (Warm-up)
+## Chain 3:                1.10435 seconds (Sampling)
+## Chain 3:                2.4945 seconds (Total)
 ## Chain 3: 
 ## 
 ## SAMPLING FOR MODEL '7cbae65d12bba671b124e7008347814d' NOW (CHAIN 4).
 ## Chain 4: 
-## Chain 4: Gradient evaluation took 0.000151 seconds
-## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 1.51 seconds.
+## Chain 4: Gradient evaluation took 0.000162 seconds
+## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 1.62 seconds.
 ## Chain 4: Adjust your expectations accordingly!
 ## Chain 4: 
 ## Chain 4: 
@@ -1078,9 +1193,9 @@ M12H1a <- ulam(
 ## Chain 4: Iteration: 900 / 1000 [ 90%]  (Sampling)
 ## Chain 4: Iteration: 1000 / 1000 [100%]  (Sampling)
 ## Chain 4: 
-## Chain 4:  Elapsed Time: 1.38994 seconds (Warm-up)
-## Chain 4:                1.08122 seconds (Sampling)
-## Chain 4:                2.47117 seconds (Total)
+## Chain 4:  Elapsed Time: 1.32776 seconds (Warm-up)
+## Chain 4:                1.08397 seconds (Sampling)
+## Chain 4:                2.41174 seconds (Total)
 ## Chain 4:
 ```
 
@@ -1091,24 +1206,24 @@ precis(M12H1a, depth=2) %>% head()
 
 ```
 ##              mean        sd       5.5%       94.5%    n_eff      Rhat
-## a[1] -1.052243843 0.2095622 -1.3964538 -0.71415601 4222.958 0.9988785
-## a[2] -0.594920850 0.4484211 -1.3058276  0.09539439 4818.906 0.9995425
-## a[3]  1.222419114 1.0967928 -0.5007855  3.06849133 3829.279 0.9986329
-## a[4]  0.003092674 0.3441709 -0.5544897  0.54555022 3869.318 0.9992661
-## a[5] -0.569980677 0.3121441 -1.0866870 -0.08819027 4022.307 0.9987163
-## a[6] -0.873395163 0.2772950 -1.3150985 -0.44452431 4291.938 0.9988554
+## a[1] -1.058740299 0.2147091 -1.4022527 -0.71212387 4686.747 0.9986576
+## a[2] -0.600834812 0.4605999 -1.3558276  0.12373233 4642.204 0.9981727
+## a[3]  1.225554433 1.1957307 -0.6594133  3.14506670 3821.158 0.9989864
+## a[4] -0.001637118 0.3480680 -0.5479022  0.55557776 3947.673 0.9991028
+## a[5] -0.568720505 0.3294846 -1.1024527 -0.05146851 5092.083 0.9983554
+## a[6] -0.865032853 0.2683889 -1.3067980 -0.45202810 3847.585 0.9987734
 ```
 
 multi-level model:
 
 ```r
 M12H1b <- ulam(
-    alist(contraception ~ dbinom(1, p),
-          logit(p) <- a[district_id],
-          a[district_id] ~ dnorm(a_bar, sigma),
-          a_bar ~ dnorm(0, 1.5),
-          sigma ~ dexp(1)),
-    data = dat, chains = 4, log_lik = TRUE, cores=4 )
+  alist(contraception ~ dbinom(1, p),
+        logit(p) <- a[district_id],
+        a[district_id] ~ dnorm(a_bar, sigma),
+        a_bar ~ dnorm(0, 1.5),
+        sigma ~ dexp(1)),
+  data = dat, chains = 4, log_lik = TRUE, cores=4 )
 ```
 
 
@@ -1118,12 +1233,12 @@ precis(M12H1b, depth=2) %>% head()
 
 ```
 ##            mean        sd       5.5%       94.5%    n_eff      Rhat
-## a[1] -0.9948563 0.1906046 -1.3014465 -0.69398000 3518.446 0.9987808
-## a[2] -0.5844082 0.3486040 -1.1475090 -0.02783596 4645.183 0.9989106
-## a[3] -0.2389231 0.5183875 -1.0352167  0.58354884 2361.396 1.0000942
-## a[4] -0.1879955 0.2988216 -0.6558145  0.28046610 3274.769 0.9993727
-## a[5] -0.5715314 0.2885935 -1.0268000 -0.11544996 4391.748 0.9982981
-## a[6] -0.8101584 0.2471979 -1.2211441 -0.42428895 2944.586 0.9994847
+## a[1] -0.9922828 0.1964613 -1.3075411 -0.67244213 3627.331 0.9992911
+## a[2] -0.5890564 0.3476280 -1.1525124 -0.04384766 3278.959 0.9992267
+## a[3] -0.2362727 0.4896235 -1.0029209  0.56045878 2907.687 0.9992755
+## a[4] -0.1770580 0.3078166 -0.6690566  0.33799181 2651.705 0.9987376
+## a[5] -0.5766055 0.2808679 -1.0334566 -0.13013981 4454.594 0.9999500
+## a[6] -0.8110674 0.2306766 -1.1690453 -0.43710981 3264.213 0.9998102
 ```
 
 
@@ -1132,9 +1247,9 @@ compare(M12H1a, M12H1b)
 ```
 
 ```
-##            WAIC       SE   dWAIC      dSE    pWAIC      weight
-## M12H1b 2514.419 24.97353  0.0000       NA 35.59453 0.994343896
-## M12H1a 2524.758 28.98798 10.3387 7.746836 54.39479 0.005656104
+##            WAIC       SE    dWAIC      dSE    pWAIC      weight
+## M12H1b 2513.190 25.00531  0.00000       NA 35.11284 0.998022256
+## M12H1a 2525.638 28.96979 12.44764 7.712556 54.73319 0.001977744
 ```
 Hierarchical model strongly preferred
 
@@ -1158,11 +1273,11 @@ pred1[1:5, 1:5]
 
 ```
 ##           [,1]      [,2]      [,3]      [,4]      [,5]
-## [1,] 0.2763993 0.3752831 0.9905088 0.5622763 0.4043451
-## [2,] 0.3012370 0.4016022 0.9658819 0.5402759 0.4008583
-## [3,] 0.2439983 0.5690730 0.7023719 0.4520178 0.2554228
-## [4,] 0.2616443 0.2835117 0.3067046 0.6938849 0.4868360
-## [5,] 0.2927649 0.4809926 0.8230011 0.5557916 0.3436640
+## [1,] 0.2959846 0.2710792 0.9021689 0.5775290 0.3303805
+## [2,] 0.3318734 0.2969357 0.6271511 0.5081923 0.5539203
+## [3,] 0.3178468 0.4247514 0.7548476 0.5389302 0.3153109
+## [4,] 0.2535799 0.3486309 0.7935935 0.6575636 0.4380533
+## [5,] 0.2139609 0.3953247 0.4823787 0.4458052 0.3827282
 ```
 
 ```r
@@ -1170,7 +1285,7 @@ range(pred1) #already transformed
 ```
 
 ```
-## [1] 0.001332226 0.992026872
+## [1] 0.00237382 0.99732363
 ```
 
 ```r
@@ -1181,18 +1296,18 @@ summarize samples
 
 ```r
 results1 <- data.frame(
-    district_id=1:60,
-    mu=apply(pred1, 2, mean),
-    hdpi.low=apply(pred1, 2, HPDI)[1,],
-    hdpi.high=apply(pred1, 2, HPDI)[2,],
-    model="fixed")
+  district_id=1:60,
+  mu=apply(pred1, 2, mean),
+  hdpi.low=apply(pred1, 2, HPDI)[1,],
+  hdpi.high=apply(pred1, 2, HPDI)[2,],
+  model="fixed")
 
 results2 <- data.frame(
-    district_id=1:60,
-    mu=apply(pred2, 2, mean),
-    hdpi.low=apply(pred2, 2, HPDI)[1,],
-    hdpi.high=apply(pred2, 2, HPDI)[2,],
-    model="hierarchical")
+  district_id=1:60,
+  mu=apply(pred2, 2, mean),
+  hdpi.low=apply(pred2, 2, HPDI)[1,],
+  hdpi.high=apply(pred2, 2, HPDI)[2,],
+  model="hierarchical")
 
 resultsall <- rbind(results1, results2)
 head(resultsall)
@@ -1200,21 +1315,21 @@ head(resultsall)
 
 ```
 ##   district_id        mu  hdpi.low hdpi.high model
-## 1           1 0.2608047 0.2053350 0.3327562 fixed
-## 2           2 0.3617485 0.2013036 0.5106993 fixed
-## 3           3 0.7289630 0.4706519 0.9812292 fixed
-## 4           4 0.5007471 0.3571069 0.6225926 fixed
-## 5           5 0.3642727 0.2550329 0.4793690 fixed
-## 6           6 0.2977698 0.2107421 0.3887236 fixed
+## 1           1 0.2596561 0.1883335 0.3181738 fixed
+## 2           2 0.3607922 0.1800034 0.5025252 fixed
+## 3           3 0.7237040 0.4394126 0.9904765 fixed
+## 4           4 0.4995729 0.3630636 0.6295849 fixed
+## 5           5 0.3649120 0.2458194 0.4823096 fixed
+## 6           6 0.2992905 0.2045200 0.3798605 fixed
 ```
 
 add sample size per district so that I can use this in plotting:
 
 ```r
 resultsall <- d %>% 
-    group_by(district_id) %>%
-    summarize(size=n()) %>%
-    right_join(resultsall)
+  group_by(district_id) %>%
+  summarize(size=n()) %>%
+  right_join(resultsall)
 ```
 
 ```
@@ -1226,15 +1341,15 @@ I want to order the plotting by the differnce between the models
 
 ```r
 resultsdiff <- 
-    resultsall %>%
-    select(district_id, size, model, mu) %>%
-    spread(key = model, value = mu) %>% 
-    mutate(diff=abs(fixed-hierarchical))
+  resultsall %>%
+  select(district_id, size, model, mu) %>%
+  spread(key = model, value = mu) %>% 
+  mutate(diff=abs(fixed-hierarchical))
 
 plotorder <- resultsdiff  %>%
-    arrange(diff) %>%
-    pull(district_id) %>% 
-    as.character()
+  arrange(diff) %>%
+  pull(district_id) %>% 
+  as.character()
 ```
 
 
@@ -1242,53 +1357,178 @@ plotorder <- resultsdiff  %>%
 
 ```r
 hlines <- data.frame(
-    average=c("fixed", "hierarchical"),
-    estimate=c(mean(d$use.contraception),
-               inv_logit(coef(M12H1b)["a_bar"])
-    ))
+  average=c("fixed", "hierarchical"),
+  estimate=c(mean(d$use.contraception),
+             inv_logit(coef(M12H1b)["a_bar"])
+  ))
 
 resultsall %>%
-    ggplot(aes(x=as.factor(district_id), y=mu, ymin=hdpi.low, ymax=hdpi.high, fill=model, color=model, shape=model, size=size)) +
-    geom_point() +
-    scale_x_discrete(limits=plotorder) +
-    geom_hline(aes(yintercept = estimate, linetype = average), data=hlines) +
-    theme(axis.text.x = element_text(angle=90, hjust=1),panel.grid.major.x = element_blank()) +
-    ylab("proportion using contraception") +
-    xlab("district")
+  ggplot(aes(x=as.factor(district_id), y=mu, ymin=hdpi.low, ymax=hdpi.high, fill=model, color=model, shape=model, size=size)) +
+  geom_point() +
+  scale_x_discrete(limits=plotorder) +
+  geom_hline(aes(yintercept = estimate, linetype = average), data=hlines) +
+  theme(axis.text.x = element_text(angle=90, hjust=1),panel.grid.major.x = element_blank()) +
+  ylab("proportion using contraception") +
+  xlab("district")
 ```
 
-![](Chapter13_files/figure-html/unnamed-chunk-23-1.png)<!-- -->
+![](Chapter13_files/figure-html/unnamed-chunk-28-1.png)<!-- -->
 
 Two determinants: sample size and distance from overall mean
 
 
 ```r
 resultsdiff %>% 
-    ggplot(aes(x=size,y=diff)) +
-    geom_point() +
-    geom_smooth()
+  ggplot(aes(x=size,y=diff)) +
+  geom_point() +
+  geom_smooth()
 ```
 
 ```
 ## `geom_smooth()` using method = 'loess' and formula 'y ~ x'
 ```
 
-![](Chapter13_files/figure-html/unnamed-chunk-24-1.png)<!-- -->
+![](Chapter13_files/figure-html/unnamed-chunk-29-1.png)<!-- -->
 
 
 ```r
 resultsdiff %>% 
-    mutate(distance.from.abar=abs(fixed-inv_logit(coef(M12H1b)["a_bar"]))) %>%
-    ggplot(aes(x=distance.from.abar,y=diff)) +
-    geom_point() +
-    geom_smooth()
+  mutate(distance.from.abar=abs(fixed-inv_logit(coef(M12H1b)["a_bar"]))) %>%
+  ggplot(aes(x=distance.from.abar,y=diff)) +
+  geom_point() +
+  geom_smooth()
 ```
 
 ```
 ## `geom_smooth()` using method = 'loess' and formula 'y ~ x'
 ```
 
-![](Chapter13_files/figure-html/unnamed-chunk-25-1.png)<!-- -->
+![](Chapter13_files/figure-html/unnamed-chunk-30-1.png)<!-- -->
+
+## 12H2
+
+_Return to the Trolley data, data(Trolley), from Chapter 12. Define and fit a varying intercepts model for these data. Cluster intercepts on individual participants, as indicated by the unique values in the id variable. Include action, intention, and contact as ordinary terms. Compare the varying intercepts model and a model that ignores individuals, using both WAIC and posterior predictions. What is the impact of individual variation in these data?_
+
+
+```r
+data(Trolley)
+d <- Trolley
+
+dat <- list(
+  R = d$response,
+  A = d$action,
+  I = d$intention,
+  C = d$contact,
+  id = as.numeric(d$id))
+
+system.time({
+  m12H2a <- ulam(
+    alist(
+      R ~ dordlogit( phi , cutpoints ),
+      phi <- bA*A + bC*C + BI*I ,
+      BI <- bI + bIA*A + bIC*C ,
+      c(bA,bI,bC,bIA,bIC) ~ dnorm( 0 , 0.5 ),
+      cutpoints ~ dnorm( 0 , 1.5 )
+    ) , data=dat , chains=4 , cores=4, log_lik = TRUE )
+})
+```
+
+```
+##     user   system  elapsed 
+## 2290.200   12.309  737.043
+```
+
+OK I had to look at McElreath's answers for this one.  I don't understand why he doesn't use an adaptive prior for the mean of a[id] (although I know from trying that it doesn't sample well).
+
+```r
+system.time({
+  m12H2b <- ulam( alist(
+  R ~ dordlogit( phi , cutpoints ),
+  phi <- a[id] + bA*A + bC*C + BI*I ,
+  BI <- bI + bIA*A + bIC*C , 
+  a[id] ~ dnorm(0, sigma),
+  c(bA,bI,bC,bIA,bIC) ~ dnorm( 0 , 0.5 ), 
+  cutpoints ~ dnorm( 0 , 1.5 ),
+  sigma ~ dexp(1)) ,
+  data=dat, 
+  chains=4, 
+  cores=4,
+  iter = 2000,
+  log_lik = TRUE)
+})
+```
+
+```
+## Warning: Bulk Effective Samples Size (ESS) is too low, indicating posterior means and medians may be unreliable.
+## Running the chains for more iterations may help. See
+## http://mc-stan.org/misc/warnings.html#bulk-ess
+```
+
+```
+## Warning: Tail Effective Samples Size (ESS) is too low, indicating posterior variances and tail quantiles may be unreliable.
+## Running the chains for more iterations may help. See
+## http://mc-stan.org/misc/warnings.html#tail-ess
+```
+
+```
+##     user   system  elapsed 
+## 7924.271   26.385 2309.597
+```
+
+
+```r
+precis(m12H2a)
+```
+
+```
+## 6 vector or matrix parameters hidden. Use depth=2 to show them.
+```
+
+```
+##           mean         sd       5.5%      94.5%     n_eff     Rhat
+## bIC -1.2296014 0.09439962 -1.3819223 -1.0825803 1120.6286 1.000054
+## bIA -0.4345551 0.07933346 -0.5660957 -0.3110394 1016.4722 1.000762
+## bC  -0.3461787 0.06700618 -0.4493577 -0.2393131 1203.3048 1.001574
+## bI  -0.2920226 0.05501799 -0.3788083 -0.2051847  795.5114 1.001527
+## bA  -0.4726255 0.05406098 -0.5603923 -0.3834667  930.4755 1.001031
+```
+
+```r
+precis(m12H2b)
+```
+
+```
+## 337 vector or matrix parameters hidden. Use depth=2 to show them.
+```
+
+```
+##             mean         sd       5.5%      94.5%    n_eff      Rhat
+## bIC   -1.6691169 0.10154842 -1.8302077 -1.5107480 1953.774 0.9994890
+## bIA   -0.5598321 0.08256722 -0.6910317 -0.4270207 1724.964 1.0003260
+## bC    -0.4510999 0.07230250 -0.5647598 -0.3355444 1953.743 0.9997995
+## bI    -0.3838335 0.05991482 -0.4787411 -0.2880995 1615.835 1.0001951
+## bA    -0.6468496 0.05723969 -0.7371509 -0.5552994 1803.606 0.9997348
+## sigma  1.9116088 0.08396951  1.7803241  2.0496506 3905.978 1.0001726
+```
+
+```r
+compare(m12H2a, m12H2b)
+```
+
+```
+##            WAIC        SE    dWAIC      dSE     pWAIC weight
+## m12H2b 31057.34 179.28749    0.000       NA 355.74208      1
+## m12H2a 36929.11  80.61685 5871.772 173.4537  10.88535      0
+```
+
+varying inercepts model fits much better!
+
+
+```r
+plot(coeftab(m12H2a, m12H2b), pars=names(coef(m12H2a)))
+```
+
+![](Chapter13_files/figure-html/unnamed-chunk-34-1.png)<!-- -->
 
 
 # Book
@@ -1312,9 +1552,9 @@ str(d)
 d$tank <- 1:nrow(d)
 
 dat <- list(
-    S = d$surv,
-    N = d$density,
-    tank = d$tank )
+  S = d$surv,
+  N = d$density,
+  tank = d$tank )
 ```
 
 
@@ -1322,11 +1562,11 @@ dat <- list(
 ```r
 # approximate posterior
 m13.1 <- ulam(
-    alist(
-        S ~ dbinom( N , p ) ,
-        logit(p) <- a[tank] ,
-        a[tank] ~ dnorm( 0 , 1.5 )
-    ), data=dat , chains=4 , log_lik=TRUE )
+  alist(
+    S ~ dbinom( N , p ) ,
+    logit(p) <- a[tank] ,
+    a[tank] ~ dnorm( 0 , 1.5 )
+  ), data=dat , chains=4 , log_lik=TRUE )
 ```
 
 
@@ -1334,13 +1574,13 @@ m13.1 <- ulam(
 ```r
 ## R code 13.3
 m13.2 <- ulam(
-    alist(
-        S ~ dbinom( N , p ) ,
-        logit(p) <- a[tank] ,
-        a[tank] ~ dnorm( a_bar , sigma ) ,
-        a_bar ~ dnorm( 0 , 1.5 ) ,
-        sigma ~ dexp( 1 )
-    ), data=dat , chains=4 , log_lik=TRUE )
+  alist(
+    S ~ dbinom( N , p ) ,
+    logit(p) <- a[tank] ,
+    a[tank] ~ dnorm( a_bar , sigma ) ,
+    a_bar ~ dnorm( 0 , 1.5 ) ,
+    sigma ~ dexp( 1 )
+  ), data=dat , chains=4 , log_lik=TRUE )
 ```
 
 
@@ -1363,7 +1603,7 @@ d$propsurv.est <- logistic( apply( post$a , 2 , mean ) )
 
 # display raw proportions surviving in each tank
 plot( d$propsurv , ylim=c(0,1) , pch=16 , xaxt="n" ,
-    xlab="tank" , ylab="proportion survival" , col=rangi2 )
+      xlab="tank" , ylab="proportion survival" , col=rangi2 )
 axis( 1 , at=c(1,16,32,48) , labels=c(1,16,32,48) )
 
 # overlay posterior means
@@ -1386,10 +1626,10 @@ text( 32+8 , 0 , "large tanks" )
 ## R code 13.6
 # show first 100 populations in the posterior
 plot( NULL , xlim=c(-3,4) , ylim=c(0,0.35) ,
-    xlab="log-odds survive" , ylab="Density" )
+      xlab="log-odds survive" , ylab="Density" )
 for ( i in 1:100 )
-    curve( dnorm(x,post$a_bar[i],post$sigma[i]) , add=TRUE ,
-    col=col.alpha("black",0.2) )
+  curve( dnorm(x,post$a_bar[i],post$sigma[i]) , add=TRUE ,
+         col=col.alpha("black",0.2) )
 
 # sample 8000 imaginary tanks from the posterior distribution
 sim_tanks <- rnorm( 8000 , post$a_bar , post$sigma )
@@ -1437,13 +1677,13 @@ dsim
 ## R code 13.13
 dat <- list( Si=dsim$Si , Ni=dsim$Ni , pond=dsim$pond )
 m13.3 <- ulam(
-    alist(
-        Si ~ dbinom( Ni , p ),
-        logit(p) <- a_pond[pond],
-        a_pond[pond] ~ dnorm( a_bar , sigma ),
-        a_bar ~ dnorm( 0 , 1.5 ),
-        sigma ~ dexp( 1 )
-    ), data=dat , chains=4 )
+  alist(
+    Si ~ dbinom( Ni , p ),
+    logit(p) <- a_pond[pond],
+    a_pond[pond] ~ dnorm( a_bar , sigma ),
+    a_bar ~ dnorm( 0 , 1.5 ),
+    sigma ~ dexp( 1 )
+  ), data=dat , chains=4 )
 ```
 
 
@@ -1469,7 +1709,7 @@ partpool_error <- abs( dsim$p_partpool - dsim$p_true )
 
 ## R code 13.18
 plot( 1:60 , nopool_error , xlab="pond" , ylab="absolute error" ,
-    col=rangi2 , pch=16 )
+      col=rangi2 , pch=16 )
 points( 1:60 , partpool_error )
 
 ## R code 13.19
@@ -1507,25 +1747,25 @@ d <- chimpanzees
 d$treatment <- 1 + d$prosoc_left + 2*d$condition
 
 dat_list <- list(
-    pulled_left = d$pulled_left,
-    actor = d$actor,
-    block_id = d$block,
-    treatment = as.integer(d$treatment) )
+  pulled_left = d$pulled_left,
+  actor = d$actor,
+  block_id = d$block,
+  treatment = as.integer(d$treatment) )
 
 set.seed(13)
 m13.4 <- ulam(
-    alist(
-        pulled_left ~ dbinom( 1 , p ) ,
-        logit(p) <- a[actor] + g[block_id] + b[treatment] ,
-        b[treatment] ~ dnorm( 0 , 0.5 ),
-        # adaptive priors
-        a[actor] ~ dnorm( a_bar , sigma_a ),
-        g[block_id] ~ dnorm( 0 , sigma_g ),
-        # hyper-priors
-        a_bar ~ dnorm( 0 , 1.5 ),
-        sigma_a ~ dexp(1),
-        sigma_g ~ dexp(1)
-    ) , data=dat_list , chains=4 , cores=4 , log_lik=TRUE )
+  alist(
+    pulled_left ~ dbinom( 1 , p ) ,
+    logit(p) <- a[actor] + g[block_id] + b[treatment] ,
+    b[treatment] ~ dnorm( 0 , 0.5 ),
+    # adaptive priors
+    a[actor] ~ dnorm( a_bar , sigma_a ),
+    g[block_id] ~ dnorm( 0 , sigma_g ),
+    # hyper-priors
+    a_bar ~ dnorm( 0 , 1.5 ),
+    sigma_a ~ dexp(1),
+    sigma_g ~ dexp(1)
+  ) , data=dat_list , chains=4 , cores=4 , log_lik=TRUE )
 
 ## R code 13.22
 precis( m13.4 , depth=2 )
@@ -1534,14 +1774,14 @@ plot( precis(m13.4,depth=2) ) # also plot
 ## R code 13.23
 set.seed(14)
 m13.5 <- ulam(
-    alist(
-        pulled_left ~ dbinom( 1 , p ) ,
-        logit(p) <- a[actor] + b[treatment] ,
-        b[treatment] ~ dnorm( 0 , 0.5 ),
-        a[actor] ~ dnorm( a_bar , sigma_a ),
-        a_bar ~ dnorm( 0 , 1.5 ),
-        sigma_a ~ dexp(1)
-    ) , data=dat_list , chains=4 , cores=4 , log_lik=TRUE )
+  alist(
+    pulled_left ~ dbinom( 1 , p ) ,
+    logit(p) <- a[actor] + b[treatment] ,
+    b[treatment] ~ dnorm( 0 , 0.5 ),
+    a[actor] ~ dnorm( a_bar , sigma_a ),
+    a_bar ~ dnorm( 0 , 1.5 ),
+    sigma_a ~ dexp(1)
+  ) , data=dat_list , chains=4 , cores=4 , log_lik=TRUE )
 
 ## R code 13.24
 compare( m13.4 , m13.5 )
@@ -1549,34 +1789,34 @@ compare( m13.4 , m13.5 )
 ## R code 13.25
 set.seed(15)
 m13.6 <- ulam(
-    alist(
-        pulled_left ~ dbinom( 1 , p ) ,
-        logit(p) <- a[actor] + g[block_id] + b[treatment] ,
-        b[treatment] ~ dnorm( 0 , sigma_b ),
-        a[actor] ~ dnorm( a_bar , sigma_a ),
-        g[block_id] ~ dnorm( 0 , sigma_g ),
-        a_bar ~ dnorm( 0 , 1.5 ),
-        sigma_a ~ dexp(1),
-        sigma_g ~ dexp(1),
-        sigma_b ~ dexp(1)
-    ) , data=dat_list , chains=4 , cores=4 , log_lik=TRUE )
+  alist(
+    pulled_left ~ dbinom( 1 , p ) ,
+    logit(p) <- a[actor] + g[block_id] + b[treatment] ,
+    b[treatment] ~ dnorm( 0 , sigma_b ),
+    a[actor] ~ dnorm( a_bar , sigma_a ),
+    g[block_id] ~ dnorm( 0 , sigma_g ),
+    a_bar ~ dnorm( 0 , 1.5 ),
+    sigma_a ~ dexp(1),
+    sigma_g ~ dexp(1),
+    sigma_b ~ dexp(1)
+  ) , data=dat_list , chains=4 , cores=4 , log_lik=TRUE )
 coeftab(m13.4,m13.6)
 
 ## R code 13.26
 m13x <- ulam(
-    alist(
-        v ~ normal(0,3),
-        x ~ normal(0,exp(v))
-    ), data=list(N=1) , chains=4 )
+  alist(
+    v ~ normal(0,3),
+    x ~ normal(0,exp(v))
+  ), data=list(N=1) , chains=4 )
 precis(m13x)
 
 ## R code 13.27
 m13y <- ulam(
-    alist(
-        v ~ normal(0,3),
-        z ~ normal(0,1),
-        gq> real[1]:x <<- z*exp(v)
-    ), data=list(N=1) , chains=4 )
+  alist(
+    v ~ normal(0,3),
+    z ~ normal(0,1),
+    gq> real[1]:x <<- z*exp(v)
+  ), data=list(N=1) , chains=4 )
 precis(m13y)
 
 ## R code 13.28
@@ -1587,18 +1827,18 @@ divergent(m13.4b)
 ## R code 13.29
 set.seed(13)
 m13.4nc <- ulam(
-    alist(
-        pulled_left ~ dbinom( 1 , p ) ,
-        logit(p) <- a_bar + z[actor]*sigma_a + # actor intercepts
-                    x[block_id]*sigma_g +      # block intercepts
-                    b[treatment] ,
-        b[treatment] ~ dnorm( 0 , 0.5 ),
-        z[actor] ~ dnorm( 0 , 1 ),
-        x[block_id] ~ dnorm( 0 , 1 ),
-        a_bar ~ dnorm( 0 , 1.5 ),
-        sigma_a ~ dexp(1),
-        sigma_g ~ dexp(1)
-    ) , data=dat_list , chains=4 , cores=4 )
+  alist(
+    pulled_left ~ dbinom( 1 , p ) ,
+    logit(p) <- a_bar + z[actor]*sigma_a + # actor intercepts
+      x[block_id]*sigma_g +      # block intercepts
+      b[treatment] ,
+    b[treatment] ~ dnorm( 0 , 0.5 ),
+    z[actor] ~ dnorm( 0 , 1 ),
+    x[block_id] ~ dnorm( 0 , 1 ),
+    a_bar ~ dnorm( 0 , 1.5 ),
+    sigma_a ~ dexp(1),
+    sigma_g ~ dexp(1)
+  ) , data=dat_list , chains=4 , cores=4 )
 
 ## R code 13.30
 neff_c <- precis( m13.4 , depth=2 )[['n_eff']]
@@ -1611,9 +1851,9 @@ round(t(neff_table))
 ## R code 13.31
 chimp <- 2
 d_pred <- list(
-    actor = rep(chimp,4),
-    treatment = 1:4,
-    block_id = rep(1,4)
+  actor = rep(chimp,4),
+  treatment = 1:4,
+  block_id = rep(1,4)
 )
 p <- link( m13.4 , data=d_pred )
 p_mu <- apply( p , 2 , mean )
@@ -1628,9 +1868,9 @@ dens( post$a[,5] )
 
 ## R code 13.34
 p_link <- function( treatment , actor=1 , block_id=1 ) {
-    logodds <- with( post ,
-        a[,actor] + g[,block_id] + b[,treatment] )
-    return( inv_logit(logodds) )
+  logodds <- with( post ,
+                   a[,actor] + g[,block_id] + b[,treatment] )
+  return( inv_logit(logodds) )
 }
 
 ## R code 13.35
@@ -1640,8 +1880,8 @@ p_ci <- apply( p_raw , 2 , PI )
 
 ## R code 13.36
 p_link_abar <- function( treatment ) {
-    logodds <- with( post , a_bar + b[,treatment] )
-    return( inv_logit(logodds) )
+  logodds <- with( post , a_bar + b[,treatment] )
+  return( inv_logit(logodds) )
 }
 
 ## R code 13.37
@@ -1650,7 +1890,7 @@ p_mu <- apply( p_raw , 2 , mean )
 p_ci <- apply( p_raw , 2 , PI )
 
 plot( NULL , xlab="treatment" , ylab="proportion pulled left" ,
-    ylim=c(0,1) , xaxt="n" , xlim=c(1,4) )
+      ylim=c(0,1) , xaxt="n" , xlim=c(1,4) )
 axis( 1 , at=1:4 , labels=c("R/N","L/N","R/P","L/P") )
 lines( 1:4 , p_mu )
 shade( p_ci , 1:4 )
@@ -1658,14 +1898,14 @@ shade( p_ci , 1:4 )
 ## R code 13.38
 a_sim <- with( post , rnorm( length(post$a_bar) , a_bar , sigma_a ) )
 p_link_asim <- function( treatment ) {
-    logodds <- with( post , a_sim + b[,treatment] )
-    return( inv_logit(logodds) )
+  logodds <- with( post , a_sim + b[,treatment] )
+  return( inv_logit(logodds) )
 }
 p_raw_asim <- sapply( 1:4 , function(i) p_link_asim( i ) )
 
 ## R code 13.39
 plot( NULL , xlab="treatment" , ylab="proportion pulled left" ,
-    ylim=c(0,1) , xaxt="n" , xlim=c(1,4) )
+      ylim=c(0,1) , xaxt="n" , xlim=c(1,4) )
 axis( 1 , at=1:4 , labels=c("R/N","L/N","R/P","L/P") )
 for ( i in 1:100 ) lines( 1:4 , p_raw_asim[i,] , col=col.alpha("black",0.25) , lwd=2 )
 
