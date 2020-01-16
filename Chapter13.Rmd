@@ -449,8 +449,8 @@ system.time({
   R ~ dordlogit( phi , cutpoints ),
   phi <- alpha[id] + bA*A + bC*C + BI*I ,
   BI <- bI + bIA*A + bIC*C , 
-  alpha[id] ~ dnorm(alpha_bar, sigma)
-  alpha_bar ~ dnorm(0, 1.5)
+  alpha[id] ~ dnorm(alpha_bar, sigma),
+  alpha_bar ~ dnorm(0, 1.5),
   c(bA,bI,bC,bIA,bIC) ~ dnorm( 0 , 0.5 ), 
   cutpoints ~ dnorm( 0 , 1.5 ),
   sigma ~ dexp(1)) ,
