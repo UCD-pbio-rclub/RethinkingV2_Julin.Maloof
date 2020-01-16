@@ -72,38 +72,38 @@ d$tank <- 1:nrow(d)
 orignal
 ```{r, warning=FALSE}
 dat <- list(
-    S = d$surv,
-    N = d$density,
-    tank = d$tank
+  S = d$surv,
+  N = d$density,
+  tank = d$tank
 )
 
 m12M1a <- ulam(
-    alist(
-        S ~ dbinom( N , p ) ,
-        logit(p) <- a[tank] ,
-        a[tank] ~ dnorm( a_bar , sigma ) ,
-        a_bar ~ dnorm( 0 , 1.5 ) ,
-        sigma ~ dexp( 1 )
-    ), data=dat , chains=4 , log_lik=TRUE )
+  alist(
+    S ~ dbinom( N , p ) ,
+    logit(p) <- a[tank] ,
+    a[tank] ~ dnorm( a_bar , sigma ) ,
+    a_bar ~ dnorm( 0 , 1.5 ) ,
+    sigma ~ dexp( 1 )
+  ), data=dat , chains=4 , log_lik=TRUE )
 ```
 
 ```{r, warning=FALSE}
 dat <- list(
-    S = d$surv,
-    N = d$density,
-    tank = d$tank,
-    pred = ifelse(d$pred=="no", 0, 1)
+  S = d$surv,
+  N = d$density,
+  tank = d$tank,
+  pred = ifelse(d$pred=="no", 0, 1)
 )
 
 m12M1_pred <- ulam(
-    alist(
-        S ~ dbinom( N , p ) ,
-        logit(p) <- a[tank] + b_pred*pred,
-        a[tank] ~ dnorm( a_bar , sigma ) ,
-        a_bar ~ dnorm( 0 , 1.5 ) ,
-        b_pred ~ dnorm(0, 1),
-        sigma ~ dexp( 1 )
-    ), data=dat , chains=4 , log_lik=TRUE, iter = 2000 )
+  alist(
+    S ~ dbinom( N , p ) ,
+    logit(p) <- a[tank] + b_pred*pred,
+    a[tank] ~ dnorm( a_bar , sigma ) ,
+    a_bar ~ dnorm( 0 , 1.5 ) ,
+    b_pred ~ dnorm(0, 1),
+    sigma ~ dexp( 1 )
+  ), data=dat , chains=4 , log_lik=TRUE, iter = 2000 )
 ```
 
 ```{r}
@@ -115,23 +115,23 @@ plot(m12M1_pred)
 size model
 ```{r,  warning=FALSE}
 dat <- list(
-    S = d$surv,
-    N = d$density,
-    tank = d$tank,
-    sze = ifelse(d$size=="small", 0, 1)
+  S = d$surv,
+  N = d$density,
+  tank = d$tank,
+  sze = ifelse(d$size=="small", 0, 1)
 )
 
 str(dat)
 
 m12M1_size <- ulam(
-    alist(
-        S ~ dbinom( N , p ) ,
-        logit(p) <- a[tank] + b_size*sze,
-        a[tank] ~ dnorm( a_bar , sigma ) ,
-        a_bar ~ dnorm( 0 , 1.5 ) ,
-        b_size ~ dnorm(0, 1),
-        sigma ~ dexp( 1 )
-    ), data=dat , chains=4 , iter=4000, log_lik=TRUE )
+  alist(
+    S ~ dbinom( N , p ) ,
+    logit(p) <- a[tank] + b_size*sze,
+    a[tank] ~ dnorm( a_bar , sigma ) ,
+    a_bar ~ dnorm( 0 , 1.5 ) ,
+    b_size ~ dnorm(0, 1),
+    sigma ~ dexp( 1 )
+  ), data=dat , chains=4 , iter=4000, log_lik=TRUE )
 ```
 
 ```{r}
@@ -142,23 +142,23 @@ precis(m12M1_size)
 both size and pred
 ```{r, warning=FALSE}
 dat <- list(
-    S = d$surv,
-    N = d$density,
-    tank = d$tank,
-    sze = ifelse(d$size=="small", 0, 1),
-    pred = ifelse(d$pred=="no", 0, 1)
+  S = d$surv,
+  N = d$density,
+  tank = d$tank,
+  sze = ifelse(d$size=="small", 0, 1),
+  pred = ifelse(d$pred=="no", 0, 1)
 )
 
 m12M1_both <- ulam(
-    alist(
-        S ~ dbinom( N , p ) ,
-        logit(p) <- a[tank] + b_pred*pred + b_size*sze,
-        a[tank] ~ dnorm( a_bar , sigma ) ,
-        a_bar ~ dnorm( 0 , 1.5 ) ,
-        b_pred ~ dnorm(0, 1),
-        b_size ~ dnorm(0, 1),
-        sigma ~ dexp( 1 )
-    ), data=dat , chains=4 , log_lik=TRUE, iter=4000 )
+  alist(
+    S ~ dbinom( N , p ) ,
+    logit(p) <- a[tank] + b_pred*pred + b_size*sze,
+    a[tank] ~ dnorm( a_bar , sigma ) ,
+    a_bar ~ dnorm( 0 , 1.5 ) ,
+    b_pred ~ dnorm(0, 1),
+    b_size ~ dnorm(0, 1),
+    sigma ~ dexp( 1 )
+  ), data=dat , chains=4 , log_lik=TRUE, iter=4000 )
 ```
 
 ```{r}
@@ -169,24 +169,24 @@ precis(m12M1_both)
 interaction
 ```{r, warning=FALSE}
 dat <- list(
-    S = d$surv,
-    N = d$density,
-    tank = d$tank,
-    sze = ifelse(d$size=="small", 0, 1),
-    pred = ifelse(d$pred=="no", 0, 1)
+  S = d$surv,
+  N = d$density,
+  tank = d$tank,
+  sze = ifelse(d$size=="small", 0, 1),
+  pred = ifelse(d$pred=="no", 0, 1)
 )
 
 m12M1_int <- ulam(
-    alist(
-        S ~ dbinom( N , p ) ,
-        logit(p) <- a[tank] + b_pred*pred + b_size*sze +b_int*pred*sze,
-        a[tank] ~ dnorm( a_bar , sigma ) ,
-        a_bar ~ dnorm( 0 , 1.5 ) ,
-        b_pred ~ dnorm(0, 1),
-        b_size ~ dnorm(0, 1),
-        b_int ~ dnorm(0, .5),
-        sigma ~ dexp( 1 )
-    ), data=dat , chains=4 , log_lik=TRUE, iter=4000 )
+  alist(
+    S ~ dbinom( N , p ) ,
+    logit(p) <- a[tank] + b_pred*pred + b_size*sze +b_int*pred*sze,
+    a[tank] ~ dnorm( a_bar , sigma ) ,
+    a_bar ~ dnorm( 0 , 1.5 ) ,
+    b_pred ~ dnorm(0, 1),
+    b_size ~ dnorm(0, 1),
+    b_int ~ dnorm(0, .5),
+    sigma ~ dexp( 1 )
+  ), data=dat , chains=4 , log_lik=TRUE, iter=4000 )
 ```
 
 ```{r}
@@ -195,9 +195,9 @@ precis(m12M1_int)
 
 ```{r}
 coeftab(m12M1a, m12M1_pred, m12M1_size, m12M1_both, m12M1_int)@coefs %>% 
-    as.data.frame() %>%
-    rownames_to_column(var="coef") %>%
-    filter(str_detect(coef, "\\[", negate = TRUE))
+  as.data.frame() %>%
+  rownames_to_column(var="coef") %>%
+  filter(str_detect(coef, "\\[", negate = TRUE))
 ```
 
 sigma represents the estimated variation (or really the standard deviation) between tanks.  It turns out that some of that variation is caused by differences in predation and size, so when those variables are included in the model, the "residual" tank to tank variation is reduced.
@@ -221,19 +221,19 @@ Compare the posterior means of the intercepts, αtank, to the posterior means pr
 
 ```{r, warning=FALSE, results='hide'}
 dat <- list(
-    S = d$surv,
-    N = d$density,
-    tank = d$tank
+  S = d$surv,
+  N = d$density,
+  tank = d$tank
 )
 
 m12M3 <- ulam(
-    alist(
-        S ~ dbinom( N , p ) ,
-        logit(p) <- a[tank] ,
-        a[tank] ~ dcauchy( a_bar , sigma ) ,
-        a_bar ~ dnorm( 0 , 1.5 ) ,
-        sigma ~ dcauchy(0, 1)
-    ), data=dat , chains=4 , log_lik=TRUE )
+  alist(
+    S ~ dbinom( N , p ) ,
+    logit(p) <- a[tank] ,
+    a[tank] ~ dcauchy( a_bar , sigma ) ,
+    a_bar ~ dnorm( 0 , 1.5 ) ,
+    sigma ~ dcauchy(0, 1)
+  ), data=dat , chains=4 , log_lik=TRUE )
 ```
 
 now compare the models.
@@ -294,10 +294,10 @@ fixed effect model
 dat = list(district_id=d$district_id, contraception=d$use.contraception)
 str(dat)
 M12H1a <- ulam(
-    alist(contraception ~ dbinom(1, p),
-          logit(p) <- a[district_id],
-          a[district_id] ~ dnorm(0, 1.5)),
-    data = dat, chains = 4, log_lik = TRUE)
+  alist(contraception ~ dbinom(1, p),
+        logit(p) <- a[district_id],
+        a[district_id] ~ dnorm(0, 1.5)),
+  data = dat, chains = 4, log_lik = TRUE)
 ```
 
 ```{r}
@@ -307,12 +307,12 @@ precis(M12H1a, depth=2) %>% head()
 multi-level model:
 ```{r, warning=FALSE}
 M12H1b <- ulam(
-    alist(contraception ~ dbinom(1, p),
-          logit(p) <- a[district_id],
-          a[district_id] ~ dnorm(a_bar, sigma),
-          a_bar ~ dnorm(0, 1.5),
-          sigma ~ dexp(1)),
-    data = dat, chains = 4, log_lik = TRUE, cores=4 )
+  alist(contraception ~ dbinom(1, p),
+        logit(p) <- a[district_id],
+        a[district_id] ~ dnorm(a_bar, sigma),
+        a_bar ~ dnorm(0, 1.5),
+        sigma ~ dexp(1)),
+  data = dat, chains = 4, log_lik = TRUE, cores=4 )
 ```
 
 ```{r}
@@ -339,18 +339,18 @@ pred2 <- link(M12H1b, pred.df)
 summarize samples
 ```{r}
 results1 <- data.frame(
-    district_id=1:60,
-    mu=apply(pred1, 2, mean),
-    hdpi.low=apply(pred1, 2, HPDI)[1,],
-    hdpi.high=apply(pred1, 2, HPDI)[2,],
-    model="fixed")
+  district_id=1:60,
+  mu=apply(pred1, 2, mean),
+  hdpi.low=apply(pred1, 2, HPDI)[1,],
+  hdpi.high=apply(pred1, 2, HPDI)[2,],
+  model="fixed")
 
 results2 <- data.frame(
-    district_id=1:60,
-    mu=apply(pred2, 2, mean),
-    hdpi.low=apply(pred2, 2, HPDI)[1,],
-    hdpi.high=apply(pred2, 2, HPDI)[2,],
-    model="hierarchical")
+  district_id=1:60,
+  mu=apply(pred2, 2, mean),
+  hdpi.low=apply(pred2, 2, HPDI)[1,],
+  hdpi.high=apply(pred2, 2, HPDI)[2,],
+  model="hierarchical")
 
 resultsall <- rbind(results1, results2)
 head(resultsall)
@@ -359,67 +359,117 @@ head(resultsall)
 add sample size per district so that I can use this in plotting:
 ```{r}
 resultsall <- d %>% 
-    group_by(district_id) %>%
-    summarize(size=n()) %>%
-    right_join(resultsall)
+  group_by(district_id) %>%
+  summarize(size=n()) %>%
+  right_join(resultsall)
 ```
 
 I want to order the plotting by the differnce between the models
 
 ```{r}
 resultsdiff <- 
-    resultsall %>%
-    select(district_id, size, model, mu) %>%
-    spread(key = model, value = mu) %>% 
-    mutate(diff=abs(fixed-hierarchical))
+  resultsall %>%
+  select(district_id, size, model, mu) %>%
+  spread(key = model, value = mu) %>% 
+  mutate(diff=abs(fixed-hierarchical))
 
 plotorder <- resultsdiff  %>%
-    arrange(diff) %>%
-    pull(district_id) %>% 
-    as.character()
+  arrange(diff) %>%
+  pull(district_id) %>% 
+  as.character()
 ```
 
 
 
 ```{r, fig.width=10}
 hlines <- data.frame(
-    average=c("fixed", "hierarchical"),
-    estimate=c(mean(d$use.contraception),
-               inv_logit(coef(M12H1b)["a_bar"])
-    ))
+  average=c("fixed", "hierarchical"),
+  estimate=c(mean(d$use.contraception),
+             inv_logit(coef(M12H1b)["a_bar"])
+  ))
 
 resultsall %>%
-    ggplot(aes(x=as.factor(district_id), y=mu, ymin=hdpi.low, ymax=hdpi.high, fill=model, color=model, shape=model, size=size)) +
-    geom_point() +
-    scale_x_discrete(limits=plotorder) +
-    geom_hline(aes(yintercept = estimate, linetype = average), data=hlines) +
-    theme(axis.text.x = element_text(angle=90, hjust=1),panel.grid.major.x = element_blank()) +
-    ylab("proportion using contraception") +
-    xlab("district")
-    
+  ggplot(aes(x=as.factor(district_id), y=mu, ymin=hdpi.low, ymax=hdpi.high, fill=model, color=model, shape=model, size=size)) +
+  geom_point() +
+  scale_x_discrete(limits=plotorder) +
+  geom_hline(aes(yintercept = estimate, linetype = average), data=hlines) +
+  theme(axis.text.x = element_text(angle=90, hjust=1),panel.grid.major.x = element_blank()) +
+  ylab("proportion using contraception") +
+  xlab("district")
+
 ```
 
 Two determinants: sample size and distance from overall mean
 
 ```{r}
 resultsdiff %>% 
-    ggplot(aes(x=size,y=diff)) +
-    geom_point() +
-    geom_smooth()
+  ggplot(aes(x=size,y=diff)) +
+  geom_point() +
+  geom_smooth()
 ```
 
 ```{r}
 resultsdiff %>% 
-    mutate(distance.from.abar=abs(fixed-inv_logit(coef(M12H1b)["a_bar"]))) %>%
-    ggplot(aes(x=distance.from.abar,y=diff)) +
-    geom_point() +
-    geom_smooth()
+  mutate(distance.from.abar=abs(fixed-inv_logit(coef(M12H1b)["a_bar"]))) %>%
+  ggplot(aes(x=distance.from.abar,y=diff)) +
+  geom_point() +
+  geom_smooth()
 ```
 
 ## 12H2
 
-
 _Return to the Trolley data, data(Trolley), from Chapter 12. Define and fit a varying intercepts model for these data. Cluster intercepts on individual participants, as indicated by the unique values in the id variable. Include action, intention, and contact as ordinary terms. Compare the varying intercepts model and a model that ignores individuals, using both WAIC and posterior predictions. What is the impact of individual variation in these data?_
+
+```{r}
+data(Trolley)
+
+dat <- list(
+  R = d$response,
+  A = d$action,
+  I = d$intention,
+  C = d$contact,
+  id = d$id)
+
+system.time({
+  m12H2a <- ulam(
+    alist(
+      R ~ dordlogit( phi , cutpoints ),
+      phi <- bA*A + bC*C + BI*I ,
+      BI <- bI + bIA*A + bIC*C ,
+      c(bA,bI,bC,bIA,bIC) ~ dnorm( 0 , 0.5 ),
+      cutpoints ~ dnorm( 0 , 1.5 )
+    ) , data=dat , chains=4 , cores=4 )
+})
+```
+
+
+```{r}
+system.time({
+  m12H2b <- ulam( alist(
+  R ~ dordlogit( phi , cutpoints ),
+  phi <- alpha[id] + bA*A + bC*C + BI*I ,
+  BI <- bI + bIA*A + bIC*C , 
+  alpha[id] ~ dnorm(alpha_bar, sigma)
+  alpha_bar ~ dnorm(0, 1.5)
+  c(bA,bI,bC,bIA,bIC) ~ dnorm( 0 , 0.5 ), 
+  cutpoints ~ dnorm( 0 , 1.5 ),
+  sigma ~ dexp(1)) ,
+  data=dat, 
+  chains=4, 
+  cores=4)
+})
+```
+
+```{r}
+precis(m12H2a)
+precis(m12H2b)
+compare(m12H2a, m12H2b)
+```
+
+```{r}
+plot(coeftab(m12H2a, m12H2b))
+```
+
 
 # Book
 
@@ -440,33 +490,33 @@ str(d)
 d$tank <- 1:nrow(d)
 
 dat <- list(
-    S = d$surv,
-    N = d$density,
-    tank = d$tank )
+  S = d$surv,
+  N = d$density,
+  tank = d$tank )
 ```
 
 
 ```{r}
 # approximate posterior
 m13.1 <- ulam(
-    alist(
-        S ~ dbinom( N , p ) ,
-        logit(p) <- a[tank] ,
-        a[tank] ~ dnorm( 0 , 1.5 )
-    ), data=dat , chains=4 , log_lik=TRUE )
+  alist(
+    S ~ dbinom( N , p ) ,
+    logit(p) <- a[tank] ,
+    a[tank] ~ dnorm( 0 , 1.5 )
+  ), data=dat , chains=4 , log_lik=TRUE )
 ```
 
 
 ```{r}
 ## R code 13.3
 m13.2 <- ulam(
-    alist(
-        S ~ dbinom( N , p ) ,
-        logit(p) <- a[tank] ,
-        a[tank] ~ dnorm( a_bar , sigma ) ,
-        a_bar ~ dnorm( 0 , 1.5 ) ,
-        sigma ~ dexp( 1 )
-    ), data=dat , chains=4 , log_lik=TRUE )
+  alist(
+    S ~ dbinom( N , p ) ,
+    logit(p) <- a[tank] ,
+    a[tank] ~ dnorm( a_bar , sigma ) ,
+    a_bar ~ dnorm( 0 , 1.5 ) ,
+    sigma ~ dexp( 1 )
+  ), data=dat , chains=4 , log_lik=TRUE )
 ```
 
 
@@ -487,7 +537,7 @@ d$propsurv.est <- logistic( apply( post$a , 2 , mean ) )
 
 # display raw proportions surviving in each tank
 plot( d$propsurv , ylim=c(0,1) , pch=16 , xaxt="n" ,
-    xlab="tank" , ylab="proportion survival" , col=rangi2 )
+      xlab="tank" , ylab="proportion survival" , col=rangi2 )
 axis( 1 , at=c(1,16,32,48) , labels=c(1,16,32,48) )
 
 # overlay posterior means
@@ -509,10 +559,10 @@ text( 32+8 , 0 , "large tanks" )
 ## R code 13.6
 # show first 100 populations in the posterior
 plot( NULL , xlim=c(-3,4) , ylim=c(0,0.35) ,
-    xlab="log-odds survive" , ylab="Density" )
+      xlab="log-odds survive" , ylab="Density" )
 for ( i in 1:100 )
-    curve( dnorm(x,post$a_bar[i],post$sigma[i]) , add=TRUE ,
-    col=col.alpha("black",0.2) )
+  curve( dnorm(x,post$a_bar[i],post$sigma[i]) , add=TRUE ,
+         col=col.alpha("black",0.2) )
 
 # sample 8000 imaginary tanks from the posterior distribution
 sim_tanks <- rnorm( 8000 , post$a_bar , post$sigma )
@@ -557,13 +607,13 @@ dsim
 ## R code 13.13
 dat <- list( Si=dsim$Si , Ni=dsim$Ni , pond=dsim$pond )
 m13.3 <- ulam(
-    alist(
-        Si ~ dbinom( Ni , p ),
-        logit(p) <- a_pond[pond],
-        a_pond[pond] ~ dnorm( a_bar , sigma ),
-        a_bar ~ dnorm( 0 , 1.5 ),
-        sigma ~ dexp( 1 )
-    ), data=dat , chains=4 )
+  alist(
+    Si ~ dbinom( Ni , p ),
+    logit(p) <- a_pond[pond],
+    a_pond[pond] ~ dnorm( a_bar , sigma ),
+    a_bar ~ dnorm( 0 , 1.5 ),
+    sigma ~ dexp( 1 )
+  ), data=dat , chains=4 )
 ```
 
 
@@ -587,7 +637,7 @@ partpool_error <- abs( dsim$p_partpool - dsim$p_true )
 
 ## R code 13.18
 plot( 1:60 , nopool_error , xlab="pond" , ylab="absolute error" ,
-    col=rangi2 , pch=16 )
+      col=rangi2 , pch=16 )
 points( 1:60 , partpool_error )
 
 ## R code 13.19
@@ -626,25 +676,25 @@ d <- chimpanzees
 d$treatment <- 1 + d$prosoc_left + 2*d$condition
 
 dat_list <- list(
-    pulled_left = d$pulled_left,
-    actor = d$actor,
-    block_id = d$block,
-    treatment = as.integer(d$treatment) )
+  pulled_left = d$pulled_left,
+  actor = d$actor,
+  block_id = d$block,
+  treatment = as.integer(d$treatment) )
 
 set.seed(13)
 m13.4 <- ulam(
-    alist(
-        pulled_left ~ dbinom( 1 , p ) ,
-        logit(p) <- a[actor] + g[block_id] + b[treatment] ,
-        b[treatment] ~ dnorm( 0 , 0.5 ),
-        # adaptive priors
-        a[actor] ~ dnorm( a_bar , sigma_a ),
-        g[block_id] ~ dnorm( 0 , sigma_g ),
-        # hyper-priors
-        a_bar ~ dnorm( 0 , 1.5 ),
-        sigma_a ~ dexp(1),
-        sigma_g ~ dexp(1)
-    ) , data=dat_list , chains=4 , cores=4 , log_lik=TRUE )
+  alist(
+    pulled_left ~ dbinom( 1 , p ) ,
+    logit(p) <- a[actor] + g[block_id] + b[treatment] ,
+    b[treatment] ~ dnorm( 0 , 0.5 ),
+    # adaptive priors
+    a[actor] ~ dnorm( a_bar , sigma_a ),
+    g[block_id] ~ dnorm( 0 , sigma_g ),
+    # hyper-priors
+    a_bar ~ dnorm( 0 , 1.5 ),
+    sigma_a ~ dexp(1),
+    sigma_g ~ dexp(1)
+  ) , data=dat_list , chains=4 , cores=4 , log_lik=TRUE )
 
 ## R code 13.22
 precis( m13.4 , depth=2 )
@@ -653,14 +703,14 @@ plot( precis(m13.4,depth=2) ) # also plot
 ## R code 13.23
 set.seed(14)
 m13.5 <- ulam(
-    alist(
-        pulled_left ~ dbinom( 1 , p ) ,
-        logit(p) <- a[actor] + b[treatment] ,
-        b[treatment] ~ dnorm( 0 , 0.5 ),
-        a[actor] ~ dnorm( a_bar , sigma_a ),
-        a_bar ~ dnorm( 0 , 1.5 ),
-        sigma_a ~ dexp(1)
-    ) , data=dat_list , chains=4 , cores=4 , log_lik=TRUE )
+  alist(
+    pulled_left ~ dbinom( 1 , p ) ,
+    logit(p) <- a[actor] + b[treatment] ,
+    b[treatment] ~ dnorm( 0 , 0.5 ),
+    a[actor] ~ dnorm( a_bar , sigma_a ),
+    a_bar ~ dnorm( 0 , 1.5 ),
+    sigma_a ~ dexp(1)
+  ) , data=dat_list , chains=4 , cores=4 , log_lik=TRUE )
 
 ## R code 13.24
 compare( m13.4 , m13.5 )
@@ -668,34 +718,34 @@ compare( m13.4 , m13.5 )
 ## R code 13.25
 set.seed(15)
 m13.6 <- ulam(
-    alist(
-        pulled_left ~ dbinom( 1 , p ) ,
-        logit(p) <- a[actor] + g[block_id] + b[treatment] ,
-        b[treatment] ~ dnorm( 0 , sigma_b ),
-        a[actor] ~ dnorm( a_bar , sigma_a ),
-        g[block_id] ~ dnorm( 0 , sigma_g ),
-        a_bar ~ dnorm( 0 , 1.5 ),
-        sigma_a ~ dexp(1),
-        sigma_g ~ dexp(1),
-        sigma_b ~ dexp(1)
-    ) , data=dat_list , chains=4 , cores=4 , log_lik=TRUE )
+  alist(
+    pulled_left ~ dbinom( 1 , p ) ,
+    logit(p) <- a[actor] + g[block_id] + b[treatment] ,
+    b[treatment] ~ dnorm( 0 , sigma_b ),
+    a[actor] ~ dnorm( a_bar , sigma_a ),
+    g[block_id] ~ dnorm( 0 , sigma_g ),
+    a_bar ~ dnorm( 0 , 1.5 ),
+    sigma_a ~ dexp(1),
+    sigma_g ~ dexp(1),
+    sigma_b ~ dexp(1)
+  ) , data=dat_list , chains=4 , cores=4 , log_lik=TRUE )
 coeftab(m13.4,m13.6)
 
 ## R code 13.26
 m13x <- ulam(
-    alist(
-        v ~ normal(0,3),
-        x ~ normal(0,exp(v))
-    ), data=list(N=1) , chains=4 )
+  alist(
+    v ~ normal(0,3),
+    x ~ normal(0,exp(v))
+  ), data=list(N=1) , chains=4 )
 precis(m13x)
 
 ## R code 13.27
 m13y <- ulam(
-    alist(
-        v ~ normal(0,3),
-        z ~ normal(0,1),
-        gq> real[1]:x <<- z*exp(v)
-    ), data=list(N=1) , chains=4 )
+  alist(
+    v ~ normal(0,3),
+    z ~ normal(0,1),
+    gq> real[1]:x <<- z*exp(v)
+  ), data=list(N=1) , chains=4 )
 precis(m13y)
 
 ## R code 13.28
@@ -706,18 +756,18 @@ divergent(m13.4b)
 ## R code 13.29
 set.seed(13)
 m13.4nc <- ulam(
-    alist(
-        pulled_left ~ dbinom( 1 , p ) ,
-        logit(p) <- a_bar + z[actor]*sigma_a + # actor intercepts
-                    x[block_id]*sigma_g +      # block intercepts
-                    b[treatment] ,
-        b[treatment] ~ dnorm( 0 , 0.5 ),
-        z[actor] ~ dnorm( 0 , 1 ),
-        x[block_id] ~ dnorm( 0 , 1 ),
-        a_bar ~ dnorm( 0 , 1.5 ),
-        sigma_a ~ dexp(1),
-        sigma_g ~ dexp(1)
-    ) , data=dat_list , chains=4 , cores=4 )
+  alist(
+    pulled_left ~ dbinom( 1 , p ) ,
+    logit(p) <- a_bar + z[actor]*sigma_a + # actor intercepts
+      x[block_id]*sigma_g +      # block intercepts
+      b[treatment] ,
+    b[treatment] ~ dnorm( 0 , 0.5 ),
+    z[actor] ~ dnorm( 0 , 1 ),
+    x[block_id] ~ dnorm( 0 , 1 ),
+    a_bar ~ dnorm( 0 , 1.5 ),
+    sigma_a ~ dexp(1),
+    sigma_g ~ dexp(1)
+  ) , data=dat_list , chains=4 , cores=4 )
 
 ## R code 13.30
 neff_c <- precis( m13.4 , depth=2 )[['n_eff']]
@@ -730,9 +780,9 @@ round(t(neff_table))
 ## R code 13.31
 chimp <- 2
 d_pred <- list(
-    actor = rep(chimp,4),
-    treatment = 1:4,
-    block_id = rep(1,4)
+  actor = rep(chimp,4),
+  treatment = 1:4,
+  block_id = rep(1,4)
 )
 p <- link( m13.4 , data=d_pred )
 p_mu <- apply( p , 2 , mean )
@@ -747,9 +797,9 @@ dens( post$a[,5] )
 
 ## R code 13.34
 p_link <- function( treatment , actor=1 , block_id=1 ) {
-    logodds <- with( post ,
-        a[,actor] + g[,block_id] + b[,treatment] )
-    return( inv_logit(logodds) )
+  logodds <- with( post ,
+                   a[,actor] + g[,block_id] + b[,treatment] )
+  return( inv_logit(logodds) )
 }
 
 ## R code 13.35
@@ -759,8 +809,8 @@ p_ci <- apply( p_raw , 2 , PI )
 
 ## R code 13.36
 p_link_abar <- function( treatment ) {
-    logodds <- with( post , a_bar + b[,treatment] )
-    return( inv_logit(logodds) )
+  logodds <- with( post , a_bar + b[,treatment] )
+  return( inv_logit(logodds) )
 }
 
 ## R code 13.37
@@ -769,7 +819,7 @@ p_mu <- apply( p_raw , 2 , mean )
 p_ci <- apply( p_raw , 2 , PI )
 
 plot( NULL , xlab="treatment" , ylab="proportion pulled left" ,
-    ylim=c(0,1) , xaxt="n" , xlim=c(1,4) )
+      ylim=c(0,1) , xaxt="n" , xlim=c(1,4) )
 axis( 1 , at=1:4 , labels=c("R/N","L/N","R/P","L/P") )
 lines( 1:4 , p_mu )
 shade( p_ci , 1:4 )
@@ -777,14 +827,14 @@ shade( p_ci , 1:4 )
 ## R code 13.38
 a_sim <- with( post , rnorm( length(post$a_bar) , a_bar , sigma_a ) )
 p_link_asim <- function( treatment ) {
-    logodds <- with( post , a_sim + b[,treatment] )
-    return( inv_logit(logodds) )
+  logodds <- with( post , a_sim + b[,treatment] )
+  return( inv_logit(logodds) )
 }
 p_raw_asim <- sapply( 1:4 , function(i) p_link_asim( i ) )
 
 ## R code 13.39
 plot( NULL , xlab="treatment" , ylab="proportion pulled left" ,
-    ylim=c(0,1) , xaxt="n" , xlim=c(1,4) )
+      ylim=c(0,1) , xaxt="n" , xlim=c(1,4) )
 axis( 1 , at=1:4 , labels=c("R/N","L/N","R/P","L/P") )
 for ( i in 1:100 ) lines( 1:4 , p_raw_asim[i,] , col=col.alpha("black",0.25) , lwd=2 )
 
