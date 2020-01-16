@@ -25,11 +25,18 @@ Normal(0, 1); (b) αtank ∼ Normal(0, 2)._
 
 _Make the following model into a multilevel model._
 
+Old:
+yi ∼ Binomial(1, pi)  
+logit(pi) = αgroup[i] + βxi   
+αgroup ∼ Normal(0, 1.5)  
+β ∼ Normal(0, 1)
+
+New:
 yi ∼ Binomial(1, pi)  
 logit(pi) = αgroup[i] + βxi   
 αgroup ∼ Normal(a_bar, sigma)  
 a_bar ~ Normal(0, 1.5)  
-sigma ~ dexp(1)  
+sigma ~ dexp(0,1)  
 β ∼ Normal(0, 1)
 
 
@@ -206,6 +213,73 @@ compare(m12M1a, m12M1_pred, m12M1_size, m12M1_both, m12M1_int)
 
 I would have thought that the pred or both models would have been notably better than the intercept only model.
 
+## 12M3
+
+Re-estimate the basic Reed frog varying intercept model, but now using a Cauchy distribution in place of the Gaussian distribution for the varying intercepts.
+
+Compare the posterior means of the intercepts, αtank, to the posterior means produced in the chapter, using the customary Gaussian prior. Can you explain the pattern of differences?
+
+```{r, warning=FALSE, results='hide'}
+dat <- list(
+    S = d$surv,
+    N = d$density,
+    tank = d$tank
+)
+
+m12M3 <- ulam(
+    alist(
+        S ~ dbinom( N , p ) ,
+        logit(p) <- a[tank] ,
+        a[tank] ~ dcauchy( a_bar , sigma ) ,
+        a_bar ~ dnorm( 0 , 1.5 ) ,
+        sigma ~ dcauchy(0, 1)
+    ), data=dat , chains=4 , log_lik=TRUE )
+```
+
+now compare the models.
+```{r}
+precis(m12M1a)
+precis(m12M3)
+compare(m12M1a, m12M3)
+```
+
+```{r}
+pred.orig <- link(m12M1a)
+
+pred.cauchy <- link(m12M3)
+
+results <-rbind(
+  data.frame(
+    tank=1:48,
+    mu=apply(pred.orig, 2, mean),
+    hdpi.low=apply(pred.orig, 2, HPDI)[1,],
+    hdpi.high=apply(pred.orig, 2, HPDI)[2,],
+    model="Gaussian"),
+  data.frame(
+    tank=1:48,
+    mu=apply(pred.cauchy, 2, mean),
+    hdpi.low=apply(pred.cauchy, 2, HPDI)[1,],
+    hdpi.high=apply(pred.cauchy, 2, HPDI)[2,],
+    model="Cauchy")
+)
+```
+
+```{r}
+results %>%
+  ggplot(aes(x=tank, y=mu, ymin=hdpi.low, ymax=hdpi.high, color=model, shape=model)) +
+  geom_point(size=2) +
+  theme(axis.text.x = element_text(angle=90, hjust=1))
+```
+
+```{r}
+results %>%
+  ggplot(aes(x=model, y=mu, group=tank)) +
+  geom_line()
+```
+
+Cuachy distribution has fatter tails so we see a bit of a spread in the tank estimates....
+
+
 ## 12H1
 
 ```{r}
@@ -342,6 +416,10 @@ resultsdiff %>%
     geom_smooth()
 ```
 
+## 12H2
+
+
+_Return to the Trolley data, data(Trolley), from Chapter 12. Define and fit a varying intercepts model for these data. Cluster intercepts on individual participants, as indicated by the unique values in the id variable. Include action, intention, and contact as ordinary terms. Compare the varying intercepts model and a model that ignores individuals, using both WAIC and posterior predictions. What is the impact of individual variation in these data?_
 
 # Book
 
