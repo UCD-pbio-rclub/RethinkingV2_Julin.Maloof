@@ -438,7 +438,7 @@ system.time({
       BI <- bI + bIA*A + bIC*C ,
       c(bA,bI,bC,bIA,bIC) ~ dnorm( 0 , 0.5 ),
       cutpoints ~ dnorm( 0 , 1.5 )
-    ) , data=dat , chains=4 , cores=4 )
+    ) , data=dat , chains=4 , cores=4, log_lik = TRUE )
 })
 ```
 
@@ -456,7 +456,8 @@ system.time({
   sigma ~ dexp(1)) ,
   data=dat, 
   chains=4, 
-  cores=4)
+  cores=4,
+  log_lik = TRUE)
 })
 ```
 
@@ -465,6 +466,7 @@ precis(m12H2a)
 precis(m12H2b)
 compare(m12H2a, m12H2b)
 ```
+ugggh a_bar not samples well.  Need to rethink this.  
 
 ```{r}
 plot(coeftab(m12H2a, m12H2b))
