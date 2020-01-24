@@ -280,6 +280,49 @@ results %>%
 Cuachy distribution has fatter tails so we see a bit of a spread in the tank estimates....
 
 
+## 12M4
+
+OKay this was in the book...
+
+
+```{r}
+## R code 13.21
+library(rethinking)
+data(chimpanzees)
+d <- chimpanzees
+d$treatment <- 1 + d$prosoc_left + 2*d$condition
+
+dat_list <- list(
+  pulled_left = d$pulled_left,
+  actor = d$actor,
+  block_id = d$block,
+  treatment = as.integer(d$treatment) )
+
+set.seed(13)
+m13.4 <- ulam(
+  alist(
+    pulled_left ~ dbinom( 1 , p ) ,
+    logit(p) <- a[actor] + g[block_id] + b[treatment] ,
+    b[treatment] ~ dnorm( 0 , 0.5 ),
+    # adaptive priors
+    a[actor] ~ dnorm( a_bar , sigma_a ),
+    g[block_id] ~ dnorm( 0 , sigma_g ),
+    # hyper-priors
+    a_bar ~ dnorm( 0 , 1.5 ),
+    sigma_a ~ dexp(1),
+    sigma_g ~ dexp(1)
+  ) , data=dat_list , chains=4 , cores=4 , log_lik=TRUE )
+```
+
+
+```{r}
+## R code 13.22
+precis( m13.4 , depth=2 )
+plot( precis(m13.4,depth=2) ) # also plot
+```
+
+
+
 ## 12H1
 
 ```{r}
@@ -422,6 +465,7 @@ _Return to the Trolley data, data(Trolley), from Chapter 12. Define and fit a va
 
 ```{r}
 data(Trolley)
+
 d <- Trolley
 
 dat <- list(
@@ -429,7 +473,7 @@ dat <- list(
   A = d$action,
   I = d$intention,
   C = d$contact,
-  id = as.numeric(d$id))
+  id = d$id)
 
 system.time({
   m12H2a <- ulam(
@@ -443,21 +487,20 @@ system.time({
 })
 ```
 
-OK I had to look at McElreath's answers for this one.  I don't understand why he doesn't use an adaptive prior for the mean of a[id] (although I know from trying that it doesn't sample well).
+
 ```{r}
 system.time({
   m12H2b <- ulam( alist(
   R ~ dordlogit( phi , cutpoints ),
-  phi <- a[id] + bA*A + bC*C + BI*I ,
+  phi <- alpha[id] + bA*A + bC*C + BI*I ,
   BI <- bI + bIA*A + bIC*C , 
-  a[id] ~ dnorm(0, sigma),
+  alpha[id] ~ dnorm(0, sigma),
   c(bA,bI,bC,bIA,bIC) ~ dnorm( 0 , 0.5 ), 
   cutpoints ~ dnorm( 0 , 1.5 ),
   sigma ~ dexp(1)) ,
   data=dat, 
   chains=4, 
   cores=4,
-  iter = 2000,
   log_lik = TRUE)
 })
 ```
@@ -468,10 +511,49 @@ precis(m12H2b)
 compare(m12H2a, m12H2b)
 ```
 
-varying inercepts model fits much better!
+```{r}
+plot(coeftab(m12H2a, m12H2b))
+```
+
+## 12H3
 
 ```{r}
-plot(coeftab(m12H2a, m12H2b), pars=names(coef(m12H2a)))
+data(Trolley)
+
+d <- Trolley
+
+dat <- list(
+  R = d$response,
+  A = d$action,
+  I = d$intention,
+  C = d$contact,
+  id = d$id,
+  st = d$story)
+
+system.time({
+  m12H3 <- ulam( alist(
+  R ~ dordlogit( phi , cutpoints ),
+  phi <- alpha[id] + gamma[st] + bA*A + bC*C + BI*I ,
+  BI <- bI + bIA*A + bIC*C , 
+  alpha[id] ~ dnorm(0, sigma_alpha),
+  gamma[st] ~ dnorm(0, sigma_gamma),
+  c(bA,bI,bC,bIA,bIC) ~ dnorm( 0 , 0.5 ), 
+  cutpoints ~ dnorm( 0 , 1.5 ),
+  sigma_alpha ~ dexp(1),
+  sigma_gamma ~ dexp(1)) ,
+  data=dat, 
+  chains=4, 
+  cores=4,
+  log_lik = TRUE)
+})
+```
+
+```{r}
+precis(m12H3,depth=2)
+```
+
+```{r}
+compare(M12H1a, M12H1b, m12H3)
 ```
 
 
