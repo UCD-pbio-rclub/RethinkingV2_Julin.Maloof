@@ -7,6 +7,10 @@ output:
     keep_md: yes
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE, autodep = TRUE)
+```
+
 ```{r}
 library(tidyverse)
 library(rethinking)
@@ -35,7 +39,7 @@ data35 <- data %>%
                                             "phyB1/B2", 
                                             "phyEami3", 
                                             "phyEami7")))) %>%
-  select(g_i, shade_i, flat2, stem_length)
+  select(genotype, treatment, g_i, shade_i, flat2, stem_length)
 data35
 ```
 
@@ -290,9 +294,83 @@ link_avg <- function(genotype, shade) {
 }
 ```
 
-b) for same clusters
+create a data frame to hold the results
+```{r}
+pred.df <- data35 %>% 
+  select(-stem_length, -flat2) %>% 
+  unique() %>%
+  mutate(treatment=factor(treatment, levels = c("sun", "shade")) ) # so the plot order is correct
+pred.df
+```
+
+get predictions from posterior for each genotype, shade combo, for the average flat
+```{r}
+pred.df.avg <- pred.df %>%
+  mutate(average_response=map2(g_i, shade_i, link_avg),
+         pet_length=map_dbl(average_response, mean),
+         low.89=map_dbl(average_response, ~ HPDI(.)[1]),
+         high.89=map_dbl(average_response, ~ HPDI(.)[2]))
+pred.df.avg
+```
+
+plot it
+```{r}
+pred.df.avg %>%
+  ggplot(aes(x=genotype, y=pet_length, ymin=low.89, ymax=high.89, fill=treatment)) +
+  geom_col(position = "dodge") +
+  geom_errorbar(width = .5, position = position_dodge(width=.9)) +
+  ggtitle("prediction averaged across flat")
+```
+
+
+b) for same clusters.
+
+_come back to this one later, but it seems we could just use link_
+
 c) showing the "marginal" from cluster
+
+McElreath uses the mean estimated sigma but wouldn't it make more sense to sample that from the posterior?  OTOH wouldn't it make the most since to simulate a certain # of flats? (I am not doing that yet).
+```{r}
+link_marg <- function(genotype, shade) {
+  with(post, alpha[,genotype] + shade*b_shade[,genotype] + rnorm(length(sigma_fl), 0, sigma_fl))
+}
+```
+
+get predictions from posterior for each genotype, shade combo, for a new set of flats
+```{r}
+pred.df.marg <- pred.df %>%
+  mutate(average_response=map2(g_i, shade_i, link_marg),
+         pet_length=map_dbl(average_response, mean),
+         low.89=map_dbl(average_response, ~ HPDI(.)[1]),
+         high.89=map_dbl(average_response, ~ HPDI(.)[2]))
+pred.df.marg
+```
+
+plot it
+```{r}
+pred.df.marg %>%
+  ggplot(aes(x=genotype, y=pet_length, ymin=low.89, ymax=high.89, fill=treatment)) +
+  geom_col(position = "dodge") +
+  geom_errorbar(width = .5, position = position_dodge(width=.9)) +
+  ggtitle("prediction marginal to flat")
+```
+
 d) showing new clusters.
+
+Here we should be able to plot individual plants from `pred.df.marg`
+
+50 pulls from the posterior
+```{r}
+plot.matrix <- sapply(pred.df.marg$average_response, function(x) x[1:50])
+colnames(plot.matrix) <- str_c(pred.df.marg$genotype, "_", pred.df.marg$treatment)
+plot.matrix <- t(plot.matrix)
+plot.matrix[,1:10]
+```
+
+```{r}
+matplot(plot.matrix, type="l", xlab = colnames(plot.matrix))
+```
+
 
 Q5) Reparameterize the model to help with divergent transitions (even if there aren't any)
 
