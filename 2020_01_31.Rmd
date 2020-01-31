@@ -26,26 +26,32 @@ head(data)
 data35 <- data %>%
   filter(day==35) %>%
   mutate(stem_length=epi + int1 + int2 + int3,
-         flat2=str_c(treatment, flat),
-         shade_i=ifelse(treatment=="sun", 0, 1),
-         g_i= as.numeric(factor(genotype,
+         flat2=as.integer(as.factor(str_c(treatment, flat))),
+         shade_i=ifelse(treatment=="sun", 0L, 1L),
+         g_i= as.integer(factor(genotype,
                                    levels=c("Moneymaker", 
                                             "phyB1", 
                                             "phyB2", 
                                             "phyB1/B2", 
                                             "phyEami3", 
                                             "phyEami7")))) %>%
-  select(genotype, g_i, shade_i, flat2, stem_length)
+  select(g_i, shade_i, flat2, stem_length)
 data35
+```
+
+note that this is not a balanced design:
+
+```{r}
+with(data35, table(genotype, flat2))
 ```
 
 
 Ultimately you want to know if any of the mutants have a different length from Moneymaker, in sun or in shade, or if the response to shade differs.
 
-## Q2) Fit 3 models, all of which include genotype and treatment
-a) do not include flat
-b) include flat without pooling
-c) use a hierarchical model that allows partial pooling across flats
+## Q2) Fit some models to explore treatment, genotype, and flat.
+
+### a) don't include flat.  Determine whether genotype, treatment, and their interaction are important predictors of stem_length
+
 
 ```{r}
 mean(data35$stem_length)
@@ -54,13 +60,14 @@ sd(data35$stem_length)
 
 
 ```{r}
-q2a <- ulam(alist(stem_length ~ dnorm(mu,sigma),
+datsmall <- data35 %>% select(stem_length, g_i, shade_i)
+mq2a1 <- ulam(alist(stem_length ~ dnorm(mu,sigma),
                   mu <- alpha[g_i] + b_shade*shade_i + b_i[g_i]*shade_i,
                   alpha[g_i] ~ dnorm(125,50),
                   b_shade ~ dnorm(0, 50),
                   b_i[g_i] ~  dnorm(0, 50),
                   sigma ~ dexp(1)),
-            data=data35,
+            data=datsmall,
             chains=4,
             cores=4,
             log_lik = TRUE)
@@ -68,11 +75,221 @@ q2a <- ulam(alist(stem_length ~ dnorm(mu,sigma),
             
 ```
 
+```{r}
+precis(mq2a1, depth=2)
+traceplot(mq2a1)
+pairs(mq2a1)
+extract.samples(mq2a1) %>%
+  as.data.frame() %>%
+  cor() %>%
+  round(2)
+```
+
+Right, to have beta_shade and separate betas for each shade for each species is redundant
+
+```{r}
+datsmall <- data35 %>% select(stem_length, g_i, shade_i)
+mq2a2 <- ulam(alist(stem_length ~ dnorm(mu,sigma),
+                  mu <- alpha[g_i] + b_shade[g_i]*shade_i,
+                  alpha[g_i] ~ dnorm(125,50),
+                  b_shade[g_i] ~  dnorm(0, 50),
+                  sigma ~ dexp(1)),
+            data=datsmall,
+            chains=4,
+            cores=4,
+            log_lik = TRUE)
+```
+
+```{r}
+precis(mq2a2, depth = 2)
+traceplot(mq2a2)
+pairs(mq2a2)
+extract.samples(mq2a2) %>%
+  as.data.frame() %>%
+  cor() %>%
+  round(2)
+```
+
+This is sampled much better.
+
+let's compare to some simpler models
+
+Same shade response per genotype
+
+```{r}
+datsmall <- data35 %>% select(stem_length, shade_i, g_i)
+mq2a3 <- ulam(alist(stem_length ~ dnorm(mu,sigma),
+                  mu <- alpha[g_i] + b_shade*shade_i,
+                  alpha[g_i] ~ dnorm(125,50),
+                  b_shade ~ dnorm(0, 50),
+                  sigma ~ dexp(1)),
+            data=datsmall,
+            chains=4,
+            cores=4,
+            log_lik = TRUE)
+```
+
+```{r}
+precis(mq2a3)
+traceplot(mq2a3)
+pairs(mq2a3)
+extract.samples(mq2a3) %>%
+  as.data.frame() %>%
+  cor() %>%
+  round(2)
+```
+
+```{r}
+compare(mq2a2, mq2a3)
+```
+
+Interesting...that would argue for the simple model (no difference in shade response between genotypes).
+
+Any difference in genotypes at all?
+
+```{r}
+datsmall <- data35 %>% select(stem_length, shade_i)
+mq2a4 <- ulam(alist(stem_length ~ dnorm(mu,sigma),
+                  mu <- alpha + b_shade*shade_i,
+                  alpha ~ dnorm(125,50),
+                  b_shade ~ dnorm(0, 50),
+                  sigma ~ dexp(1)),
+            data=datsmall,
+            chains=4,
+            cores=4,
+            log_lik = TRUE)
+```
+
+```{r}
+precis(mq2a4)
+traceplot(mq2a4)
+pairs(mq2a4)
+extract.samples(mq2a4) %>%
+  as.data.frame() %>%
+  cor() %>%
+  round(2)
+```
+
+```{r}
+compare(mq2a2, mq2a3, mq2a4)
+```
+
+OK genotype impt
+
+b) starting with your best model from a), include flat without pooling
+
+```{r}
+datsmall <- data35 %>% select(stem_length, shade_i, g_i, flat2)
+mq2b1 <- ulam(alist(stem_length ~ dnorm(mu,sigma),
+                  mu <- alpha[g_i] + b_shade*shade_i + b_fl[flat2],
+                  alpha[g_i] ~ dnorm(125,50),
+                  b_shade ~ dnorm(0, 50),
+                  b_fl[flat2] ~ dnorm(0,10),
+                  sigma ~ dexp(1)),
+            data=datsmall,
+            chains=4,
+            cores=4,
+            log_lik = TRUE)
+```
+
+
+```{r}
+precis(mq2b1, depth=2)
+traceplot(mq2b1, ask=FALSE)
+pairs(mq2b1)
+extract.samples(mq2b1) %>%
+  as.data.frame() %>%
+  cor() %>%
+  round(2)
+```
+
+c) starting with your best model from a), use a hierarchical model that allows partial pooling across flats
+
+
+```{r}
+datsmall <- data35 %>% select(stem_length, shade_i, g_i, flat2)
+mq2c1 <- ulam(alist(stem_length ~ dnorm(mu,sigma),
+                  mu <- alpha[g_i] + b_shade*shade_i + b_fl[flat2],
+                  alpha[g_i] ~ dnorm(125,50),
+                  b_shade ~ dnorm(0, 50),
+                  b_fl[flat2] ~ dnorm(0,sigma_fl),
+                  sigma ~ dexp(1),
+                  sigma_fl ~ dcauchy(0,3)),
+            data=datsmall,
+            chains=4,
+            cores=4,
+            iter=4000,
+            log_lik = TRUE)
+```
+
+
+```{r}
+precis(mq2c1, depth=2)
+traceplot(mq2c1, ask=FALSE)
+pairs(mq2c1)
+extract.samples(mq2c1) %>%
+  as.data.frame() %>%
+  cor() %>%
+  round(2)
+```
 
 Q3) Compare the models, which is preferred?
 
+```{r}
+compare(mq2a3, mq2b1, mq2c1)
+```
+
+So we aren't really gaining anything by pooling (or even by adding flat) but not hurting much either.  keep it in.
+
+how about model2 with genotype shade interaction?
+
+```{r}
+datsmall <- data35 %>% select(stem_length, shade_i, g_i, flat2)
+mq2c2 <- ulam(alist(stem_length ~ dnorm(mu,sigma),
+                  mu <- alpha[g_i] + b_shade[g_i]*shade_i + b_fl[flat2],
+                  alpha[g_i] ~ dnorm(125,50),
+                  b_shade[g_i] ~ dnorm(0, 50),
+                  b_fl[flat2] ~ dnorm(0,sigma_fl),
+                  sigma ~ dexp(1),
+                  sigma_fl ~ dcauchy(0,3)),
+            data=datsmall,
+            chains=4,
+            cores=4,
+            iter=4000,
+            log_lik = TRUE)
+```
+
+
+```{r}
+precis(mq2c2, depth=2)
+traceplot(mq2c2, ask=FALSE)
+pairs(mq2c2)
+extract.samples(mq2c2) %>%
+  as.data.frame() %>%
+  cor() %>%
+  round(2)
+```
+
+```{r}
+compare(mq2c1, mq2c2)
+```
+
 Q4) Using the hierarchical model, make posterior predictions
+
 a) for average cluster
+
+```{r}
+post <- extract.samples(mq2c2)
+names(post)
+str(post)
+```
+
+```{r}
+link_avg <- function(genotype, shade) {
+  with(post, alpha[,genotype] + shade*b_shade[,genotype])
+}
+```
+
 b) for same clusters
 c) showing the "marginal" from cluster
 d) showing new clusters.
