@@ -1,0 +1,85 @@
+---
+title: '2020-01-31'
+author: "Julin N Maloof"
+date: "1/30/2020"
+output: 
+  html_document: 
+    keep_md: yes
+---
+
+```{r}
+library(tidyverse)
+library(rethinking)
+```
+
+## Q1)
+a) subset the data for day 35
+b) create a new column "stem_length" that is the sum of epi, int1, int2, and int3
+c) although flats are listed as 1-6, flats in sun and shade are separate. Create a new column "flat2" that corrects for this.
+
+```{r}
+data <- read_csv("figure4phyE.csv")
+head(data)
+```
+
+```{r}
+data35 <- data %>%
+  filter(day==35) %>%
+  mutate(stem_length=epi + int1 + int2 + int3,
+         flat2=str_c(treatment, flat),
+         shade_i=ifelse(treatment=="sun", 0, 1),
+         g_i= as.numeric(factor(genotype,
+                                   levels=c("Moneymaker", 
+                                            "phyB1", 
+                                            "phyB2", 
+                                            "phyB1/B2", 
+                                            "phyEami3", 
+                                            "phyEami7")))) %>%
+  select(genotype, g_i, shade_i, flat2, stem_length)
+data35
+```
+
+
+Ultimately you want to know if any of the mutants have a different length from Moneymaker, in sun or in shade, or if the response to shade differs.
+
+## Q2) Fit 3 models, all of which include genotype and treatment
+a) do not include flat
+b) include flat without pooling
+c) use a hierarchical model that allows partial pooling across flats
+
+```{r}
+mean(data35$stem_length)
+sd(data35$stem_length)
+```
+
+
+```{r}
+q2a <- ulam(alist(stem_length ~ dnorm(mu,sigma),
+                  mu <- alpha[g_i] + b_shade*shade_i + b_i[g_i]*shade_i,
+                  alpha[g_i] ~ dnorm(125,50),
+                  b_shade ~ dnorm(0, 50),
+                  b_i[g_i] ~  dnorm(0, 50),
+                  sigma ~ dexp(1)),
+            data=data35,
+            chains=4,
+            cores=4,
+            log_lik = TRUE)
+  
+            
+```
+
+
+Q3) Compare the models, which is preferred?
+
+Q4) Using the hierarchical model, make posterior predictions
+a) for average cluster
+b) for same clusters
+c) showing the "marginal" from cluster
+d) showing new clusters.
+
+Q5) Reparameterize the model to help with divergent transitions (even if there aren't any)
+
+Q6--optional)
+a) Which genotypes differ from MoneyMaker in Sun conditions?
+b) Which genotypes differ from MoneyMaker in Shade conditions?
+c) Which genotypes differ from MoneyMaker in their response to shade (difference in sun vs shade)?
