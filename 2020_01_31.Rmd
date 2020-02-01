@@ -237,6 +237,37 @@ extract.samples(mq2c1) %>%
   round(2)
 ```
 
+what is happening with flat in these models?  Are shade flats estimated to have a positive effect and sun flats negative?
+
+First which flats are which?
+```{r}
+data35 %>%
+  select(treatment, flat2) %>%
+  unique() %>%
+  arrange(flat2)
+```
+
+```{r}
+flat.effs.b1 <- tibble(estimate=coef(mq2b1),
+                       coef=names(coef(mq2b1))) %>%
+  filter(str_detect(coef,"b_fl")) %>%
+  mutate(treatment=rep(c("shade","sun"), each=6))
+flat.effs.b1
+flat.effs.b1 %>% group_by(treatment) %>%
+  summarize(mean=mean(estimate), sem=sd(estimate)/sqrt(6))
+```
+
+```{r}
+flat.effs.c1 <- tibble(estimate=coef(mq2c1),
+                       coef=names(coef(mq2c1))) %>%
+  filter(str_detect(coef,"b_fl")) %>%
+  mutate(treatment=rep(c("shade","sun"), each=6))
+flat.effs.c1
+flat.effs.c1 %>% group_by(treatment) %>%
+  summarize(mean=mean(estimate), sem=sd(estimate)/sqrt(6))
+```
+
+
 Q3) Compare the models, which is preferred?
 
 ```{r}
@@ -325,7 +356,35 @@ pred.df.avg %>%
 
 b) for same clusters.
 
-_come back to this one later, but it seems we could just use link_
+This could probably also be done with link somehow
+
+```{r}
+link_flat <- function(genotype, shade) {
+  with(post, alpha[,genotype] + 
+         shade*b_shade[,genotype] +
+         b_fl[, sample(ncol(b_fl), size=1)]) # pick a flat at random
+}
+```
+
+get predictions from posterior for each genotype, shade combo, randomly sampling flats as we go.
+```{r}
+pred.df.flat <- pred.df %>%
+  mutate(average_response=map2(g_i, shade_i, link_flat),
+         pet_length=map_dbl(average_response, mean),
+         low.89=map_dbl(average_response, ~ HPDI(.)[1]),
+         high.89=map_dbl(average_response, ~ HPDI(.)[2]))
+pred.df.flat
+```
+
+plot it
+```{r}
+pred.df.flat %>%
+  ggplot(aes(x=genotype, y=pet_length, ymin=low.89, ymax=high.89, fill=treatment)) +
+  geom_col(position = "dodge") +
+  geom_errorbar(width = .5, position = position_dodge(width=.9)) +
+  ggtitle("prediction including flat variance")
+```
+
 
 c) showing the "marginal" from cluster
 
@@ -363,12 +422,26 @@ Here we should be able to plot individual plants from `pred.df.marg`
 ```{r}
 plot.matrix <- sapply(pred.df.marg$average_response, function(x) x[1:50])
 colnames(plot.matrix) <- str_c(pred.df.marg$genotype, "_", pred.df.marg$treatment)
-plot.matrix <- t(plot.matrix)
-plot.matrix[,1:10]
+head(plot.matrix )
 ```
 
+convert matrix to ggplot friendly form
+
 ```{r}
-matplot(plot.matrix, type="l", xlab = colnames(plot.matrix))
+plot.tbl <- plot.matrix %>%
+  as.tibble() %>%
+  mutate(post.sample=1:nrow(.)) %>%
+  gather(key="geno_trt", value="stem_length", -post.sample)
+  
+head(plot.tbl)
+```
+
+
+```{r}
+plot.tbl %>%
+  ggplot(aes(x=geno_trt,y=stem_length, group=post.sample)) +
+  geom_line(alpha=0.2) +
+  theme(axis.text.x = element_text(angle = 90,hjust=1))
 ```
 
 
