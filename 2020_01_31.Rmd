@@ -449,5 +449,17 @@ Q5) Reparameterize the model to help with divergent transitions (even if there a
 
 Q6--optional)
 a) Which genotypes differ from MoneyMaker in Sun conditions?
+
+We compare posterior estimates for alpha for Moneymaker vs the others and ask how often the difference is non-zero in a particular direction
+```{r}
+avg.MM.sun <- pred.df.avg %>%
+  filter(genotype=="Moneymaker", treatment=="sun") %>%
+  pull(average_response)
+
+pred.df.avg %>%
+  mutate(dif.from.MM=map(average_response, ~ avg.MM.sun - .))
+```
+
+
 b) Which genotypes differ from MoneyMaker in Shade conditions?
 c) Which genotypes differ from MoneyMaker in their response to shade (difference in sun vs shade)?
