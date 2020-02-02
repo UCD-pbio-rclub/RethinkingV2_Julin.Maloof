@@ -454,12 +454,91 @@ We compare posterior estimates for alpha for Moneymaker vs the others and ask ho
 ```{r}
 avg.MM.sun <- pred.df.avg %>%
   filter(genotype=="Moneymaker", treatment=="sun") %>%
-  pull(average_response)
+  pull(average_response) %>% unlist()
 
-pred.df.avg %>%
-  mutate(dif.from.MM=map(average_response, ~ avg.MM.sun - .))
+#can't get this to work with Map, unfortunately...
+post.MM.sun.contrasts <- pred.df.avg %>%
+  filter(genotype!="Moneymaker", treatment=="sun") %>%
+  pull(average_response) %>%
+  sapply(function(x) unlist(x) - avg.MM.sun) %>%
+  as.data.frame()
+
+colnames(post.MM.sun.contrasts) <- pred.df.avg  %>%
+  filter(genotype!="Moneymaker", treatment=="sun") %>%
+  pull(genotype)
+
+head(post.MM.sun.contrasts)
+
+precis(post.MM.sun.contrasts)
+
+plot(precis(post.MM.sun.contrasts))
 ```
 
-
 b) Which genotypes differ from MoneyMaker in Shade conditions?
+
+```{r}
+avg.MM.shade <- pred.df.avg %>%
+  filter(genotype=="Moneymaker", treatment=="shade") %>%
+  pull(average_response) %>% unlist()
+
+#can't get this to work with Map, unfortunately...
+post.MM.shade.contrasts <- pred.df.avg %>%
+  filter(genotype!="Moneymaker", treatment=="shade") %>%
+  pull(average_response) %>%
+  sapply(function(x) unlist(x) - avg.MM.shade) %>%
+  as.data.frame()
+
+colnames(post.MM.shade.contrasts) <- pred.df.avg  %>%
+  filter(genotype!="Moneymaker", treatment=="shade") %>%
+  pull(genotype)
+
+head(post.MM.shade.contrasts)
+
+precis(post.MM.shade.contrasts)
+
+plot(precis(post.MM.shade.contrasts))
+```
 c) Which genotypes differ from MoneyMaker in their response to shade (difference in sun vs shade)?
+
+First, calculate sun vs shade posterior for each genotype:
+
+```{r}
+sun.post <- pred.df.avg %>% 
+  filter(treatment=="sun") %>% 
+  pull(average_response) %>% 
+  bind_cols()
+
+colnames(sun.post) <- pred.df.avg %>% 
+  filter(treatment=="sun") %>% 
+  pull(genotype)
+
+shade.post <- pred.df.avg %>% 
+  filter(treatment=="shade") %>% 
+  pull(average_response) %>% 
+  bind_cols()
+
+colnames(shade.post) <- pred.df.avg %>% 
+  filter(treatment=="shade") %>% 
+  pull(genotype)
+
+shade.resp.post <- shade.post-sun.post
+
+head(shade.resp.post)
+
+```
+
+Now copmare those difference:
+
+```{r}
+shade.resp.v.MM.post <- shade.resp.post %>%
+  select(-Moneymaker) %>%
+  magrittr::subtract(shade.resp.post[,"Moneymaker"])
+head(shade.resp.v.MM.post)
+```
+
+```{r}
+precis(shade.resp.v.MM.post)
+plot(precis(shade.resp.v.MM.post))
+```
+
+No differences in shade response
