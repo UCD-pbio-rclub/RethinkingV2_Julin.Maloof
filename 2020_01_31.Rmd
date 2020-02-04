@@ -447,6 +447,39 @@ plot.tbl %>%
 
 Q5) Reparameterize the model to help with divergent transitions (even if there aren't any)
 
+```{r}
+datsmall <- data35 %>% select(stem_length, shade_i, g_i, flat2)
+mq5 <- ulam(alist(stem_length ~ dnorm(mu,sigma),
+                  mu <- alpha[g_i] + 
+                    b_shade[g_i]*shade_i + 
+                    b_fl[flat2]*sigma_fl,
+                  alpha[g_i] ~ dnorm(125,50),
+                  b_shade[g_i] ~ dnorm(0, 50),
+                  b_fl[flat2] ~ dnorm(0, 1), #standardized flat effect
+                  sigma ~ dexp(1),
+                  sigma_fl ~ dnorm(0,1)), #scaling for flat effect.  narrow prior to try to improve sampling.
+            data=datsmall,
+            chains=4,
+            cores=4,
+            iter=4000,
+            log_lik = TRUE)
+```
+
+Had to go with pretty narrow priors on sigma_fl to sample well.  This was due to correlation with b_fl
+
+```{r}
+precis(mq5)
+compare(mq2c2, mq5)
+pairs(mq5)
+extract.samples(mq5) %>%
+  as.data.frame() %>%
+  cor() %>%
+  round(2) %>% 
+  as.data.frame() %>%
+  magrittr::extract("sigma_fl",)
+```
+Strong correlations with b_fl are probably what are causing the poor estimation.  Not sure what to do about that.
+
 Q6--optional)
 a) Which genotypes differ from MoneyMaker in Sun conditions?
 
