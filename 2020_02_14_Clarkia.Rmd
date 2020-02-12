@@ -11,46 +11,392 @@ Hi all,
 
 I've attached some data from a common garden experiment, where plants from 15 different populations were planted out (locations are shown in Figure 1 here if you're curious). One goal for the experiment was to see if temperature of origin affected performance of plants in the common garden. Here are some practice questions, very similar to Julin's from last week. The data set is big-ish. I've already sub-sampled it, but there are still 3250 observations. The models are still running quickly on my computer, but if that's not the case for you, feel free to sub-sample it further. Please let me know if you have any questions.
 
-1. Fit a simple model with effects of temperature difference (temperature_diff_fall) on November germination (nov_germ). Temperature difference is already centered and scaled (i.e., negative values are the smallest temperature differences). Make sure to use the appropriate likelihood for the germination data (0 = no germ, 1  = germ). 
 
-2. Simulate from your priors to see if you've chosen reasonable priors, adjust them if necessary. 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE, autodep = TRUE)
+```
 
-These blocks were set up in the field, and had differences in soil depth, slope, and competitive environment. So maybe a model that includes block will describe the data better. 
+```{r}
+library(rethinking)
+library(tidyverse)
+options(mc.cores = parallel::detectCores())
+rstan_options(auto_write = TRUE)
+```
 
-3. Fit a model that includes an effect of block (blk), with no pooling.
 
-4. Fit a model that includes block, and allows partial pooling. 
+```{r}
+data <- read_csv("clarkia_transplant_data.csv")
+data %>% arrange(pop)
+```
+
+
+## 1
+_1. Fit a simple model with effects of temperature difference (temperature_diff_fall) on November germination (nov_germ). Temperature difference is already centered and scaled (i.e., negative values are the smallest temperature differences). Make sure to use the appropriate likelihood for the germination data (0 = no germ, 1  = germ). _
+
+First let's take a look
+```{r}
+data %>%
+  group_by(pop) %>%
+  summarize(temp_diff_fall=unique(temperature_diff_fall), germ.prop=mean(nov_germ)) %>%
+  ggplot(aes(x=temp_diff_fall, y=germ.prop, color=pop)) +
+  geom_point()
+```
+
+fit a model
+```{r}
+datsmall <- data %>% select(nov_germ, temperature_diff_fall)
+fm1 <- ulam(alist(nov_germ ~ dbinom(size=1, prob = p),
+                  logit(p) <- a + b_temp*temperature_diff_fall,
+                  a ~ dnorm(0, 2),
+                  b_temp ~dnorm(0, 2)),
+            data=datsmall,
+            chains = 4,
+            cores = 4,
+            log_lik = TRUE)
+```
+
+```{r}
+precis(fm1)
+pairs(fm1)
+```
+
+## 2. Simulate from your priors to see if you've chosen reasonable priors, adjust them if necessary.
+
+```{r}
+prior <- extract.prior(fm1)
+str(prior)
+```
+
+
+```{r}
+pred.df <- data.frame(temperature_diff_fall=c(-2,2))
+prior.pred <- link(fm1, data=pred.df, post=prior, n = 50)
+dim(prior.pred)
+head(prior.pred)
+#reality check:
+inv_logit(prior$a[1] + prior$b_temp[1]*-2)
+```
+
+```{r}
+data.frame(x=-2, xend=2, y=prior.pred[,1], yend=prior.pred[,2]) %>%
+  ggplot(aes(x=x,xend=xend,y=y,yend=yend)) +
+  geom_segment(alpha=.2)
+```
+
+this implies that the slope prior is too wide, with most response going from no to all germination
+
+try with narrower prior for b_temp
+
+```{r}
+datsmall <- data %>% select(nov_germ, temperature_diff_fall)
+fm2 <- ulam(alist(nov_germ ~ dbinom(size=1, prob = p),
+                  logit(p) <- a + b_temp*temperature_diff_fall,
+                  a ~ dnorm(0, 1.5),
+                  b_temp ~dnorm(0, .5)),
+            data=datsmall,
+            chains = 4,
+            cores = 4,
+            log_lik = TRUE)
+```
+
+```{r}
+precis(fm2)
+pairs(fm2)
+```
+
+
+```{r}
+prior <- extract.prior(fm2)
+str(prior)
+```
+
+
+```{r}
+pred.df <- data.frame(temperature_diff_fall=c(-2,2))
+prior.pred <- link(fm1, data=pred.df, post=prior, n = 50)
+dim(prior.pred)
+head(prior.pred)
+#reality check:
+inv_logit(prior$a[1] + prior$b_temp[1]*-2)
+```
+
+```{r}
+data.frame(x=-2, xend=2, y=prior.pred[,1], yend=prior.pred[,2]) %>%
+  ggplot(aes(x=x,xend=xend,y=y,yend=yend)) +
+  geom_segment(alpha=.2)
+```
+
+
+
+_These blocks were set up in the field, and had differences in soil depth, slope, and competitive environment. So maybe a model that includes block will describe the data better._ 
+
+## 3. Fit a model that includes an effect of block (blk), with no pooling.
+
+```{r}
+datsmall <- data %>% select(nov_germ, temperature_diff_fall, blk)
+sort(unique(datsmall$blk))
+
+fm3 <- ulam(alist(nov_germ ~ dbinom(size=1, prob = p),
+                  logit(p) <- a[blk] + b_temp*temperature_diff_fall,
+                  a[blk] ~ dnorm(0, 1.5),
+                  b_temp ~ dnorm(0, .5)),
+            data=datsmall,
+            chains = 4,
+            cores = 4,
+            log_lik = TRUE)
+```
+
+```{r}
+precis(fm3, depth=2)
+pairs(fm3)
+```
+
+
+## 4. Fit a model that includes block, and allows partial pooling. 
+
+```{r}
+datsmall <- data %>% select(nov_germ, temperature_diff_fall, blk)
+sort(unique(datsmall$blk))
+
+fm4 <- ulam(alist(nov_germ ~ dbinom(size=1, prob = p),
+                  logit(p) <- a[blk] + b_temp*temperature_diff_fall,
+                  a[blk] ~ dnorm(ablk_bar, sigma),
+                  b_temp ~ dnorm(0, .5),
+                  ablk_bar ~ dnorm(0, 1.5),
+                  sigma ~ dexp(1)),
+            data=datsmall,
+            chains = 4,
+            cores = 4,
+            log_lik = TRUE)
+```
+
+
+```{r}
+pairs(fm4)
+precis(fm4, depth=2)
+```
 
 The experiment included many individuals from each of the 15 populations. So, each individual is not an independent representative of a given temperature, but might be similar to other plants from that population for reasons besides temperature. 
 
 5. Build a model that accounts for this by including population (pop) and allowing partial pooling between populations A) without block, and B) with block included as in the model above. How does including population affect the temperature estimate?
 
-6. Compare the five models you built using WAIC. Which fits best?
+```{r}
+datsmall <- data %>% 
+  mutate(pop_i = as.numeric(as.factor(pop))) %>%
+  select(nov_germ, temperature_diff_fall, pop_i)
 
-7. Plot effects of temperature difference for the average block, and also make a plot that includes the variability across blocks. 
+fm5a <- ulam(alist(nov_germ ~ dbinom(size=1, prob = p),
+                   logit(p) <- a[pop_i] + b_temp*temperature_diff_fall,
+                   a[pop_i] ~ dnorm(apop_bar, sigma_pop),
+                   apop_bar ~ dnorm(0,1.5),
+                   sigma_pop ~ dexp(1),
+                   b_temp ~ dnorm(0, .5)),
+             data=datsmall,
+             chains = 4,
+             cores = 4,
+             iter=2000,
+             log_lik = TRUE)
+```
+
+```{r}
+precis(fm5a, depth=2)
+pairs(fm5a)
+```
+temp estimate the same, but confidence interval much wider
+
+with block.  had to adjust sigma_pop and sigma_blk for narrower priors, and increase iter
+```{r}
+datsmall <- data %>% 
+  mutate(pop_i = as.numeric(as.factor(pop))) %>%
+  select(nov_germ, temperature_diff_fall, pop_i, blk)
+
+fm5b <- ulam(alist(nov_germ ~ dbinom(size=1, prob = p),
+                   logit(p) <- a[pop_i] + b_temp*temperature_diff_fall + b_blk[blk],
+                   a[pop_i] ~ dnorm(apop_bar, sigma_pop),
+                   b_blk[blk] ~ dnorm(0, sigma_blk),
+                   apop_bar ~ dnorm(0, 1),
+                   sigma_pop ~ dcauchy(0, .5),
+                   sigma_blk ~ dcauchy(0, .25),
+                   b_temp ~ dnorm(0, .5)),
+             data=datsmall,
+             chains = 4,
+             cores = 4,
+             iter=4000,
+             log_lik = TRUE)
+```
+
+```{r}
+precis(fm5b, depth=2)
+extract.samples(fm5b) %>%
+  as.data.frame() %>%
+  cor() %>%
+  round(2)
+```
+
+
+
+## 6. Compare the five models you built using WAIC. Which fits best?
+
+```{r}
+compare(fm1, fm2, fm3, fm4, fm5a, fm5b)
+```
+
+including block and pop fits best.  doesn't seem to matter if block is heirarchical or not (fm3 and fm4 very similar)
+
+
+## 7. Plot effects of temperature difference for the average block, and also make a plot that includes the variability across blocks. 
+
+Should I do this for the different populations?
+
+first, average block, all pops:
+
+```{r}
+post <- extract.samples(fm5b)
+str(post)
+```
+
+```{r}
+link_avg_blk <- function(post, temp) {
+  m <- with(post, inv_logit(a + as.vector(b_temp*temp)))
+  m
+}
+```
+
+```{r}
+pred.df <- tibble(temp = seq(-2,2,.1))
+
+pred.df <- pred.df %>%
+  mutate(posterior.pred=map(temp, ~ link_avg_blk(post, temp=.)))
+
+pred.df # a tibble of tables
+```
+
+now compute mean and hpdi for each temperature
+```{r}
+pred.df <- pred.df %>%
+  mutate(mean=map(posterior.pred, ~ apply(., 2, mean)),
+         low89=map(posterior.pred, ~ apply(., 2, HPDI)[1,]),
+         high89=map(posterior.pred, ~ apply(., 2, HPDI)[2,]),
+  )
+pred.df
+```
+
+```{r}
+plot.df <- pred.df %>% select(-posterior.pred) %>% 
+  unnest(mean, low89, high89) %>%
+  mutate(pop=rep_along(mean, levels(factor(data$pop)) )) # an unsatisfying way to handle this
+plot.df
+```
+
+```{r}
+plot.df %>%
+  ggplot(aes(x=temp, y=mean, ymin=low89, ymax=high89, color=pop, group=pop)) +
+  geom_line() 
+```
+
+alternative:
+
+```{r}
+plot.df %>%
+  ggplot(aes(x=temp, y=mean, ymin=low89, ymax=high89)) +
+  geom_ribbon(alpha=.2) +
+  geom_line() +
+  facet_wrap(~pop, nrow=3)
+```
+
+
+### average block, average pop:
+
+```{r}
+link_avg_blk_avg_pop <- function(post, temp) {
+  m <- with(post, inv_logit(rowMeans(a) + as.vector(b_temp*temp)))
+  m
+}
+```
+
+```{r}
+pred.df <- tibble(temp = seq(-2,2,.1))
+
+pred.df <- pred.df %>%
+  mutate(posterior.pred=map(temp, ~ link_avg_blk_avg_pop(post, temp=.)))
+
+pred.df # a tibble of tables
+```
+
+now compute mean and hpdi for each temperature
+```{r}
+pred.df <- pred.df %>%
+  mutate(mean=map_dbl(posterior.pred, ~ mean(.)),
+         low89=map_dbl(posterior.pred, ~ HPDI(.)[1]),
+         high89=map_dbl(posterior.pred, ~ HPDI(.)[2]),
+  )
+pred.df
+```
+
+
+```{r}
+pred.df %>%
+  select(-posterior.pred) %>%
+  ggplot(aes(x=temp, y=mean, ymin=low89, ymax=high89)) +
+  geom_ribbon(alpha=.2) +
+  geom_line() 
+```
+
+### include uncertainity about block
+
+```{r}
+link_blk <- function(post, temp) {
+  m <- with(post, 
+            inv_logit(
+              a + 
+                as.vector(b_temp*temp) +
+                b_blk[, sample(ncol(b_blk), size=1)]) # pick a flat at random
+  )
+  return(m)
+}
+```
+
+```{r}
+pred.df <- tibble(temp = seq(-2,2,.1))
+
+pred.df <- pred.df %>%
+  mutate(posterior.pred=map(temp, ~ link_blk(post, temp=.)))
+
+pred.df # a tibble of tables
+```
+
+now compute mean and hpdi for each temperature
+```{r}
+pred.df <- pred.df %>%
+  mutate(mean=map(posterior.pred, ~ apply(., 2, mean)),
+         low89=map(posterior.pred, ~ apply(., 2, HPDI)[1,]),
+         high89=map(posterior.pred, ~ apply(., 2, HPDI)[2,]),
+  )
+pred.df
+```
+
+
+```{r}
+plot.df <- pred.df %>% select(-posterior.pred) %>% 
+  unnest(c(mean, low89, high89)) %>%
+  mutate(pop=rep_along(mean, levels(factor(data$pop)) )) # an unsatisfying way to handle this
+```
+
+
+```{r}
+plot.df %>%
+  ggplot(aes(x=temp, y=mean, ymin=low89, ymax=high89)) +
+  geom_ribbon(alpha=.2) +
+  geom_line() +
+  facet_wrap(~pop, nrow=3)
+```
+
+something wrong here...
+
+```{r}
+save.image("clarkia.Rdata")
+```
+
 
 There are other complexities to this data. For example, there is also some family structure within populations (dam and sire) which could be included as hierarchical effects. There are also other response variables (November size, March survival and size, first flower date, last flower date, fruit number, estimated seed production) that might require different likelihoods (and in some cases treatment for over-dispersion or zero inflation). So if the above problems were too easy and you feel adventurous, you could try analyzing one of these responses instead of germination (you will need to filter out missing observations).
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
-```
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
