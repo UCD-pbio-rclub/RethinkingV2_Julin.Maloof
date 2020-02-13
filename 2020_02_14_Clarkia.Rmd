@@ -345,19 +345,27 @@ pred.df %>%
 ### include uncertainity about block
 
 ```{r}
+pickOnePerRow <- function(m) { # pick one value from each row of a matrix and return as vector
+                               # is there a better way to do this?
+  result <- vector(mode=mode(m), length=nrow(m))
+  for(i in 1:nrow(m)) result[i] <- m[i, sample(ncol(m), size=1)]
+  return(result)
+}
+
 link_blk <- function(post, temp) {
   m <- with(post, 
             inv_logit(
               a + 
-                as.vector(b_temp*temp) +
-                b_blk[, sample(ncol(b_blk), size=1)]) # pick a flat at random
+                as.vector(b_temp*temp) + 
+                pickOnePerRow(b_blk) # pick a flat at random
+            )
   )
   return(m)
 }
 ```
 
 ```{r}
-pred.df <- tibble(temp = seq(-2,2,.1))
+pred.df <- tibble(temp = seq(-2,2,.1)) 
 
 pred.df <- pred.df %>%
   mutate(posterior.pred=map(temp, ~ link_blk(post, temp=.)))
@@ -368,7 +376,7 @@ pred.df # a tibble of tables
 now compute mean and hpdi for each temperature
 ```{r}
 pred.df <- pred.df %>%
-  mutate(mean=map(posterior.pred, ~ apply(., 2, mean)),
+  mutate(mean=map(posterior.pred, ~ apply(., 2, mean)), 
          low89=map(posterior.pred, ~ apply(., 2, HPDI)[1,]),
          high89=map(posterior.pred, ~ apply(., 2, HPDI)[2,]),
   )
@@ -377,25 +385,21 @@ pred.df
 
 
 ```{r}
-plot.df <- pred.df %>% select(-posterior.pred) %>% 
+plot.df <- pred.df %>% select(-posterior.pred) %>%  
   unnest(c(mean, low89, high89)) %>%
   mutate(pop=rep_along(mean, levels(factor(data$pop)) )) # an unsatisfying way to handle this
+plot.df
 ```
 
 
 ```{r}
-plot.df %>%
+plot.df %>% 
   ggplot(aes(x=temp, y=mean, ymin=low89, ymax=high89)) +
   geom_ribbon(alpha=.2) +
   geom_line() +
   facet_wrap(~pop, nrow=3)
 ```
 
-something wrong here...
-
-```{r}
-save.image("clarkia.Rdata")
-```
 
 
 There are other complexities to this data. For example, there is also some family structure within populations (dam and sire) which could be included as hierarchical effects. There are also other response variables (November size, March survival and size, first flower date, last flower date, fruit number, estimated seed production) that might require different likelihoods (and in some cases treatment for over-dispersion or zero inflation). So if the above problems were too easy and you feel adventurous, you could try analyzing one of these responses instead of germination (you will need to filter out missing observations).
