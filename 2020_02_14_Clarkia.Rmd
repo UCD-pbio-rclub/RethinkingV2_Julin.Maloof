@@ -69,18 +69,22 @@ str(prior)
 
 
 ```{r}
-pred.df <- data.frame(temperature_diff_fall=c(-2,2))
+pred.df <- data.frame(temperature_diff_fall=seq(-2,2,.1))
 prior.pred <- link(fm1, data=pred.df, post=prior, n = 50)
 dim(prior.pred)
-head(prior.pred)
+head(prior.pred[,1:10])
 #reality check:
 inv_logit(prior$a[1] + prior$b_temp[1]*-2)
 ```
 
 ```{r}
-data.frame(x=-2, xend=2, y=prior.pred[,1], yend=prior.pred[,2]) %>%
-  ggplot(aes(x=x,xend=xend,y=y,yend=yend)) +
-  geom_segment(alpha=.2)
+colnames(prior.pred) <- pred.df$temperature_diff_fall
+prior.pred %>% as_tibble() %>%
+  mutate(sample=1:nrow(.)) %>%
+  gather(key="temp", value="germ", -sample) %>%
+  mutate(temp=as.numeric(temp)) %>%
+  ggplot(aes(x=temp, y=germ, group=sample)) +
+  geom_line(alpha=.2)
 ```
 
 this implies that the slope prior is too wide, with most response going from no to all germination
@@ -112,18 +116,22 @@ str(prior)
 
 
 ```{r}
-pred.df <- data.frame(temperature_diff_fall=c(-2,2))
-prior.pred <- link(fm1, data=pred.df, post=prior, n = 50)
+pred.df <- data.frame(temperature_diff_fall=seq(-2,2,.1))
+prior.pred <- link(fm2, data=pred.df, post=prior, n = 50)
 dim(prior.pred)
-head(prior.pred)
+head(prior.pred[,1:10])
 #reality check:
 inv_logit(prior$a[1] + prior$b_temp[1]*-2)
 ```
 
 ```{r}
-data.frame(x=-2, xend=2, y=prior.pred[,1], yend=prior.pred[,2]) %>%
-  ggplot(aes(x=x,xend=xend,y=y,yend=yend)) +
-  geom_segment(alpha=.2)
+colnames(prior.pred) <- pred.df$temperature_diff_fall
+prior.pred %>% as_tibble() %>%
+  mutate(sample=1:nrow(.)) %>%
+  gather(key="temp", value="germ", -sample) %>%
+  mutate(temp=as.numeric(temp)) %>%
+  ggplot(aes(x=temp, y=germ, group=sample)) +
+  geom_line(alpha=.2)
 ```
 
 
