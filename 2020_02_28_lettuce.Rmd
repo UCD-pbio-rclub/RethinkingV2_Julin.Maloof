@@ -1,0 +1,366 @@
+---
+title: "2020_02_28_lettuce"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE, autodep = TRUE)
+```
+
+```{r}
+library(rethinking)
+library(tidyverse)
+```
+
+Here is your much-awaited dataset for our upcoming meeting on the 21st of February, 2020. The data came fresh off the greenhouse on 2/8/2020 from a night break experiment. Thirty-two accessions from a lettuce F6 recombinant inbred line population were planted in the same greenhouse under 10hr light/14hr dark diurnal cycles. Three treatments are implemented: 
+
+1. "Nightbreak": the plants are grown on a bench surrounded by plastic blackout curtains. These plants receive a one-hour night break treatment at 12am every day (meaning the lights turn on in the middle of the night for an hour) in addition to the 10L/14D lighting. 
+2. "Control": the plants are grown on a bench surrounded by plastic blackout curtains. 10L/14D lighting. 
+3. "Control_NoCurtain": the plants are grown on a bench without any curtains. 10L/14D lighting. 
+
+The goals of the experiment are:
+a. to see if night break induces earlier flowering in lettuce;
+b. if so, do different lettuce genotypes respond to night breaks differently; and 
+c. which one(s) of the five candidate loci is/are associated with differential responses. 
+
+How to interpret the phenotype:
+Phenotype is recorded in the "Score" column. The different scores represent different developmental stages:
+1: rosette 
+2: bolted (elongation of the main stem)
+3: budding
+4: first flower
+5: first mature seed head
+
+Aaaaand finally here are your questions!
+Q1: 
+a. Load the dataset. Look for column "Score" for the response variable we are interested in. A developmental score of 1 or 2 indicates vegetative growth, while a score of 3, 4, or 5 indicates reproductive growth. Create a "Reproduction" column with values 0 and 1, where 0 indicates vegetative growth and 1 indicates reproductive growth. 
+
+
+```{r}
+data <- read_csv("Nightbreak_02_08_20_Rclub.csv")
+head(data)
+table(data$RIL, data$Treatment)
+```
+
+```{r}
+data <- data %>%
+  mutate(reproduction=ifelse(Score>2, 1, 0))
+```
+
+
+b. (optional) Take a look at columns "loc1" through "loc5". The levels "A" or "P" indicate which parental allele the RIL has inherited. Can you think of a reason why there are 32 lines in this experiment? 
+
+```{r}
+2^5
+```
+
+
+Q2:
+Using the "Reproduction" column you created in Q1a as the response variable, fit a simple model with effects of genotype ("RIL") and treatment ("Treatment") on the rate of transitioning to reproductive growth by 2/8/20. (Things you might want to consider: appropriate likelihood function, intersection term). 
+
+First fit a model with Treatment only
+```{r}
+data <- data %>%
+  mutate(RIL_i = as.numeric(as.factor(data$RIL)),
+         NoCurtain = ifelse(Treatment=="Control_NoCurtain", 1L, 0L),
+         NightBreak = ifelse(Treatment=="NightBreak", 1L, 0L))
+
+dat2a <- data %>% select(reproduction, NoCurtain, NightBreak)
+
+fm2a <- ulam(alist(reproduction ~ dbinom(1, p),
+                   logit(p) <- a + b_nc*NoCurtain + b_nb*NightBreak,
+                   a ~ dnorm(0, 1.5),
+                   b_nc ~ dnorm(0,1),
+                   b_nb ~ dnorm(0,1)),
+             data=dat2a,
+             cores = 4,
+             chains = 4,
+             log_lik=TRUE)
+```
+
+```{r}
+precis(fm2a)
+pairs(fm2a)
+traceplot(fm2a)
+trankplot(fm2a)
+```
+
+```{r}
+coef(fm2a)
+inv_logit(coef(fm2a)["a"])
+inv_logit(coef(fm2a)["a"] + coef(fm2a)["b_nb"])
+```
+
+Night breaks promote reproduction probability
+
+Now try it with RIL.  Probably this should be donw pooling info across RILs but not doing that now.
+
+```{r}
+dat2b <- data %>% select(reproduction, RIL_i, NoCurtain, NightBreak)
+
+fm2b <- ulam(alist(reproduction ~ dbinom(1, p),
+                   logit(p) <- a[RIL_i] + 
+                     b_nc*NoCurtain + 
+                     b_nb*NightBreak +
+                     i_nc[RIL_i]*NoCurtain +
+                     i_nb[RIL_i]*NightBreak,
+                   a[RIL_i] ~ dnorm(0, 1.5),
+                   b_nc ~ dnorm(0, 1),
+                   b_nb ~ dnorm(0, 1),
+                   i_nc[RIL_i] ~ dnorm(0, .5),
+                   i_nb[RIL_i] ~ dnorm(0, .5)),
+             data=dat2b,
+             cores = 4,
+             chains = 4,
+             log_lik=TRUE)
+```
+
+```{r}
+traceplot(fm2b, as=FALSE)
+precis(fm2b, depth=2)
+```
+
+
+```{r, fig.width=10}
+precis(fm2b, depth=2) %>%
+  rownames_to_column("parameter") %>%
+  mutate(parameter_type=str_sub(parameter, 1, 1)) %>%
+  ggplot(aes(x=parameter, y=mean, ymax=`94.5%`, ymin=`5.5%`)) +
+  geom_errorbar() +
+  geom_point() +
+  facet_wrap(facets=~parameter_type, scales="free_x",ncol=1) +
+  theme(axis.text.x = element_text(angle=90, hjust=1, size = 8))
+```
+
+Different intercepts for the different RILs, but no evidence of interaction.
+
+Q3:
+Because we are more interested in the effects of individual loci than the performance of specific genotypes, fit a model with additive effects of the five loci and effect of treatment.  
+
+```{r}
+dat3 <- data %>% select(reproduction, NoCurtain, NightBreak, starts_with("loc")) %>%
+  mutate_at(vars(starts_with("loc")), ~ ifelse(.=="P", 1L, 0L))
+
+dat3
+```
+
+
+```{r}
+fm3 <- ulam(alist(reproduction ~ dbinom(1, p),
+                  logit(p) <- a + 
+                    b_nc*NoCurtain + 
+                    b_nb*NightBreak +
+                    b1*loc1 +
+                    b2*loc2 +
+                    b3*loc3 +
+                    b4*loc4 +
+                    b5*loc5,
+                  a ~ dnorm(0, 1.5),
+                  b_nc ~ dnorm(0, 1),
+                  b_nb ~ dnorm(0, 1),
+                  c(b1, b2, b3, b4, b5) ~ dnorm(0,1)),
+            data=dat3,
+            cores = 4,
+            chains = 4,
+            log_lik=TRUE)
+```
+
+```{r}
+traceplot(fm3)
+trankplot(fm3)
+pairs(fm3)
+```
+
+```{r}
+precis(fm3)
+plot(precis(fm3))
+```
+
+
+Q4: 
+Now let's look at some interaction terms. Can you fit a model that takes into account interaction effects between treatment and allele types at the five loci? How do you interpret the output? (I built a somewhat "ugly" model for this question. I'm excited to see what y'all's models look like.)
+
+```{r}
+fm4 <- ulam(alist(reproduction ~ dbinom(1, p),
+                  logit(p) <- a + 
+                    b_nc*NoCurtain + 
+                    b_nb*NightBreak +
+                    b1*loc1 +
+                    b2*loc2 +
+                    b3*loc3 +
+                    b4*loc4 +
+                    b5*loc5 +
+                    i_nc1*NoCurtain*loc1 +
+                    i_nc2*NoCurtain*loc2 +
+                    i_nc3*NoCurtain*loc3 +
+                    i_nc4*NoCurtain*loc4 +
+                    i_nc5*NoCurtain*loc5 +
+                    i_nb1*NightBreak*loc1 +
+                    i_nb2*NightBreak*loc2 +
+                    i_nb3*NightBreak*loc3 +
+                    i_nb4*NightBreak*loc4 +
+                    i_nb5*NightBreak*loc5  ,
+                  a ~ dnorm(0, 1.5),
+                  b_nc ~ dnorm(0, 1),
+                  b_nb ~ dnorm(0, 1),
+                  c(b1, b2, b3, b4, b5) ~ dnorm(0,1),
+                  c(i_nc1, i_nc2, i_nc3, i_nc4, i_nc5) ~ dnorm(0,1),
+                  c(i_nb1, i_nb2, i_nb3, i_nb4, i_nb5) ~ dnorm(0,1)
+                  ),
+            data=dat3,
+            cores = 4,
+            chains = 4,
+            log_lik=TRUE)
+```
+
+```{r}
+traceplot(fm4, ask=FALSE)
+```
+
+
+```{r}
+precis(fm4)
+plot(precis(fm4))
+```
+
+
+Q5:
+By simplifying the developmental score phenotype into a binary variable that indicates whether a plant has entered reproductive growth, we run the risk of losing potentially important information. Re-fit your favorite model from Q4 with the ordered categorical outcome variable of "Score." Do you observe any changes in your results? If so, why do you think it happened?
+
+```{r}
+dat5 <- data %>% select(Score, NoCurtain, NightBreak, starts_with("loc")) %>%
+  mutate_at(vars(starts_with("loc")), ~ ifelse(.=="P", 1L, 0L))
+
+dat5
+
+fm5 <- ulam(alist(Score ~ dordlogit(phi, cutpoints),
+                  logit(phi) <- 
+                    b_nc*NoCurtain + 
+                    b_nb*NightBreak +
+                    b1*loc1 +
+                    b2*loc2 +
+                    b3*loc3 +
+                    b4*loc4 +
+                    b5*loc5 +
+                    i_nc1*NoCurtain*loc1 +
+                    i_nc2*NoCurtain*loc2 +
+                    i_nc3*NoCurtain*loc3 +
+                    i_nc4*NoCurtain*loc4 +
+                    i_nc5*NoCurtain*loc5 +
+                    i_nb1*NightBreak*loc1 +
+                    i_nb2*NightBreak*loc2 +
+                    i_nb3*NightBreak*loc3 +
+                    i_nb4*NightBreak*loc4 +
+                    i_nb5*NightBreak*loc5  ,
+                  b_nc ~ dnorm(0, 1),
+                  b_nb ~ dnorm(0, 1),
+                  c(b1, b2, b3, b4, b5) ~ dnorm(0,1),
+                  c(i_nc1, i_nc2, i_nc3, i_nc4, i_nc5) ~ dnorm(0,1),
+                  c(i_nb1, i_nb2, i_nb3, i_nb4, i_nb5) ~ dnorm(0,1),
+                  cutpoints ~ dnorm(0, 1.5)
+                  ),
+            data=dat5,
+            cores = 4,
+            chains = 4,
+            log_lik=TRUE)
+```
+
+
+```{r}
+traceplot(fm5, ask=FALSE)
+trankplot(fm5, ask=FALSE)
+```
+
+```{r}
+precis(fm5)
+```
+
+```{r}
+plot(precis(fm5))
+```
+
+Now there are no effect of the loci.  Loci are specific to reproduction rather than overall development?
+
+Q6:
+Each "Plot" # correspond to a specific spot on a bench. In other words, the same plot # indicates equivalent locations on their respective benches even across different treatments and replicates. Update your favorite model from Q4 or Q5 using hierarchical modeling that allow partial pooling across plots. Compare the models. What do they say and which model do you prefer?
+
+```{r}
+dat6 <- data %>% select(reproduction, NoCurtain, NightBreak, starts_with("loc"), Plot) %>%
+  mutate_at(vars(starts_with("loc")), ~ ifelse(.=="P", 1L, 0L))
+
+sort(unique(dat6$Plot))
+
+dat6
+```
+
+
+```{r}
+fm6 <- ulam(alist(reproduction ~ dbinom(1, p),
+                  logit(p) <- a_bar + z[Plot]*sigma_a + 
+                    b_nc*NoCurtain + 
+                    b_nb*NightBreak +
+                    b1*loc1 +
+                    b2*loc2 +
+                    b3*loc3 +
+                    b4*loc4 +
+                    b5*loc5 +
+                    i_nc1*NoCurtain*loc1 +
+                    i_nc2*NoCurtain*loc2 +
+                    i_nc3*NoCurtain*loc3 +
+                    i_nc4*NoCurtain*loc4 +
+                    i_nc5*NoCurtain*loc5 +
+                    i_nb1*NightBreak*loc1 +
+                    i_nb2*NightBreak*loc2 +
+                    i_nb3*NightBreak*loc3 +
+                    i_nb4*NightBreak*loc4 +
+                    i_nb5*NightBreak*loc5  ,
+                  z[Plot] ~ dnorm(0, 1),
+                  a_bar ~ dnorm(0, 1.5),
+                  sigma_a ~ dexp(1),
+                  b_nc ~ dnorm(0, 1),
+                  b_nb ~ dnorm(0, 1),
+                  c(b1, b2, b3, b4, b5) ~ dnorm(0,1),
+                  c(i_nc1, i_nc2, i_nc3, i_nc4, i_nc5) ~ dnorm(0,1),
+                  c(i_nb1, i_nb2, i_nb3, i_nb4, i_nb5) ~ dnorm(0,1)
+                  ),
+            data=dat6,
+            cores = 4,
+            chains = 4,
+            log_lik=TRUE)
+```
+
+```{r}
+traceplot(fm6, ask=FALSE)
+```
+
+```{r}
+precis(fm6)
+```
+
+```{r}
+plot(precis(fm6))
+```
+
+```{r}
+compare(fm4, fm6)
+```
+
+
+
+Q7 (optional):
+a. What can we conclude regarding treatment effect?
+
+Night breaks increases reproduction probability.  For example, when all loci are "A":
+```{r}
+inv_logit(coef(fm4)["a"])
+inv_logit(coef(fm4)["a"] + coef(fm4)["b_nb"])
+```
+
+
+b. What can we conclude regarding differential response to nightbreak treatment?
+
+Although some loci affect reproduction, there is no interaction between loci and night breaks.
+
+c. If we concluded that there are differential responses to nightbreak across genotypes, which genetic loci contributed to the differential responses, and which ones did not?
+
+
