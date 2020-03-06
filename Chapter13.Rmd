@@ -517,6 +517,7 @@ plot(coeftab(m12H2a, m12H2b))
 
 ## 12H3
 
+Below is probably incorrect...convert story to integer first
 ```{r}
 data(Trolley)
 

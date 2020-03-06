@@ -1,6 +1,8 @@
 ---
 title: "2020_02_28_lettuce"
-output: html_document
+output: 
+  html_document: 
+    keep_md: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -45,6 +47,11 @@ table(data$RIL, data$Treatment)
 ```{r}
 data <- data %>%
   mutate(reproduction=ifelse(Score>2, 1, 0))
+```
+
+```{r}
+data %>% group_by(Treatment) %>%
+  summarize(repro=mean(reproduction))
 ```
 
 
@@ -139,7 +146,7 @@ Because we are more interested in the effects of individual loci than the perfor
 
 ```{r}
 dat3 <- data %>% select(reproduction, NoCurtain, NightBreak, starts_with("loc")) %>%
-  mutate_at(vars(starts_with("loc")), ~ ifelse(.=="P", 1L, 0L))
+  mutate_at(vars(starts_with("loc")), ~ ifelse(.=="A", 1L, 0L))
 
 dat3
 ```

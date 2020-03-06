@@ -75,7 +75,7 @@ Competitive plant growth, +/- true shade.  LArge plants will outcomptete smaller
 
 ## 14E3
 
-_Whenisitpossibleforavaryingslopesmodeltohavefewereffectiveparameters(asestimated by WAIC or DIC) than the corresponding model with fixed (unpooled) slopes? Explain._
+_When is it possible for a varying slopes model to have fewer effective parameters (as estimated by WAIC or DIC) than the corresponding model with fixed (unpooled) slopes? Explain._
 
 If there is strong correlation between intercept and slope, then effectively fewer parameters need to be estimated (because if you know intercept you know slope).
 
