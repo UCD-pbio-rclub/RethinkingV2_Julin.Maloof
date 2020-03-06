@@ -1,23 +1,21 @@
----
-title: "Chapter 14"
-output: 
-  html_document: 
-    keep_md: yes
----
+Problems
+========
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, cache = TRUE, autodep = TRUE)
-library(rethinking)
-```
+14E1
+----
 
+*Add to the following model varying slopes on the predictor
+![x](https://latex.codecogs.com/png.latex?x "x")*
 
-# Problems
-
-## 14E1
-
-_Add to the following model varying slopes on the predictor $x$_
-
-$$
+![
+y\_i \\sim Normal(\\mu\_i, \\alpha) \\\\
+\\mu\_i = \\alpha\_{group\[i\]} + \\beta X\_i \\\\
+\\alpha\_{Group} \\sim Normal(\\alpha, \\sigma\_{\\alpha}) \\\\
+\\alpha \\sim Normal(0, 10) \\\\
+\\beta \\sim Normal(0,1) \\\\
+\\sigma \\sim HalfCauchy(0, 2) \\\\
+\\sigma\_\\alpha \\sim HalfCauchy(0,2) \\\\
+](https://latex.codecogs.com/png.latex?%0Ay_i%20%5Csim%20Normal%28%5Cmu_i%2C%20%5Calpha%29%20%5C%5C%0A%5Cmu_i%20%3D%20%5Calpha_%7Bgroup%5Bi%5D%7D%20%2B%20%5Cbeta%20X_i%20%5C%5C%0A%5Calpha_%7BGroup%7D%20%5Csim%20Normal%28%5Calpha%2C%20%5Csigma_%7B%5Calpha%7D%29%20%5C%5C%0A%5Calpha%20%5Csim%20Normal%280%2C%2010%29%20%5C%5C%0A%5Cbeta%20%5Csim%20Normal%280%2C1%29%20%5C%5C%0A%5Csigma%20%5Csim%20HalfCauchy%280%2C%202%29%20%5C%5C%0A%5Csigma_%5Calpha%20%5Csim%20HalfCauchy%280%2C2%29%20%5C%5C%0A "
 y_i \sim Normal(\mu_i, \alpha) \\
 \mu_i = \alpha_{group[i]} + \beta X_i \\
 \alpha_{Group} \sim Normal(\alpha, \sigma_{\alpha}) \\
@@ -25,9 +23,49 @@ y_i \sim Normal(\mu_i, \alpha) \\
 \beta \sim Normal(0,1) \\
 \sigma \sim HalfCauchy(0, 2) \\
 \sigma_\alpha \sim HalfCauchy(0,2) \\
-$$
+")
+
 answer:
-$$
+
+![
+y\_i \\sim Normal(\\mu\_i, \\alpha) \\\\
+\\mu\_i = \\alpha\_{group\[i\]} + \\beta\_{group\[i\]} X\_i \\\\
+\\left\[
+\\begin{array}{c}
+\\alpha\_{Group} \\\\
+\\beta\_{Group}
+\\end{array}
+\\right\]
+\\sim MVNormal
+\\left(
+\\left\[
+\\begin{array}{c}
+\\alpha\\\\
+\\beta 
+\\end{array}
+\\right\]
+,S
+\\right) \\\\
+S = \\left(
+\\begin{array}{cc} 
+\\sigma\_\\alpha & 0 \\\\
+0 & \\sigma\_\\alpha
+\\end{array}
+\\right) 
+\\mathbf{R}
+\\left(
+\\begin{array}{cc} 
+\\sigma\_\\alpha & 0 \\\\
+0 & \\sigma\_\\alpha
+\\end{array}
+\\right) \\\\
+\\alpha \\sim Normal(0, 10) \\\\
+\\beta \\sim Normal(0,1) \\\\
+\\sigma \\sim HalfCauchy(0, 2) \\\\
+\\sigma\_\\alpha \\sim HalfCauchy(0,2) \\\\
+\\sigma\_\\beta \\sim HalfCauchy(0,2) \\\\
+\\mathbf{R} \\sim LKJcorr(2)
+](https://latex.codecogs.com/png.latex?%0Ay_i%20%5Csim%20Normal%28%5Cmu_i%2C%20%5Calpha%29%20%5C%5C%0A%5Cmu_i%20%3D%20%5Calpha_%7Bgroup%5Bi%5D%7D%20%2B%20%5Cbeta_%7Bgroup%5Bi%5D%7D%20X_i%20%5C%5C%0A%5Cleft%5B%0A%5Cbegin%7Barray%7D%7Bc%7D%0A%5Calpha_%7BGroup%7D%20%5C%5C%0A%5Cbeta_%7BGroup%7D%0A%5Cend%7Barray%7D%0A%5Cright%5D%0A%5Csim%20MVNormal%0A%5Cleft%28%0A%5Cleft%5B%0A%5Cbegin%7Barray%7D%7Bc%7D%0A%5Calpha%5C%5C%0A%5Cbeta%20%0A%5Cend%7Barray%7D%0A%5Cright%5D%0A%2CS%0A%5Cright%29%20%5C%5C%0AS%20%3D%20%5Cleft%28%0A%5Cbegin%7Barray%7D%7Bcc%7D%20%0A%5Csigma_%5Calpha%20%26%200%20%5C%5C%0A0%20%26%20%5Csigma_%5Calpha%0A%5Cend%7Barray%7D%0A%5Cright%29%20%0A%5Cmathbf%7BR%7D%0A%5Cleft%28%0A%5Cbegin%7Barray%7D%7Bcc%7D%20%0A%5Csigma_%5Calpha%20%26%200%20%5C%5C%0A0%20%26%20%5Csigma_%5Calpha%0A%5Cend%7Barray%7D%0A%5Cright%29%20%5C%5C%0A%5Calpha%20%5Csim%20Normal%280%2C%2010%29%20%5C%5C%0A%5Cbeta%20%5Csim%20Normal%280%2C1%29%20%5C%5C%0A%5Csigma%20%5Csim%20HalfCauchy%280%2C%202%29%20%5C%5C%0A%5Csigma_%5Calpha%20%5Csim%20HalfCauchy%280%2C2%29%20%5C%5C%0A%5Csigma_%5Cbeta%20%5Csim%20HalfCauchy%280%2C2%29%20%5C%5C%0A%5Cmathbf%7BR%7D%20%5Csim%20LKJcorr%282%29%0A "
 y_i \sim Normal(\mu_i, \alpha) \\
 \mu_i = \alpha_{group[i]} + \beta_{group[i]} X_i \\
 \left[
@@ -65,27 +103,43 @@ S = \left(
 \sigma_\alpha \sim HalfCauchy(0,2) \\
 \sigma_\beta \sim HalfCauchy(0,2) \\
 \mathbf{R} \sim LKJcorr(2)
-$$
+")
 
-## 14E2
-_Think up a context in which varying intercepts will be positively correlated with varying slopes. Provide a mechanistic explanation for the correlation._
+14E2
+----
 
-Competitive plant growth, +/- true shade.  LArge plants will outcomptete smaller plants and get even bigger.  small plants won't be able to complete and will stay small.
+*Think up a context in which varying intercepts will be positively
+correlated with varying slopes. Provide a mechanistic explanation for
+the correlation.*
 
+Competitive plant growth, +/- true shade. LArge plants will outcomptete
+smaller plants and get even bigger. small plants won't be able to
+complete and will stay small.
 
-## 14E3
+14E3
+----
 
-_Whenisitpossibleforavaryingslopesmodeltohavefewereffectiveparameters(asestimated by WAIC or DIC) than the corresponding model with fixed (unpooled) slopes? Explain._
+*Whenisitpossibleforavaryingslopesmodeltohavefewereffectiveparameters(asestimated
+by WAIC or DIC) than the corresponding model with fixed (unpooled)
+slopes? Explain.*
 
-If there is strong correlation between intercept and slope, then effectively fewer parameters need to be estimated (because if you know intercept you know slope).
+If there is strong correlation between intercept and slope, then
+effectively fewer parameters need to be estimated (because if you know
+intercept you know slope).
 
-## 14M1
+14M1
+----
 
-_Repeat the café robot simulation from the beginning of the chapter.  This time, set rho to zero, so that there is no correlation between intercepts and slopes. How does the posterior distribution of the correlation reflect this change in the underlying simulation?_
+*Repeat the café robot simulation from the beginning of the chapter.
+This time, set rho to zero, so that there is no correlation between
+intercepts and slopes. How does the posterior distribution of the
+correlation reflect this change in the underlying simulation?*
 
 ### First, from the book:
+
 Simulate some cafes
-```{r}
+
+``` {.r}
 ## R code 14.1
 a <- 3.5            # average morning wait time
 b <- (-1)           # average difference afternoon wait time
@@ -94,8 +148,7 @@ sigma_b <- 0.5      # std dev in slopes
 rho <- (-0.7)       # correlation between intercepts and slopes
 ```
 
-
-```{r}
+``` {.r}
 ## R code 14.2
 Mu <- c( a , b )
 
@@ -108,8 +161,11 @@ Sigma <- diag(sigmas) %*% Rho %*% diag(sigmas)
 Sigma
 ```
 
+    ##       [,1]  [,2]
+    ## [1,]  1.00 -0.35
+    ## [2,] -0.35  0.25
 
-```{r}
+``` {.r}
 ## R code 14.6
 N_cafes <- 20
 
@@ -124,7 +180,8 @@ b_cafe <- vary_effects[,2]
 ```
 
 now simulate sampling
-```{r}
+
+``` {.r}
 ## R code 14.10
 set.seed(22)
 N_visits <- 10
@@ -136,8 +193,7 @@ wait <- rnorm( N_visits*N_cafes , mu , sigma )
 d <- data.frame( cafe=cafe_id , afternoon=afternoon , wait=wait )
 ```
 
-
-```{r}
+``` {.r}
 ## R code 14.12
 m14.1 <- ulam(
     alist(
@@ -155,7 +211,8 @@ m14.1 <- ulam(
 ### with rho 0
 
 Simulate some cafes
-```{r}
+
+``` {.r}
 ## R code 14.1
 a <- 3.5            # average morning wait time
 b <- (-1)           # average difference afternoon wait time
@@ -164,8 +221,7 @@ sigma_b <- 0.5      # std dev in slopes
 rho <- (0)       # correlation between intercepts and slopes
 ```
 
-
-```{r}
+``` {.r}
 ## R code 14.2
 Mu <- c( a , b )
 
@@ -178,8 +234,11 @@ Sigma <- diag(sigmas) %*% Rho %*% diag(sigmas)
 Sigma
 ```
 
+    ##      [,1] [,2]
+    ## [1,]    1 0.00
+    ## [2,]    0 0.25
 
-```{r}
+``` {.r}
 ## R code 14.6
 N_cafes <- 20
 
@@ -193,7 +252,8 @@ b_cafe <- vary_effects[,2]
 ```
 
 now simulate sampling
-```{r}
+
+``` {.r}
 ## R code 14.10
 set.seed(22)
 N_visits <- 10
@@ -205,8 +265,7 @@ wait <- rnorm( N_visits*N_cafes , mu , sigma )
 d_zero_rho <- data.frame( cafe=cafe_id , afternoon=afternoon , wait=wait )
 ```
 
-
-```{r}
+``` {.r}
 ## R code 14.12
 m14.1alt <- ulam(
     alist(
@@ -221,18 +280,41 @@ m14.1alt <- ulam(
     ) , data=d_zero_rho , chains=4 , cores=4, log_lik = TRUE )
 ```
 
-```{r}
+    ## recompiling to avoid crashing R session
+
+``` {.r}
 precis(m14.1, depth=3, pars=c("a", "b", "Rho"))
+```
+
+    ##                mean           sd       5.5%      94.5%    n_eff      Rhat
+    ## a         3.6540560 2.216840e-01  3.3042476  4.0038041 2534.471 0.9985916
+    ## b        -1.1415404 1.437323e-01 -1.3683510 -0.9123456 2473.478 0.9995964
+    ## Rho[1,1]  1.0000000 0.000000e+00  1.0000000  1.0000000      NaN       NaN
+    ## Rho[1,2] -0.5020623 1.802186e-01 -0.7533067 -0.1868229 2463.166 0.9989320
+    ## Rho[2,1] -0.5020623 1.802186e-01 -0.7533067 -0.1868229 2463.166 0.9989320
+    ## Rho[2,2]  1.0000000 8.220706e-17  1.0000000  1.0000000 2112.773 0.9979980
+
+``` {.r}
 precis(m14.1alt, depth = 3, pars=c("a", "b", "Rho"))
 ```
-correlation estimate now ~ zero, as expected.
 
-## 14M2
+    ##                 mean           sd       5.5%      94.5%    n_eff     Rhat
+    ## a         3.71558153 2.258057e-01  3.3675259  4.0741742 2267.265 1.001063
+    ## b        -1.10250653 1.473425e-01 -1.3329514 -0.8739319 2104.294 1.000082
+    ## Rho[1,1]  1.00000000 0.000000e+00  1.0000000  1.0000000      NaN      NaN
+    ## Rho[1,2] -0.05914906 2.319446e-01 -0.4208165  0.3257339 1887.576 1.001780
+    ## Rho[2,1] -0.05914906 2.319446e-01 -0.4208165  0.3257339 1887.576 1.001780
+    ## Rho[2,2]  1.00000000 9.527034e-17  1.0000000  1.0000000 2044.376 0.997998
 
-_Fit this multilevel model (separate pooling) to the simulated café data:_
+correlation estimate now \~ zero, as expected.
 
+14M2
+----
 
-```{r}
+*Fit this multilevel model (separate pooling) to the simulated café
+data:*
+
+``` {.r}
 ## R code 14.12
 m14.M2 <- ulam(
     alist(
@@ -248,18 +330,26 @@ m14.M2 <- ulam(
     ) , data=d , chains=4 , cores=4, log_lik=TRUE )
 ```
 
-```{r}
+``` {.r}
 compare(m14.1, m14.M2)
 ```
 
-pretty much the same.  had hoped this would make the case for correlative pooling...
+    ##            WAIC       SE     dWAIC      dSE    pWAIC    weight
+    ## m14.1  305.2609 17.78987 0.0000000       NA 33.00102 0.5478858
+    ## m14.M2 305.6451 17.99910 0.3842642 2.137314 32.27162 0.4521142
 
-## 14M3
+pretty much the same. had hoped this would make the case for correlative
+pooling...
 
-# Book
+14M3
+----
+
+Book
+====
 
 Simulate some cafes
-```{r}
+
+``` {.r}
 ## R code 14.1
 a <- 3.5            # average morning wait time
 b <- (-1)           # average difference afternoon wait time
@@ -268,8 +358,7 @@ sigma_b <- 0.5      # std dev in slopes
 rho <- (-0.7)       # correlation between intercepts and slopes
 ```
 
-
-```{r}
+``` {.r}
 ## R code 14.2
 Mu <- c( a , b )
 
@@ -279,7 +368,13 @@ Sigma <- matrix( c(sigma_a^2,cov_ab,cov_ab,sigma_b^2) , ncol=2 )
 
 ## R code 14.4
 matrix( c(1,2,3,4) , nrow=2 , ncol=2 )
+```
 
+    ##      [,1] [,2]
+    ## [1,]    1    3
+    ## [2,]    2    4
+
+``` {.r}
 ## R code 14.5
 sigmas <- c(sigma_a,sigma_b) # standard deviations
 Rho <- matrix( c(1,rho,rho,1) , nrow=2 ) # correlation matrix
@@ -289,8 +384,11 @@ Sigma <- diag(sigmas) %*% Rho %*% diag(sigmas)
 Sigma
 ```
 
+    ##       [,1]  [,2]
+    ## [1,]  1.00 -0.35
+    ## [2,] -0.35  0.25
 
-```{r}
+``` {.r}
 ## R code 14.6
 N_cafes <- 20
 
@@ -309,12 +407,29 @@ plot( a_cafe , b_cafe , col=rangi2 ,
 
 # overlay population distribution
 library(ellipse)
+```
+
+    ## 
+    ## Attaching package: 'ellipse'
+
+    ## The following object is masked from 'package:rethinking':
+    ## 
+    ##     pairs
+
+    ## The following object is masked from 'package:graphics':
+    ## 
+    ##     pairs
+
+``` {.r}
 for ( l in c(0.1,0.3,0.5,0.8,0.99) )
     lines(ellipse(Sigma,centre=Mu,level=l),col=col.alpha("black",0.2))
 ```
 
+![](Chapter14_files/figure-html/unnamed-chunk-16-1.png)`<!-- -->`{=html}
+
 now simulate sampling
-```{r}
+
+``` {.r}
 ## R code 14.10
 set.seed(22)
 N_visits <- 10
@@ -327,15 +442,217 @@ d <- data.frame( cafe=cafe_id , afternoon=afternoon , wait=wait )
 d
 ```
 
+    ##     cafe afternoon      wait
+    ## 1      1         0 3.9678929
+    ## 2      1         1 3.8571978
+    ## 3      1         0 4.7278755
+    ## 4      1         1 2.7610133
+    ## 5      1         0 4.1194827
+    ## 6      1         1 3.5436522
+    ## 7      1         0 4.1909492
+    ## 8      1         1 2.5332235
+    ## 9      1         0 4.1240321
+    ## 10     1         1 2.7648868
+    ## 11     2         0 1.6285444
+    ## 12     2         1 1.2997086
+    ## 13     2         0 2.3820122
+    ## 14     2         1 1.2167166
+    ## 15     2         0 1.6140508
+    ## 16     2         1 0.7976508
+    ## 17     2         0 2.4412792
+    ## 18     2         1 2.2601987
+    ## 19     2         0 2.4787735
+    ## 20     2         1 0.4508602
+    ## 21     3         0 4.2782826
+    ## 22     3         1 2.6155598
+    ## 23     3         0 4.2277546
+    ## 24     3         1 2.0927322
+    ## 25     3         0 4.2941706
+    ## 26     3         1 2.8956186
+    ## 27     3         0 4.6922298
+    ## 28     3         1 2.1666390
+    ## 29     3         0 4.9780066
+    ## 30     3         1 1.8374065
+    ## 31     4         0 3.6126323
+    ## 32     4         1 1.5168045
+    ## 33     4         0 3.6638952
+    ## 34     4         1 1.8831005
+    ## 35     4         0 2.8338139
+    ## 36     4         1 1.7470407
+    ## 37     4         0 3.3720479
+    ## 38     4         1 2.6260871
+    ## 39     4         0 2.7802535
+    ## 40     4         1 2.0503973
+    ## 41     5         0 1.5867226
+    ## 42     5         1 1.3947669
+    ## 43     5         0 2.0753433
+    ## 44     5         1 2.0745109
+    ## 45     5         0 2.2045744
+    ## 46     5         1 2.7420834
+    ## 47     5         0 1.6200965
+    ## 48     5         1 1.2822865
+    ## 49     5         0 1.1116341
+    ## 50     5         1 1.6542109
+    ## 51     6         0 3.6362822
+    ## 52     6         1 3.2534341
+    ## 53     6         0 3.3889599
+    ## 54     6         1 3.2106004
+    ## 55     6         0 4.8480520
+    ## 56     6         1 2.9567778
+    ## 57     6         0 4.9368840
+    ## 58     6         1 2.5660084
+    ## 59     6         0 4.6554610
+    ## 60     6         1 2.8368435
+    ## 61     7         0 3.3984235
+    ## 62     7         1 2.8788324
+    ## 63     7         0 3.7173417
+    ## 64     7         1 2.1021608
+    ## 65     7         0 3.3520633
+    ## 66     7         1 3.0247287
+    ## 67     7         0 3.8741506
+    ## 68     7         1 3.2205101
+    ## 69     7         0 3.6474687
+    ## 70     7         1 1.8385930
+    ## 71     8         0 3.6971708
+    ## 72     8         1 2.1305167
+    ## 73     8         0 3.7303181
+    ## 74     8         1 2.0347525
+    ## 75     8         0 4.1198843
+    ## 76     8         1 1.9878978
+    ## 77     8         0 3.5352774
+    ## 78     8         1 2.3410838
+    ## 79     8         0 5.0074088
+    ## 80     8         1 2.6806061
+    ## 81     9         0 4.4105403
+    ## 82     9         1 3.1360459
+    ## 83     9         0 3.5485809
+    ## 84     9         1 3.2839353
+    ## 85     9         0 4.7034413
+    ## 86     9         1 2.1927989
+    ## 87     9         0 4.1604345
+    ## 88     9         1 2.3370569
+    ## 89     9         0 3.2290943
+    ## 90     9         1 2.3470523
+    ## 91    10         0 3.7790783
+    ## 92    10         1 2.7815778
+    ## 93    10         0 3.6908124
+    ## 94    10         1 2.6842041
+    ## 95    10         0 3.6739399
+    ## 96    10         1 2.7526249
+    ## 97    10         0 3.3009887
+    ## 98    10         1 2.5882405
+    ## 99    10         0 3.2170385
+    ## 100   10         1 2.4008392
+    ## 101   11         0 1.3866774
+    ## 102   11         1 1.2251146
+    ## 103   11         0 1.5374481
+    ## 104   11         1 1.8911030
+    ## 105   11         0 2.0440251
+    ## 106   11         1 1.4825473
+    ## 107   11         0 2.3053675
+    ## 108   11         1 2.0147873
+    ## 109   11         0 1.8050769
+    ## 110   11         1 1.0450414
+    ## 111   12         0 4.0865711
+    ## 112   12         1 1.6610791
+    ## 113   12         0 3.4982132
+    ## 114   12         1 2.2208548
+    ## 115   12         0 2.9146148
+    ## 116   12         1 3.0898881
+    ## 117   12         0 4.5563579
+    ## 118   12         1 3.3040109
+    ## 119   12         0 4.1924795
+    ## 120   12         1 3.0147962
+    ## 121   13         0 3.9669914
+    ## 122   13         1 2.0143616
+    ## 123   13         0 4.0823665
+    ## 124   13         1 1.2142337
+    ## 125   13         0 3.8813289
+    ## 126   13         1 1.8169712
+    ## 127   13         0 3.5927248
+    ## 128   13         1 2.7553118
+    ## 129   13         0 4.3818435
+    ## 130   13         1 1.9490383
+    ## 131   14         0 3.2426154
+    ## 132   14         1 1.6085752
+    ## 133   14         0 2.4233729
+    ## 134   14         1 1.8561347
+    ## 135   14         0 4.1243762
+    ## 136   14         1 2.3101760
+    ## 137   14         0 3.1193893
+    ## 138   14         1 2.4563408
+    ## 139   14         0 2.8033230
+    ## 140   14         1 2.9760704
+    ## 141   15         0 5.1810238
+    ## 142   15         1 2.5779341
+    ## 143   15         0 4.4748711
+    ## 144   15         1 1.8505316
+    ## 145   15         0 4.9231077
+    ## 146   15         1 2.2967337
+    ## 147   15         0 4.3611941
+    ## 148   15         1 1.6717649
+    ## 149   15         0 4.0922197
+    ## 150   15         1 2.0918128
+    ## 151   16         0 3.1394434
+    ## 152   16         1 1.9818328
+    ## 153   16         0 3.7947913
+    ## 154   16         1 2.9945802
+    ## 155   16         0 3.4741649
+    ## 156   16         1 2.2611456
+    ## 157   16         0 3.5614384
+    ## 158   16         1 2.4030906
+    ## 159   16         0 2.8976436
+    ## 160   16         1 2.0986390
+    ## 161   17         0 3.8733157
+    ## 162   17         1 3.0278342
+    ## 163   17         0 4.4076139
+    ## 164   17         1 3.1162877
+    ## 165   17         0 4.0792206
+    ## 166   17         1 2.8800927
+    ## 167   17         0 4.6189638
+    ## 168   17         1 3.0648752
+    ## 169   17         0 4.2018437
+    ## 170   17         1 2.9800223
+    ## 171   18         0 4.8686274
+    ## 172   18         1 4.8269026
+    ## 173   18         0 5.3579401
+    ## 174   18         1 4.7056985
+    ## 175   18         0 6.5198872
+    ## 176   18         1 4.8927955
+    ## 177   18         0 6.1303904
+    ## 178   18         1 5.1833383
+    ## 179   18         0 5.9030889
+    ## 180   18         1 4.7881800
+    ## 181   19         0 3.7296292
+    ## 182   19         1 2.9772458
+    ## 183   19         0 2.6228565
+    ## 184   19         1 3.2854654
+    ## 185   19         0 3.8941007
+    ## 186   19         1 3.0659216
+    ## 187   19         0 2.7767559
+    ## 188   19         1 3.4586721
+    ## 189   19         0 2.5819582
+    ## 190   19         1 2.8900848
+    ## 191   20         0 3.6168188
+    ## 192   20         1 1.9505858
+    ## 193   20         0 3.8823709
+    ## 194   20         1 2.9197521
+    ## 195   20         0 3.5691201
+    ## 196   20         1 2.1098063
+    ## 197   20         0 3.7900409
+    ## 198   20         1 2.8376260
+    ## 199   20         0 3.7840564
+    ## 200   20         1 3.6340586
 
-```{r}
+``` {.r}
 ## R code 14.11
 R <- rlkjcorr( 1e4 , K=2 , eta=2 )
 dens( R[,1,2] , xlab="correlation" )
 ```
 
+![](Chapter14_files/figure-html/unnamed-chunk-18-1.png)`<!-- -->`{=html}
 
-```{r}
+``` {.r}
 ## R code 14.12
 m14.1 <- ulam(
     alist(
@@ -350,15 +667,15 @@ m14.1 <- ulam(
     ) , data=d , chains=4 , cores=4 )
 ```
 
-
-```{r}
+``` {.r}
 ## R code 14.13
 post <- extract.samples(m14.1)
 dens( post$Rho[,1,2] )
 ```
 
+![](Chapter14_files/figure-html/unnamed-chunk-20-1.png)`<!-- -->`{=html}
 
-```{r}
+``` {.r}
 ## R code 14.14
 # compute unpooled estimates directly from data
 a1 <- sapply( 1:N_cafes ,
@@ -394,8 +711,9 @@ for ( l in c(0.1,0.3,0.5,0.8,0.99) )
         col=col.alpha("black",0.2))
 ```
 
+![](Chapter14_files/figure-html/unnamed-chunk-21-1.png)`<!-- -->`{=html}
 
-```{r}
+``` {.r}
 ## R code 14.16
 # convert varying effects to waiting times
 wait_morning_1 <- (a1)
@@ -429,8 +747,9 @@ for ( l in c(0.1,0.3,0.5,0.8,0.99) )
         col=col.alpha("black",0.5))
 ```
 
+![](Chapter14_files/figure-html/unnamed-chunk-22-1.png)`<!-- -->`{=html}
 
-```{r, eval=FALSE}
+``` {.r}
 ## R code 14.18
 library(rethinking)
 data(chimpanzees)
@@ -917,7 +1236,4 @@ text( 0.2 , 0.1 , "posterior" , col=rangi2 )
 
 ## R code 14.53
 S <- matrix( c( sa^2 , sa*sb*rho , sa*sb*rho , sb^2 ) , nrow=2 )
-
-
 ```
-
