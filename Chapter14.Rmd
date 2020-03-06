@@ -149,7 +149,7 @@ m14.1 <- ulam(
         sigma_cafe ~ exponential(1),
         sigma ~ exponential(1),
         Rho ~ lkj_corr(2)
-    ) , data=d , chains=4 , cores=4 )
+    ) , data=d , chains=4 , cores=4, log_lik = TRUE )
 ```
 
 ### with rho 0
@@ -225,6 +225,7 @@ m14.1alt <- ulam(
 precis(m14.1, depth=3, pars=c("a", "b", "Rho"))
 precis(m14.1alt, depth = 3, pars=c("a", "b", "Rho"))
 ```
+correlation estimate now ~ zero, as expected.
 
 ## 14M2
 
@@ -251,6 +252,7 @@ m14.M2 <- ulam(
 compare(m14.1, m14.M2)
 ```
 
+pretty much the same.  had hoped this would make the case for correlative pooling...
 
 ## 14M3
 
