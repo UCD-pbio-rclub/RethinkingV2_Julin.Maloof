@@ -256,6 +256,64 @@ pretty much the same.  had hoped this would make the case for correlative poolin
 
 ## 14M3
 
+_14M3. Re-estimate the varying slopes model for the UCBadmit data, now using a non-centered pa- rameterization. Compare the efficiency of the forms of the model, using n_eff. Which is better? Which chain sampled faster?_
+
+```{r}
+data(UCBadmit)
+d <- UCBadmit
+dat_list <- list( admit = d$admit,
+    applications = d$applications,
+    gid = ifelse( d$applicant.gender=="male" , 1L , 2L ),
+    dept_id = rep(1:6,each=2) )
+```
+
+
+```{r}
+m11.8 <- ulam(
+  alist(
+    admit ~ dbinom( applications , p ), 
+    logit(p) <- a[gid] + delta[dept_id],
+    a[gid] ~ dnorm( 0 , 1.5 ), 
+    delta[dept_id] ~ dnorm( 0 , 1.5 )),
+  data=dat_list , 
+  chains=4 , 
+  iter=4000,
+  log_lik = TRUE)
+
+```
+
+
+```{r}
+m14M3 <- ulam(
+  alist(
+    admit ~ dbinom( applications , p ), 
+    logit(p) <- a_bar + z_a[gid]*sigma_a + z_delta[dept_id]*sigma_d,
+    a_bar ~ dnorm(0,1.5),
+    z_a[gid] ~ dnorm( 0 , 1.5 ), 
+    z_delta[dept_id] ~ dnorm( 0 , 1.5 ),
+    sigma_a ~ dexp(1),
+    sigma_d ~ dexp(1)),
+  data=dat_list , 
+  chains=4 , 
+  iter=4000,
+  log_lik = TRUE)
+```
+
+```{r}
+precis(m11.8, depth=2)
+```
+
+```{r}
+precis(m14M3, depth=2)
+```
+
+
+```{r}
+compare(m14M3, m11.8)
+```
+
+non-centred is slower to fit and has more divergent transitions but also has more effective samples and slightly fewer parameters.
+
 # Book
 
 Simulate some cafes
@@ -443,7 +501,10 @@ dat <- list(
     tid = d$treatment,
     actor = d$actor,
     block_id = as.integer(d$block_id) )
+```
 
+
+```{r, eval=FALSE}
 m14.2 <- ulam(
     alist(
         L ~ binomial(1,p),
@@ -577,7 +638,10 @@ dat_sim <- list(
     W=standardize(W_sim) ,
     E=standardize(E_sim) ,
     Q=standardize(Q_sim) )
+```
 
+
+```{r, eval=FALSE}
 ## R code 14.24
 m14.4 <- ulam(
     alist(
@@ -588,7 +652,10 @@ m14.4 <- ulam(
         sigma ~ dexp( 1 )
     ) , data=dat_sim , chains=4 , cores=4 )
 precis( m14.4 )
+```
 
+
+```{r, eval=FALSE}
 ## R code 14.25
 m14.5 <- ulam(
     alist(
@@ -601,7 +668,10 @@ m14.5 <- ulam(
         Sigma ~ exponential( 1 )
     ), data=dat_sim , chains=4 , cores=4 )
 precis( m14.5 , depth=3 )
+```
 
+
+```{r, eval=FALSE}
 ## R code 14.26
 m14.4x <- ulam( m14.4 , data=dat_sim , chains=4 , cores=4 )
 m14.5x <- ulam( m14.5 , data=dat_sim , chains=4 , cores=4 )
@@ -617,7 +687,10 @@ dat_sim <- list(
     W=standardize(W_sim) ,
     E=standardize(E_sim) ,
     Q=standardize(Q_sim) )
+```
 
+
+```{r, eval=FALSE}
 ## R code 14.28
 library(dagitty)
 dagIV <- dagitty( "dag{
