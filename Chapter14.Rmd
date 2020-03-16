@@ -267,7 +267,7 @@ dat_list <- list( admit = d$admit,
     dept_id = rep(1:6,each=2) )
 ```
 
-
+Original model:
 ```{r}
 m11.8 <- ulam(
   alist(
@@ -282,7 +282,7 @@ m11.8 <- ulam(
 
 ```
 
-
+De-centered model
 ```{r}
 m14M3 <- ulam(
   alist(
@@ -307,12 +307,132 @@ precis(m11.8, depth=2)
 precis(m14M3, depth=2)
 ```
 
-
 ```{r}
 compare(m14M3, m11.8)
 ```
 
 non-centred is slower to fit and has more divergent transitions but also has more effective samples and slightly fewer parameters.
+
+## PDF1
+
+_1. Revisit the Bangladesh fertility data, data(bangladesh). Fit a model with both varying intercepts by district_id and varying slopes of urban (as a 0/1 indicator variable) by district_id. You are still predicting use.contraception. Inspect the correlation between the intercepts and slopes. Can you interpret this correlation, in terms of what it tells you about the pattern of contraceptive use in the sample? It might help to plot the varying effect estimates for both the intercepts and slopes, by district. Then you can visualize the correlation and maybe more easily think through what it means to have a particular correlation. Plotting predicted proportion of women using contraception, in each district, with urban women on one axis and rural on the other, might also help._
+
+```{r}
+data("bangladesh")
+bangladesh
+summary(bangladesh)
+```
+
+confirm that district has all its numbers
+```{r}
+all.equal(unique(bangladesh$district), 1:max(bangladesh$district))
+```
+
+it doesn't
+
+```{r}
+bangladesh$d_id <- as.numeric(as.factor(bangladesh$district))
+all.equal(unique(bangladesh$d_id), 1:max(bangladesh$d_id))
+
+```
+
+
+
+```{r}
+d <- with(bangladesh, 
+          list(use=use.contraception, d_id=d_id, urban=urban))
+str(d)
+```
+
+start simple
+```{r}
+mpdf1.1 <- ulam(alist(
+  use ~ dbinom(1, p),
+  logit(p) <- a[d_id] + b[d_id]*urban,
+  a[d_id] ~ dnorm(a_bar, sigma_a),
+  b[d_id] ~ dnorm(b_bar, sigma_b),
+  a_bar ~ dnorm(0, 1.5),
+  b_bar ~ dnorm(0, 1),
+  c(sigma_a, sigma_b) ~ dexp(1)),
+  data=d,
+  cores = 4,
+  chains = 4,
+  iter = 4000,
+  log_lik = TRUE)
+```
+
+```{r}
+precis(mpdf1.1, depth = 2)
+```
+Has a hard time estimating sigma_b
+
+now use a mvnorm to look at correlation between intercept and slope.
+```{r}
+mpdf1.2 <- ulam(alist(
+  use ~ dbinom(1, p),
+  logit(p) <- a[d_id] + b[d_id]*urban,
+  c(a, b)[d_id] ~ multi_normal(c(a_bar, b_bar), Rho, sigma),
+  a_bar ~ dnorm(0, 1.5),
+  b_bar ~ dnorm(0,1),
+  sigma ~ dexp(1),
+  Rho ~ lkj_corr(2)),
+  data=d,
+  cores = 4,
+  chains = 4,
+  log_lik = TRUE)
+```
+
+```{r}
+precis(mpdf1.2, depth = 3)
+```
+
+```{r}
+compare(mpdf1.1, mpdf1.2)
+```
+
+
+de-center it? 
+```{r, eval=FALSE}
+mpdf1.3 <- ulam(alist(
+  use ~ dbinom(1, p),
+  logit(p) <- alphabeta[1, d_id] + alphabeta[2, d_id]*urban,
+  transpars> matrix[2, d_id]:alphabeta <- compose_noncentered(sigma, L_Rho, z),
+  matrix[d_id, 2]:z ~ normal(0,1.5),
+  vector[2]:sigma ~ lkj_corr_cholesky( 2 ),
+  cholesky_factor_corr[2]: L_Rho ~ lkj_corr(2),
+  gq> matrix[2,2]:Rho <<- multiply_lower_tri_self_transpose(L_Rho)),
+  data=d,
+  cores = 4,
+  chains = 4,
+  log_lik = TRUE)
+```
+
+
+
+
+## PDF2
+
+2. Now consider the predictor variables age.centered and living.children, also contained in data(bangladesh). Suppose that age influences contraceptive use (changing attitudes) and number of children (older people have had more time to have kids). Number of children may also directly influence contraceptive use. Draw a DAG that reflects these hypothetical relationships. Then build models needed to evaluate the DAG. You will need at least two models. Retain district and urban, as in Problem 1. What do you conclude about the causal influence of age and children?
+
+```{r}
+library(dagitty)
+```
+
+```{r}
+dagpdf2 <- dagitty(" dag {
+  age -> use
+  age -> n_child
+  n_child -> use
+}")
+
+coordinates(dagpdf2) <- list(
+  x=c(use=3, age=2, n_child=2),
+  y=c(use=2, age=1, n_child=3))
+
+drawdag(dagpdf2)  
+```
+
+
 
 # Book
 
