@@ -263,18 +263,18 @@ data(UCBadmit)
 d <- UCBadmit
 dat_list <- list( admit = d$admit,
     applications = d$applications,
-    gid = ifelse( d$applicant.gender=="male" , 1L , 2L ),
+    gid = ifelse( d$applicant.gender=="male" , 0L , 1L ),
     dept_id = rep(1:6,each=2) )
 ```
 
-Original model:
+Varying Slopes model:
 ```{r}
-m11.8 <- ulam(
+m14M3a <- ulam(
   alist(
     admit ~ dbinom( applications , p ), 
-    logit(p) <- a[gid] + delta[dept_id],
-    a[gid] ~ dnorm( 0 , 1.5 ), 
-    delta[dept_id] ~ dnorm( 0 , 1.5 )),
+    logit(p) <- alpha[dept_id] + beta[dept_id]*gid,
+    alpha[dept_id] ~ dnorm( 0 , 1.5 ), 
+    beta[dept_id] ~ dnorm( 0 , 1.5 )),
   data=dat_list , 
   chains=4 , 
   iter=4000,
@@ -282,17 +282,17 @@ m11.8 <- ulam(
 
 ```
 
-De-centered model
+De-centered model, no pooling
 ```{r}
-m14M3 <- ulam(
+m14M3b <- ulam(
   alist(
     admit ~ dbinom( applications , p ), 
-    logit(p) <- a_bar + z_a[gid]*sigma_a + z_delta[dept_id]*sigma_d,
+    logit(p) <- a_bar + z_a[dept_id]*sigma_a + z_beta[dept_id]*gid*sigma_b,
     a_bar ~ dnorm(0,1.5),
-    z_a[gid] ~ dnorm( 0 , 1.5 ), 
-    z_delta[dept_id] ~ dnorm( 0 , 1.5 ),
+    z_a[dept_id] ~ dnorm( 0 , 1 ), 
+    z_beta[dept_id] ~ dnorm( 0 , 1 ),
     sigma_a ~ dexp(1),
-    sigma_d ~ dexp(1)),
+    sigma_b ~ dexp(1)),
   data=dat_list , 
   chains=4 , 
   iter=4000,
@@ -300,18 +300,71 @@ m14M3 <- ulam(
 ```
 
 ```{r}
-precis(m11.8, depth=2)
+precis(m14M3a, depth=2)
 ```
 
 ```{r}
-precis(m14M3, depth=2)
+precis(m14M3b, depth=2)
 ```
 
 ```{r}
-compare(m14M3, m11.8)
+compare(m14M3a, m14M3b)
 ```
 
-non-centred is slower to fit and has more divergent transitions but also has more effective samples and slightly fewer parameters.
+non-centred is slower to fit, has fewer effective samples and more parameters.
+
+
+partial pooling, interaction, centered
+
+```{r}
+m14M3c <- ulam(
+  alist(
+    admit ~ dbinom( applications , p ), 
+    logit(p) <- alpha[dept_id] + beta[dept_id]*gid,
+    c(alpha, beta)[dept_id] ~ multi_normal(c(a_bar, b_bar), Rho, sigma),
+    a_bar ~ dnorm( 0 , 1.5 ), 
+    b_bar ~ dnorm( 0 , 1.5 ),
+    Rho ~ lkj_corr(2),
+    sigma ~ dexp(1)),
+  data=dat_list , 
+  chains=4 , 
+  iter=4000,
+  log_lik = TRUE)
+```
+
+partial pooling, interaction, non-centered
+
+```{r}
+m14M3d <- ulam(
+  alist(
+    admit ~ dbinom( applications , p ), 
+    logit(p) <- gamma + coefm[dept_id,1] + coefm[dept_id,2]*gid,
+    gamma ~ dnorm(0, 1.5),
+    transpars> matrix[dept_id, 2]:coefm <- compose_noncentered(sigma, L_Rho, z),
+    matrix[2, dept_id]:z ~ normal(0,1),
+    vector[2]:sigma ~ dexp(1),
+    cholesky_factor_corr[2]:L_Rho ~ lkj_corr_cholesky(2),
+    gq> matrix[2,2]:Rho <<- multiply_lower_tri_self_transpose(L_Rho)),
+  data=dat_list , 
+  chains=4 , 
+  iter=4000,
+  log_lik = TRUE)
+```
+
+no divergent transitions
+
+```{r}
+precis(m14M3c, depth = 3)
+```
+
+```{r}
+precis(m14M3d, depth=3)
+```
+
+```{r}
+compare(m14M3a, m14M3b,m14M3c, m14M3d)
+```
+
 
 ## PDF1
 
