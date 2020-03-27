@@ -609,7 +609,7 @@ mj1 <- ulam(
 ```
 
 ```{r}
-traceplot(mj1, ask=FALSE)
+#traceplot(mj1, ask=FALSE)
 head(precis(mj1, depth=2))
 ```
 
@@ -629,7 +629,7 @@ mj2 <- ulam(
 ```
 
 ```{r}
-traceplot(mj2, ask=FALSE)
+#traceplot(mj2, ask=FALSE)
 head(precis(mj2, depth = 2))
 ```
 
@@ -667,7 +667,7 @@ compare(mj2, mj3a)
 
 
 add experiment and plate #fail!
-```{r}
+```{r, eval=FALSE}
 mj3b <- ulam(
   alist(
     length ~ dnorm(u, sigma),
@@ -685,14 +685,122 @@ mj3b <- ulam(
   log_lik=TRUE)
 ```
 
-```{r}
+```{r, eval=FALSE}
 precis(mj3b, depth=2) %>% rownames_to_column(var="parameter") %>% arrange(desc(Rhat)) %>% head(20)
 ```
 
+plate only?
+
+```{r, eval=FALSE}
+mj3b2 <- ulam(
+  alist(
+    length ~ dnorm(u, sigma),
+    u <- alpha_line[line_id] + beta_rfr[line_id] * low_rfr + alpha_plate[plate_id],
+    alpha_line[line_id] ~ dnorm(al_bar, sigma_al),
+    beta_rfr[line_id] ~ dnorm(b_bar, sigma_b),
+    alpha_plate[plate_id] ~ dnorm(0, sigma_plate),
+    al_bar ~ dnorm(4, 5),
+    b_bar ~ dnorm(0, 3),
+    c(sigma, sigma_al, sigma_b, sigma_plate) ~ dexp(1)),
+  data=hyp.small,
+  chains=4,
+  cores=4,
+  iter = 4000,
+  log_lik=TRUE)
+```
 
 ```{r}
-compare(mj2, mj3a, mj3b)
+precis(mj3b2)
 ```
+
+```{r}
+precis(mj3b2, depth=2) %>% rownames_to_column(var="parameter") %>% arrange(desc(Rhat)) %>% head(20)
+```
+
+
+#### exp only:
+
+```{r}
+mj3b3 <- ulam(
+  alist(
+    length ~ dnorm(u, sigma),
+    u <- alpha_line[line_id] + beta_rfr[line_id] * low_rfr + alpha_exp[exp_id],
+    alpha_line[line_id] ~ dnorm(al_bar, sigma_al),
+    beta_rfr[line_id] ~ dnorm(b_bar, sigma_b),
+    alpha_exp[exp_id] ~ dnorm(0, sigma_exp),
+    al_bar ~ dnorm(4, 5),
+    b_bar ~ dnorm(0, 3),
+    c(sigma, sigma_al, sigma_b, sigma_exp) ~ dexp(1)),
+  data=hyp.small,
+  chains=4,
+  cores=4,
+  log_lik=TRUE)
+```
+
+```{r}
+precis(mj3b3)
+```
+
+```{r}
+precis(mj3b3, depth=2) %>% rownames_to_column(var="parameter") %>% arrange(desc(Rhat)) %>% head(20)
+```
+
+
+can we diagnose the problem?
+
+```{r}
+pnames <- precis(mj3b3, depth=2) %>% rownames_to_column(var="parameter") %>% arrange(desc(Rhat)) %>% head(10) %>% pull(parameter)
+
+pairs(mj3b3, pars=pnames)
+```
+
+Hah!
+
+plate is nested within experiment, so what if tried to model it that way?
+
+
+```{r, eval=FALSE}
+mj3b4 <- ulam(
+  alist(
+    length ~ dnorm(u, sigma),
+    u <- alpha_line[line_id] + beta_rfr[line_id] * low_rfr + alpha_plate[plate_id],
+    alpha_line[line_id] ~ dnorm(al_bar, sigma_al),
+    beta_rfr[line_id] ~ dnorm(b_bar, sigma_b),
+    alpha_plate[plate_id] ~ dnorm(a_plate_bar[exp_id], sigma_plate),
+    al_bar ~ dnorm(4, 5),
+    b_bar ~ dnorm(0, 3),
+    a_plate_bar[exp_id] ~ dnorm(0,1),
+    c(sigma, sigma_al, sigma_b, sigma_plate) ~ dexp(1)),
+  data=hyp.small,
+  chains=4,
+  cores=4,
+  iter = 4000,
+  log_lik=TRUE)
+```
+doesn't work "Chain 1: Exception: normal_lpdf: Random variable has dimension = 152, expecting dimension = 18031; a function was called with arguments of different scalar, array, vector, or matrix types, and they were not consistently sized;  all arguments must be scalars or multidimensional values of the same shape. "
+
+need to work on this more.
+
+```{r}
+compare(mj2, mj3a, mj3b2)
+```
+Wow!
+
+
+```{r}
+rbind(precis(mj2), head(precis(mj2, depth=2), 20))
+```
+
+```{r}
+rbind(precis(mj3a), head(precis(mj3a, depth=2), 20))
+```
+
+```{r}
+rbind(precis(mj3b2), head(precis(mj3b2, depth=2), 20))
+```
+
+
+would be nice to compare line estimates from the three models...later...
 
 
 ### 3: As 2, but use a multivariate normal model for the line slope and intercept effects
@@ -724,21 +832,52 @@ precis(mj4, depth=3) %>% rownames_to_column(var="parameter") %>% arrange(desc(Rh
 ```
 
 
+add plate
+
 ```{r}
-compare(mj2, mj3a, mj4)
+mj4a <- ulam(
+  alist(
+    length ~ dnorm(u, sigma),
+    u <- alpha_line[line_id] + beta_rfr[line_id] * low_rfr + alpha_plate[plate_id],
+    c(alpha_line, beta_rfr)[line_id] ~ multi_normal(c(a_bar, b_bar), Rho, sigma2),
+    a_bar ~ dnorm(4, 5),
+    b_bar ~ dnorm(0, 3),
+    alpha_plate[plate_id] ~ dnorm(0, sigma_plate),
+    c(sigma, sigma2, sigma_plate) ~ dexp(1),
+    Rho ~ lkj_corr(2)),
+  data=hyp.small,
+  chains=4,
+  cores=4,
+  iter=4000,
+  log_lik=TRUE)
+```
+
+```{r}
+precis(mj4a) 
+```
+
+```{r}
+precis(mj4a, depth = 3) %>% rownames_to_column(var="parameter") %>% arrange(desc(Rhat)) %>% head(20)
+```
+
+```{r}
+compare(mj2, mj3a, mj3b2, mj4, mj4a)
 ```
 
 Is there a correlation between slope and intercept?
 ```{r}
 precis(mj4, depth=3, pars = "Rho")
+```
 
+```{r}
+precis(mj4a, depth=3, pars = "Rho")
 ```
 
 Yes, negative correlation
 
 ### 4: As 3, but non-centered
 
-```{r, eval=FALSE}
+```{r}
 mj5 <- ulam(
   alist(
     length ~ dnorm(u, sigma),
@@ -757,17 +896,56 @@ mj5 <- ulam(
   data=hyp.small,
   chains=4,
   cores=4,
+  iter=4000,
   log_lik=TRUE)
 ```
 
 slower than centered(!)
 
 ```{r}
-precis(mj5)
+precis(mj5) 
 ```
 
 ```{r}
-compare(mj4,mj5)
+precis(mj5) %>% rownames_to_column(var="parameter") %>% arrange(desc(Rhat)) %>% head(20)
+```
+
+
+```{r}
+mj5a <- ulam(
+  alist(
+    length ~ dnorm(u, sigma),
+    u <- alpha + beta*low_rfr + 
+      alpha_beta_line[line_id, 1] + 
+      alpha_beta_line[line_id, 2] * low_rfr +
+      alpha_plate[plate_id] ~ dnorm(0, sigma_plate),
+    transpars> matrix[line_id, 2]:alpha_beta_line <- 
+      compose_noncentered(sigma_line, L_Rho_line, z_line),
+    matrix[2, line_id]:z_line ~ normal(0,1),
+    alpha ~ dnorm(4,5),
+    beta ~ dnorm(0,5),
+    vector[2]:sigma_line ~ dexp(1),
+    c(sigma,sigma_plate) ~ dexp(1),
+    cholesky_factor_corr[2]:L_Rho_line ~ lkj_corr_cholesky(2),
+    gq> matrix[2,2]:Rho_line <<- multiply_lower_tri_self_transpose(L_Rho_line)),
+  data=hyp.small,
+  chains=4,
+  cores=4,
+  iter=4000,
+  log_lik=TRUE)
+```
+
+```{r}
+precis(mj5a) 
+```
+
+```{r}
+precis(mj5a) %>% rownames_to_column(var="parameter") %>% arrange(desc(Rhat)) %>% head(20)
+```
+
+
+```{r}
+compare(mj4,mj5, mj4a, mj5a)
 ```
 
 
