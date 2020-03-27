@@ -554,8 +554,59 @@ _Feel free to explore the roles of other variables in the dataset too (such as v
 
 ```{r}
 library(foreign)
-qob = read.dta("/file/path/NEW7080.dta")
+qob = read.dta("NEW7080.dta")
 ```
+
+```{r}
+str(qob)
+```
+
+```{r}
+qobs <- with(qob, list(edu=standardize(v4), wage=standardize(v9), birth=standardize(v8)))
+str(qobs)
+```
+
+education as a predictor of age
+
+
+```{r}
+mr1 <- ulam(
+    alist(
+        wage ~ dnorm( mu , sigma ),
+        mu <- aW + bEW*edu,
+        aW ~ dnorm( 0 , 0.2 ),
+        bEW ~ dnorm( 0 , 0.5 ),
+        sigma ~ dexp( 1 )
+    ) , data=qobs , chains=4 , cores=4, log_lik = TRUE )
+```
+
+
+```{r}
+precis( mr1 )
+```
+
+
+```{r}
+## R code 14.25
+mr2 <- ulam(
+    alist(
+        c(wage, edu) ~ multi_normal( c(muW,muE) , Rho , Sigma ),
+        muW <- aW + bEW*edu,
+        muE <- aE + bQE*birth,
+        c(aW,aE) ~ normal( 0 , 0.2 ),
+        c(bEW,bQE) ~ normal( 0 , 0.5 ),
+        Rho ~ lkj_corr( 2 ),
+        Sigma ~ exponential( 1 )
+    ), data=qobs , chains=4 , cores=4, log_lik = TRUE )
+```
+
+
+```{r}
+precis( mr2 , depth=3 )
+```
+
+
+
 
 ## Julin
 
