@@ -8,6 +8,7 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, cache = TRUE, autodep = TRUE)
 library(rethinking)
+library(tidyverse)
 ```
 
 
@@ -263,18 +264,18 @@ data(UCBadmit)
 d <- UCBadmit
 dat_list <- list( admit = d$admit,
     applications = d$applications,
-    gid = ifelse( d$applicant.gender=="male" , 1L , 2L ),
+    gid = ifelse( d$applicant.gender=="male" , 0L , 1L ),
     dept_id = rep(1:6,each=2) )
 ```
 
-Original model:
+Varying Slopes model:
 ```{r}
-m11.8 <- ulam(
+m14M3a <- ulam(
   alist(
     admit ~ dbinom( applications , p ), 
-    logit(p) <- a[gid] + delta[dept_id],
-    a[gid] ~ dnorm( 0 , 1.5 ), 
-    delta[dept_id] ~ dnorm( 0 , 1.5 )),
+    logit(p) <- alpha[dept_id] + beta[dept_id]*gid,
+    alpha[dept_id] ~ dnorm( 0 , 1.5 ), 
+    beta[dept_id] ~ dnorm( 0 , 1.5 )),
   data=dat_list , 
   chains=4 , 
   iter=4000,
@@ -282,17 +283,17 @@ m11.8 <- ulam(
 
 ```
 
-De-centered model
+De-centered model, no pooling
 ```{r}
-m14M3 <- ulam(
+m14M3b <- ulam(
   alist(
     admit ~ dbinom( applications , p ), 
-    logit(p) <- a_bar + z_a[gid]*sigma_a + z_delta[dept_id]*sigma_d,
+    logit(p) <- a_bar + z_a[dept_id]*sigma_a + z_beta[dept_id]*gid*sigma_b,
     a_bar ~ dnorm(0,1.5),
-    z_a[gid] ~ dnorm( 0 , 1.5 ), 
-    z_delta[dept_id] ~ dnorm( 0 , 1.5 ),
+    z_a[dept_id] ~ dnorm( 0 , 1 ), 
+    z_beta[dept_id] ~ dnorm( 0 , 1 ),
     sigma_a ~ dexp(1),
-    sigma_d ~ dexp(1)),
+    sigma_b ~ dexp(1)),
   data=dat_list , 
   chains=4 , 
   iter=4000,
@@ -300,18 +301,71 @@ m14M3 <- ulam(
 ```
 
 ```{r}
-precis(m11.8, depth=2)
+precis(m14M3a, depth=2)
 ```
 
 ```{r}
-precis(m14M3, depth=2)
+precis(m14M3b, depth=2)
 ```
 
 ```{r}
-compare(m14M3, m11.8)
+compare(m14M3a, m14M3b)
 ```
 
-non-centred is slower to fit and has more divergent transitions but also has more effective samples and slightly fewer parameters.
+non-centred is slower to fit, has fewer effective samples and more parameters.
+
+
+partial pooling, interaction, centered
+
+```{r}
+m14M3c <- ulam(
+  alist(
+    admit ~ dbinom( applications , p ), 
+    logit(p) <- alpha[dept_id] + beta[dept_id]*gid,
+    c(alpha, beta)[dept_id] ~ multi_normal(c(a_bar, b_bar), Rho, sigma),
+    a_bar ~ dnorm( 0 , 1.5 ), 
+    b_bar ~ dnorm( 0 , 1.5 ),
+    Rho ~ lkj_corr(2),
+    sigma ~ dexp(1)),
+  data=dat_list , 
+  chains=4 , 
+  iter=4000,
+  log_lik = TRUE)
+```
+
+partial pooling, interaction, non-centered
+
+```{r}
+m14M3d <- ulam(
+  alist(
+    admit ~ dbinom( applications , p ), 
+    logit(p) <- gamma + coefm[dept_id,1] + coefm[dept_id,2]*gid,
+    gamma ~ dnorm(0, 1.5),
+    transpars> matrix[dept_id, 2]:coefm <- compose_noncentered(sigma, L_Rho, z),
+    matrix[2, dept_id]:z ~ normal(0,1),
+    vector[2]:sigma ~ dexp(1),
+    cholesky_factor_corr[2]:L_Rho ~ lkj_corr_cholesky(2),
+    gq> matrix[2,2]:Rho <<- multiply_lower_tri_self_transpose(L_Rho)),
+  data=dat_list , 
+  chains=4 , 
+  iter=4000,
+  log_lik = TRUE)
+```
+
+no divergent transitions
+
+```{r}
+precis(m14M3c, depth = 3)
+```
+
+```{r}
+precis(m14M3d, depth=3)
+```
+
+```{r}
+compare(m14M3a, m14M3b,m14M3c, m14M3d)
+```
+
 
 ## PDF1
 
@@ -395,11 +449,11 @@ de-center it?
 ```{r, eval=FALSE}
 mpdf1.3 <- ulam(alist(
   use ~ dbinom(1, p),
-  logit(p) <- alphabeta[1, d_id] + alphabeta[2, d_id]*urban,
-  transpars> matrix[2, d_id]:alphabeta <- compose_noncentered(sigma, L_Rho, z),
-  matrix[d_id, 2]:z ~ normal(0,1.5),
-  vector[2]:sigma ~ lkj_corr_cholesky( 2 ),
-  cholesky_factor_corr[2]: L_Rho ~ lkj_corr(2),
+  logit(p) <- alphabeta[d_id, 1] + alphabeta[d_id, 2]*urban,
+  transpars> matrix[d_id, 2]:alphabeta <- compose_noncentered(sigma, L_Rho, z),
+  matrix[2, d_id]:z ~ normal(0, 1),
+  vector[2]:sigma ~ dexp(1),
+  cholesky_factor_corr[2]:L_Rho ~ lkj_corr_cholesky(2),
   gq> matrix[2,2]:Rho <<- multiply_lower_tri_self_transpose(L_Rho)),
   data=d,
   cores = 4,
@@ -407,7 +461,61 @@ mpdf1.3 <- ulam(alist(
   log_lik = TRUE)
 ```
 
+The decentered model samples more quickly
 
+```{r}
+precis(mpdf1.3, depth=3)
+```
+
+```{r}
+compare(mpdf1.1, mpdf1.2, mpdf1.3)
+```
+
+### get model output
+
+```{r}
+pred.df <- as_tibble(expand.grid(d_id=unique(d$d_id), urban=c(0,1)))
+pred.df
+```
+
+
+```{r}
+post <- link(mpdf1.3, pred.df)
+str(post)
+```
+
+```{r}
+pred.df <- pred.df %>%
+  mutate(estimate=colMeans(post),
+         low89=apply(post,2,HPDI)[1,],
+         high89=apply(post,2,HPDI)[2,])
+pred.df
+```
+
+### plot it
+
+```{r}
+pred.df %>%
+  mutate(urban=as.character(urban)) %>%
+  ggplot(aes(x=urban, y=estimate, group=d_id)) +
+  geom_line(alpha=.2) +
+  geom_point()
+```
+
+Districts with the highest use have negative slopes whereas the rest have positive slopes.  So there is a negative correlation between intercept and slope.  Do we see that in the Rho matrix?
+
+```{r}
+precis(mpdf1.3, depth = 3, pars = "Rho")
+```
+
+Yes!
+
+```{r}
+pred.df %>%
+  select(d_id, urban, estimate) %>%
+  spread(key=urban, value = estimate, sep="_") %>%
+  qplot(x=urban_0, y=urban_1, data=.)
+```
 
 
 ## PDF2
@@ -432,6 +540,464 @@ coordinates(dagpdf2) <- list(
 drawdag(dagpdf2)  
 ```
 
+## Rongkui
+
+
+_As a curious individual having received above-average number of years of education, I suggest us taking a stab at this dataset with the method used in the textbook to see what we can discover about schooling and earnings. The variables in the dataset are poorly labeled, but the "Descriptive Statistics QOB.txt" file (also available on the economics.mit.edu webpage) provides some useful (although incomplete) clarification. According to the file, the columns we are interested in are:_
+
+* v4: years of education
+* v9: log of weekly wage, and 
+* v18: quarter of birth
+
+_Feel free to explore the roles of other variables in the dataset too (such as v1 age, v10 marital status, and v19 race). I look forward to seeing everybody's findings!_
+
+
+```{r}
+library(foreign)
+qob = read.dta("NEW7080.dta")
+```
+
+```{r}
+str(qob)
+```
+
+```{r}
+qobs <- with(qob, list(edu=standardize(v4), wage=standardize(v9), birth=standardize(v8)))
+str(qobs)
+```
+
+education as a predictor of age
+
+
+```{r}
+mr1 <- ulam(
+    alist(
+        wage ~ dnorm( mu , sigma ),
+        mu <- aW + bEW*edu,
+        aW ~ dnorm( 0 , 0.2 ),
+        bEW ~ dnorm( 0 , 0.5 ),
+        sigma ~ dexp( 1 )
+    ) , data=qobs , chains=4 , cores=4, log_lik = TRUE )
+```
+
+
+```{r}
+precis( mr1 )
+```
+
+
+```{r}
+## R code 14.25
+mr2 <- ulam(
+    alist(
+        c(wage, edu) ~ multi_normal( c(muW,muE) , Rho , Sigma ),
+        muW <- aW + bEW*edu,
+        muE <- aE + bQE*birth,
+        c(aW,aE) ~ normal( 0 , 0.2 ),
+        c(bEW,bQE) ~ normal( 0 , 0.5 ),
+        Rho ~ lkj_corr( 2 ),
+        Sigma ~ exponential( 1 )
+    ), data=qobs , chains=4 , cores=4, log_lik = TRUE )
+```
+
+
+```{r}
+precis( mr2 , depth=3 )
+```
+
+
+
+
+## Julin
+
+_ Attached are data from an experiment measuring hypocotyl length in ~ 180 natural arabidopsis accessions grown in high and low red:far-red light.  We want to know if there are differences in accessions in their length in high R:FR ("H") and in their response to low R:FR("L").  Also we want to obtain an estimate for hypocotyl length for each accession in high and low R:FR for downstream GWAS analysis._
+
+_Relevant variables:_
+* length -- hypocotyl length
+* line -- unique ID for each accession (you could also use nativename)
+* light -- indicator for high or low RFR
+* exp -- two independent experiments were done
+* plate -- this is an incomplete block design with a subset (10? 12?) of accessions on each plate.
+
+_Let's try a variety of increasingly complex models:_
+* No pooling
+* Partial pooling of intercepts and slopes for line and intercepts for plate and experiment, but treat each variable separately (no multivariate component).  you might also consider adding an experiment slope effect
+* As 2, but use a multivariate normal model for the line slope and intercept effects
+* As 3, but non-centered
+
+_Evaluate and compare the models.  Is there evidence of line, treatment, and line X treatment effects?  How does the magnitude of the experiment and plate effects compare to the line effects?_
+
+```{r}
+hyp <- read_csv("hyp.lengths.both.experiments.labels.csv") %>%
+  mutate(line_id=as.integer(as.factor(nativename)),
+         exp_id=as.integer(as.factor(exp)),
+         plate_id=as.integer(as.factor(plate)),
+         low_rfr=ifelse(light=="L", 1L, 0L))
+hyp.small <- hyp %>% select(length, line_id, low_rfr, plate_id, exp_id, nativename)
+hyp.small
+```
+
+### no pooling, no interaction
+
+```{r}
+hyp.small %>%
+  summarize(mean=mean(length), sd=sd(length))
+```
+
+
+```{r}
+mj1 <- ulam(
+  alist(
+    length ~ dnorm(u, sigma),
+    u <- alpha[line_id] + beta_rfr * low_rfr,
+    alpha[line_id] ~ dnorm(4.1, 5),
+    beta_rfr ~ dnorm(0,5),
+    sigma ~ dexp(1)),
+  data=hyp.small,
+  chains=4,
+  cores=4,
+  log_lik=TRUE)
+```
+
+```{r}
+#traceplot(mj1, ask=FALSE)
+head(precis(mj1, depth=2))
+```
+
+### no pooling, yes interaction
+```{r}
+mj2 <- ulam(
+  alist(
+    length ~ dnorm(u, sigma),
+    u <- alpha[line_id] + beta_rfr[line_id] * low_rfr,
+    alpha[line_id] ~ dnorm(4.1, 5),
+    beta_rfr[line_id] ~ dnorm(0,5),
+    sigma ~ dexp(1)),
+  data=hyp.small,
+  chains=4,
+  cores=4,
+  log_lik=TRUE)
+```
+
+```{r}
+#traceplot(mj2, ask=FALSE)
+head(precis(mj2, depth = 2))
+```
+
+```{r}
+compare(mj1, mj2)
+```
+
+
+### 2: Partial pooling of intercepts and slopes for line and intercepts for plate and experiment, but treat each variable separately
+
+first, leave plate and experiment out of it
+```{r}
+mj3a <- ulam(
+  alist(
+    length ~ dnorm(u, sigma),
+    u <- alpha[line_id] + beta_rfr[line_id] * low_rfr,
+    alpha[line_id] ~ dnorm(a_bar, sigma_a),
+    beta_rfr[line_id] ~ dnorm(b_bar, sigma_b),
+    a_bar ~ dnorm(4, 5),
+    b_bar ~ dnorm(0, 3),
+    c(sigma, sigma_a, sigma_b) ~ dexp(1)),
+  data=hyp.small,
+  chains=4,
+  cores=4,
+  log_lik=TRUE)
+```
+
+```{r}
+precis(mj3a)
+```
+
+```{r}
+compare(mj2, mj3a)
+```
+
+
+add experiment and plate #fail!
+```{r, eval=FALSE}
+mj3b <- ulam(
+  alist(
+    length ~ dnorm(u, sigma),
+    u <- alpha_line[line_id] + beta_rfr[line_id] * low_rfr + alpha_plate[plate_id] + alpha_exp[exp_id],
+    alpha_line[line_id] ~ dnorm(al_bar, sigma_al),
+    beta_rfr[line_id] ~ dnorm(b_bar, sigma_b),
+    alpha_plate[plate_id] ~ dnorm(0, sigma_plate),
+    alpha_exp[exp_id] ~ dnorm(0, sigma_exp),
+    al_bar ~ dnorm(4, 5),
+    b_bar ~ dnorm(0, 3),
+    c(sigma, sigma_al, sigma_b, sigma_plate, sigma_exp) ~ dexp(1)),
+  data=hyp.small,
+  chains=4,
+  cores=4,
+  log_lik=TRUE)
+```
+
+```{r, eval=FALSE}
+precis(mj3b, depth=2) %>% rownames_to_column(var="parameter") %>% arrange(desc(Rhat)) %>% head(20)
+```
+
+plate only?
+
+```{r, eval=FALSE}
+mj3b2 <- ulam(
+  alist(
+    length ~ dnorm(u, sigma),
+    u <- alpha_line[line_id] + beta_rfr[line_id] * low_rfr + alpha_plate[plate_id],
+    alpha_line[line_id] ~ dnorm(al_bar, sigma_al),
+    beta_rfr[line_id] ~ dnorm(b_bar, sigma_b),
+    alpha_plate[plate_id] ~ dnorm(0, sigma_plate),
+    al_bar ~ dnorm(4, 5),
+    b_bar ~ dnorm(0, 3),
+    c(sigma, sigma_al, sigma_b, sigma_plate) ~ dexp(1)),
+  data=hyp.small,
+  chains=4,
+  cores=4,
+  iter = 4000,
+  log_lik=TRUE)
+```
+
+```{r}
+precis(mj3b2)
+```
+
+```{r}
+precis(mj3b2, depth=2) %>% rownames_to_column(var="parameter") %>% arrange(desc(Rhat)) %>% head(20)
+```
+
+
+#### exp only:
+
+```{r}
+mj3b3 <- ulam(
+  alist(
+    length ~ dnorm(u, sigma),
+    u <- alpha_line[line_id] + beta_rfr[line_id] * low_rfr + alpha_exp[exp_id],
+    alpha_line[line_id] ~ dnorm(al_bar, sigma_al),
+    beta_rfr[line_id] ~ dnorm(b_bar, sigma_b),
+    alpha_exp[exp_id] ~ dnorm(0, sigma_exp),
+    al_bar ~ dnorm(4, 5),
+    b_bar ~ dnorm(0, 3),
+    c(sigma, sigma_al, sigma_b, sigma_exp) ~ dexp(1)),
+  data=hyp.small,
+  chains=4,
+  cores=4,
+  log_lik=TRUE)
+```
+
+```{r}
+precis(mj3b3)
+```
+
+```{r}
+precis(mj3b3, depth=2) %>% rownames_to_column(var="parameter") %>% arrange(desc(Rhat)) %>% head(20)
+```
+
+
+can we diagnose the problem?
+
+```{r}
+pnames <- precis(mj3b3, depth=2) %>% rownames_to_column(var="parameter") %>% arrange(desc(Rhat)) %>% head(10) %>% pull(parameter)
+
+pairs(mj3b3, pars=pnames)
+```
+
+Hah!
+
+plate is nested within experiment, so what if tried to model it that way?
+
+
+```{r, eval=FALSE}
+mj3b4 <- ulam(
+  alist(
+    length ~ dnorm(u, sigma),
+    u <- alpha_line[line_id] + beta_rfr[line_id] * low_rfr + alpha_plate[plate_id],
+    alpha_line[line_id] ~ dnorm(al_bar, sigma_al),
+    beta_rfr[line_id] ~ dnorm(b_bar, sigma_b),
+    alpha_plate[plate_id] ~ dnorm(a_plate_bar[exp_id], sigma_plate),
+    al_bar ~ dnorm(4, 5),
+    b_bar ~ dnorm(0, 3),
+    a_plate_bar[exp_id] ~ dnorm(0,1),
+    c(sigma, sigma_al, sigma_b, sigma_plate) ~ dexp(1)),
+  data=hyp.small,
+  chains=4,
+  cores=4,
+  iter = 4000,
+  log_lik=TRUE)
+```
+doesn't work "Chain 1: Exception: normal_lpdf: Random variable has dimension = 152, expecting dimension = 18031; a function was called with arguments of different scalar, array, vector, or matrix types, and they were not consistently sized;  all arguments must be scalars or multidimensional values of the same shape. "
+
+need to work on this more.
+
+```{r}
+compare(mj2, mj3a, mj3b2)
+```
+Wow!
+
+
+```{r}
+rbind(precis(mj2), head(precis(mj2, depth=2), 20))
+```
+
+```{r}
+rbind(precis(mj3a), head(precis(mj3a, depth=2), 20))
+```
+
+```{r}
+rbind(precis(mj3b2), head(precis(mj3b2, depth=2), 20))
+```
+
+
+would be nice to compare line estimates from the three models...later...
+
+
+### 3: As 2, but use a multivariate normal model for the line slope and intercept effects
+
+leave plate and exp out for now
+
+```{r}
+mj4 <- ulam(
+  alist(
+    length ~ dnorm(u, sigma),
+    u <- alpha_line[line_id] + beta_rfr[line_id] * low_rfr,
+    c(alpha_line, beta_rfr)[line_id] ~ multi_normal(c(a_bar, b_bar), Rho, sigma2),
+    a_bar ~ dnorm(4, 5),
+    b_bar ~ dnorm(0, 3),
+    c(sigma, sigma2) ~ dexp(1),
+    Rho ~ lkj_corr(2)),
+  data=hyp.small,
+  chains=4,
+  cores=4,
+  log_lik=TRUE)
+```
+
+```{r}
+precis(mj4)
+```
+
+```{r}
+precis(mj4, depth=3) %>% rownames_to_column(var="parameter") %>% arrange(desc(Rhat)) %>% head(20)
+```
+
+
+add plate
+
+```{r}
+mj4a <- ulam(
+  alist(
+    length ~ dnorm(u, sigma),
+    u <- alpha_line[line_id] + beta_rfr[line_id] * low_rfr + alpha_plate[plate_id],
+    c(alpha_line, beta_rfr)[line_id] ~ multi_normal(c(a_bar, b_bar), Rho, sigma2),
+    a_bar ~ dnorm(4, 5),
+    b_bar ~ dnorm(0, 3),
+    alpha_plate[plate_id] ~ dnorm(0, sigma_plate),
+    c(sigma, sigma2, sigma_plate) ~ dexp(1),
+    Rho ~ lkj_corr(2)),
+  data=hyp.small,
+  chains=4,
+  cores=4,
+  iter=4000,
+  log_lik=TRUE)
+```
+
+```{r}
+precis(mj4a) 
+```
+
+```{r}
+precis(mj4a, depth = 3) %>% rownames_to_column(var="parameter") %>% arrange(desc(Rhat)) %>% head(20)
+```
+
+```{r}
+compare(mj2, mj3a, mj3b2, mj4, mj4a)
+```
+
+Is there a correlation between slope and intercept?
+```{r}
+precis(mj4, depth=3, pars = "Rho")
+```
+
+```{r}
+precis(mj4a, depth=3, pars = "Rho")
+```
+
+Yes, negative correlation
+
+### 4: As 3, but non-centered
+
+```{r}
+mj5 <- ulam(
+  alist(
+    length ~ dnorm(u, sigma),
+    u <- alpha + beta*low_rfr + 
+      alpha_beta_line[line_id, 1] + 
+      alpha_beta_line[line_id, 2] * low_rfr,
+    transpars> matrix[line_id, 2]:alpha_beta_line <- 
+      compose_noncentered(sigma_line, L_Rho_line, z_line),
+    matrix[2, line_id]:z_line ~ normal(0,1),
+    alpha ~ dnorm(4,5),
+    beta ~ dnorm(0,5),
+    vector[2]:sigma_line ~ dexp(1),
+    sigma ~ dexp(1),
+    cholesky_factor_corr[2]:L_Rho_line ~ lkj_corr_cholesky(2),
+    gq> matrix[2,2]:Rho_line <<- multiply_lower_tri_self_transpose(L_Rho_line)),
+  data=hyp.small,
+  chains=4,
+  cores=4,
+  iter=4000,
+  log_lik=TRUE)
+```
+
+slower than centered(!)
+
+```{r}
+precis(mj5) 
+```
+
+```{r}
+precis(mj5) %>% rownames_to_column(var="parameter") %>% arrange(desc(Rhat)) %>% head(20)
+```
+
+
+```{r}
+mj5a <- ulam(
+  alist(
+    length ~ dnorm(u, sigma),
+    u <- alpha + beta*low_rfr + 
+      alpha_beta_line[line_id, 1] + 
+      alpha_beta_line[line_id, 2] * low_rfr +
+      alpha_plate[plate_id] ~ dnorm(0, sigma_plate),
+    transpars> matrix[line_id, 2]:alpha_beta_line <- 
+      compose_noncentered(sigma_line, L_Rho_line, z_line),
+    matrix[2, line_id]:z_line ~ normal(0,1),
+    alpha ~ dnorm(4,5),
+    beta ~ dnorm(0,5),
+    vector[2]:sigma_line ~ dexp(1),
+    c(sigma,sigma_plate) ~ dexp(1),
+    cholesky_factor_corr[2]:L_Rho_line ~ lkj_corr_cholesky(2),
+    gq> matrix[2,2]:Rho_line <<- multiply_lower_tri_self_transpose(L_Rho_line)),
+  data=hyp.small,
+  chains=4,
+  cores=4,
+  iter=4000,
+  log_lik=TRUE)
+```
+
+```{r}
+precis(mj5a) 
+```
+
+```{r}
+precis(mj5a) %>% rownames_to_column(var="parameter") %>% arrange(desc(Rhat)) %>% head(20)
+```
+
+
+```{r}
+compare(mj4,mj5, mj4a, mj5a)
+```
 
 
 # Book
