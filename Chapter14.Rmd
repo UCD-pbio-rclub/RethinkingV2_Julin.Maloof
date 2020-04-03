@@ -819,11 +819,22 @@ dagIV <- dagitty( "dag{
     Q -> E
 }")
 instrumentalVariables( dagIV , exposure="E" , outcome="W" )
+```
 
+
+```{r, eval=FALSE}
 ## R code 14.29
 library(rethinking)
 data(KosterLeckie)
+library(tidyverse)
+```
 
+```{r, eval=FALSE}
+kl_dyads %>% arrange(did)
+```
+
+
+```{r, eval=FALSE}
 ## R code 14.30
 kl_data <- list(
     N = nrow(kl_dyads),
@@ -834,7 +845,10 @@ kl_data <- list(
     giftsAB = kl_dyads$giftsAB,
     giftsBA = kl_dyads$giftsBA
 )
+```
 
+
+```{r, eval=FALSE}
 m14.4 <- ulam(
     alist(
         giftsAB ~ poisson( lambdaAB ),
@@ -858,17 +872,26 @@ m14.4 <- ulam(
        ## compute correlation matrix for dyads
         gq> matrix[2,2]:Rho_d <<- Chol_to_Corr( L_Rho_d )
     ), data=kl_data , chains=4 , cores=4 , iter=2000 )
+```
 
+
+```{r, eval=FALSE}
 ## R code 14.31
 precis( m14.4 , depth=3 , pars=c("Rho_gr","sigma_gr") )
+```
 
+
+```{r, eval=FALSE}
 ## R code 14.32
 post <- extract.samples( m14.4 )
 g <- sapply( 1:25 , function(i) post$a + post$gr[,i,1] )
 r <- sapply( 1:25 , function(i) post$a + post$gr[,i,2] )
 Eg_mu <- apply( exp(g) , 2 , mean )
 Er_mu <- apply( exp(r) , 2 , mean )
+```
 
+
+```{r, eval=FALSE}
 ## R code 14.33
 plot( NULL , xlim=c(0,8.6) , ylim=c(0,8.6) , xlab="generalized giving" ,
     ylab="generalized receiving" , lwd=1.5 )
@@ -886,15 +909,24 @@ for ( i in 1:25 ) {
 }
 # household means
 points( Eg_mu , Er_mu , pch=21 , bg="white" , lwd=1.5 )
+```
 
+
+```{r, eval=FALSE}
 ## R code 14.34
 precis( m14.4 , depth=3 , pars=c("Rho_d","sigma_d") )
+```
 
+
+```{r, eval=FALSE}
 ## R code 14.35
 dy1 <- apply( post$d[,,1] , 2 , mean )
 dy2 <- apply( post$d[,,2] , 2 , mean )
 plot( dy1 , dy2 )
+```
 
+
+```{r, eval=FALSE}
 ## R code 14.36
 # load the distance matrix
 library(rethinking)
