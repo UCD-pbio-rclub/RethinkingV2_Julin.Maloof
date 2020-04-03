@@ -446,7 +446,7 @@ compare(mpdf1.1, mpdf1.2)
 
 
 de-center it? 
-```{r, eval=FALSE}
+```{r}
 mpdf1.3 <- ulam(alist(
   use ~ dbinom(1, p),
   logit(p) <- alphabeta[d_id, 1] + alphabeta[d_id, 2]*urban,
@@ -512,7 +512,7 @@ Yes!
 
 ```{r}
 pred.df %>%
-  select(d_id, urban, estimate) %>%
+  dplyr::select(d_id, urban, estimate) %>%
   spread(key=urban, value = estimate, sep="_") %>%
   qplot(x=urban_0, y=urban_1, data=.)
 ```
@@ -520,7 +520,8 @@ pred.df %>%
 
 ## PDF2
 
-2. Now consider the predictor variables age.centered and living.children, also contained in data(bangladesh). Suppose that age influences contraceptive use (changing attitudes) and number of children (older people have had more time to have kids). Number of children may also directly influence contraceptive use. Draw a DAG that reflects these hypothetical relationships. Then build models needed to evaluate the DAG. You will need at least two models. Retain district and urban, as in Problem 1. What do you conclude about the causal influence of age and children?
+_2. Now consider the predictor variables age.centered and living.children, also contained in data(bangladesh). Suppose that age influences contraceptive use (changing attitudes) and number of children (older people have had more time to have kids). Number of children may also directly influence contraceptive use. Draw a DAG that reflects these hypothetical relationships. Then build models needed to evaluate the DAG. You will need at least two models. Retain district and urban, as in Problem 1. What do you conclude about the causal influence of age and children?_
+
 
 ```{r}
 library(dagitty)
@@ -538,6 +539,129 @@ coordinates(dagpdf2) <- list(
   y=c(use=2, age=1, n_child=3))
 
 drawdag(dagpdf2)  
+```
+
+```{r}
+d <- with(bangladesh, 
+          list(use=use.contraception, d_id=d_id, urban=urban, age=age.centered, children=living.children))
+str(d)
+```
+
+
+Is number of children important?
+```{r}
+mpdf2.1 <- ulam(alist(
+  use ~ dbinom(1, p),
+  logit(p) <- alphabeta[d_id, 1] + alphabeta[d_id, 2]*urban + beta_child*children,
+  transpars> matrix[d_id, 2]:alphabeta <- compose_noncentered(sigma, L_Rho, z),
+  matrix[2, d_id]:z ~ normal(0, 1),
+  vector[2]:sigma ~ dexp(1),
+  cholesky_factor_corr[2]:L_Rho ~ lkj_corr_cholesky(2),
+  gq> matrix[2,2]:Rho <<- multiply_lower_tri_self_transpose(L_Rho),
+  beta_child ~ normal(0,.5)),
+  data=d,
+  cores = 4,
+  chains = 4,
+  log_lik = TRUE)
+```
+
+```{r}
+precis(mpdf2.1)
+```
+
+```{r}
+precis(mpdf2.1, depth = 3) %>% rownames_to_column("parameter") %>% arrange(desc(Rhat))
+```
+
+
+children still important considering age?
+```{r}
+mpdf2.2 <- ulam(alist(
+  use ~ dbinom(1, p),
+  logit(p) <- alphabeta[d_id, 1] + alphabeta[d_id, 2]*urban + beta_child*children + beta_age*age,
+  transpars> matrix[d_id, 2]:alphabeta <- compose_noncentered(sigma, L_Rho, z),
+  matrix[2, d_id]:z ~ normal(0, 1),
+  vector[2]:sigma ~ dexp(1),
+  cholesky_factor_corr[2]:L_Rho ~ lkj_corr_cholesky(2),
+  gq> matrix[2,2]:Rho <<- multiply_lower_tri_self_transpose(L_Rho),
+  c(beta_age, beta_child) ~ normal(0,.5)),
+  data=d,
+  cores = 4,
+  chains = 4,
+  log_lik = TRUE)
+```
+
+```{r}
+precis(mpdf2.2)
+```
+
+Now neither are significant
+
+```{r}
+precis(mpdf2.2, depth = 3) %>% rownames_to_column("parameter") %>% arrange(desc(Rhat))
+```
+
+
+_3. Modify any models from Problem 2 that contained that children variable and model the variable now as a monotonic ordered category, like education from the week we did ordered categories. Education in that example had 8 categories. Children here will have fewer (no one in the sample had 8 children). So modify the code appropriately. What do you conclude about the causal influence of each additional child on use of contraception?_
+
+```{r}
+min(d$children)
+max(d$children)
+```
+
+```{r}
+d <- with(bangladesh, 
+          list(use=use.contraception, d_id=d_id, urban=urban, age=age.centered, children=as.integer(living.children)))
+str(d)
+alpha <- rep(2,4)
+d$alpha <- alpha
+```
+
+```{r}
+mpdf3.1 <- ulam(alist(
+  use ~ ordered_logistic(phi, kappa),
+  phi <- alphabeta[d_id, 1] + alphabeta[d_id, 2]*urban + beta_child*sum(delta_j[1:children]),
+  transpars> matrix[d_id, 2]:alphabeta <- compose_noncentered(sigma, L_Rho, z),
+  matrix[2, d_id]:z ~ normal(0, 1),
+  vector[2]:sigma ~ dexp(1),
+  cholesky_factor_corr[2]:L_Rho ~ lkj_corr_cholesky(2),
+  gq> matrix[2,2]:Rho <<- multiply_lower_tri_self_transpose(L_Rho),
+  beta_child ~ normal(0,.5),
+  vector[5]: delta_j <<- append_row(0, delta),
+  simplex[4]: delta ~ dirichlet(alpha),
+  kappa ~ normal(0, 1.5)),
+  data=d,
+  cores = 4,
+  chains = 4,
+  log_lik = TRUE)
+```
+
+```{r}
+precis(mpdf3.1)
+```
+
+```{r}
+precis(mpdf3.1) %>% rownames_to_column("parameter") %>% arrange(desc(Rhat))
+```
+
+
+```{r}
+mpdf3.2 <- ulam(alist(
+  use ~ ordered_logistic(phi, kappa),
+  phi <- alphabeta[d_id, 1] + alphabeta[d_id, 2]*urban + beta_child*sum(delta_j[1:children]) + beta_age*age,
+  transpars> matrix[d_id, 2]:alphabeta <- compose_noncentered(sigma, L_Rho, z),
+  matrix[2, d_id]:z ~ normal(0, 1),
+  vector[2]:sigma ~ dexp(1),
+  cholesky_factor_corr[2]:L_Rho ~ lkj_corr_cholesky(2),
+  gq> matrix[2,2]:Rho <<- multiply_lower_tri_self_transpose(L_Rho),
+  c(beta_child, beta_age) ~ normal(0,.5),
+  vector[5]: delta_j <<- append_row(0, delta),
+  simplex[4]: delta ~ dirichlet(alpha),
+  kappa ~ normal(0, 1.5)),
+  data=d,
+  cores = 4,
+  chains = 4,
+  log_lik = TRUE)
 ```
 
 ## Rongkui
