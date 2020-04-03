@@ -562,8 +562,10 @@ str(qob)
 ```
 
 ```{r}
-qobs <- with(qob, list(edu=standardize(v4), wage=standardize(v9), birth=standardize(v8)))
-str(qobs)
+set.seed(123)
+qobs <- sample_frac(qob, 0.05)
+qobs2 <- with(qobs, list(edu=standardize(v4), wage=standardize(v9), birth=standardize(v8)))
+str(qobs2)
 ```
 
 education as a predictor of age
@@ -577,7 +579,7 @@ mr1 <- ulam(
         aW ~ dnorm( 0 , 0.2 ),
         bEW ~ dnorm( 0 , 0.5 ),
         sigma ~ dexp( 1 )
-    ) , data=qobs , chains=4 , cores=4, log_lik = TRUE )
+    ) , data=qobs2 , chains=4 , cores=4, log_lik = TRUE )
 ```
 
 
@@ -597,7 +599,7 @@ mr2 <- ulam(
         c(bEW,bQE) ~ normal( 0 , 0.5 ),
         Rho ~ lkj_corr( 2 ),
         Sigma ~ exponential( 1 )
-    ), data=qobs , chains=4 , cores=4, log_lik = TRUE )
+    ), data=qobs2 , chains=4 , cores=4 )
 ```
 
 
@@ -663,6 +665,11 @@ mj1 <- ulam(
 #traceplot(mj1, ask=FALSE)
 head(precis(mj1, depth=2))
 ```
+
+```{r}
+precis(mj1)
+```
+
 
 ### no pooling, yes interaction
 ```{r}
