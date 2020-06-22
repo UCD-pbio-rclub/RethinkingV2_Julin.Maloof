@@ -1814,6 +1814,7 @@ for( i in 1:10 )
 ## R code 14.44
 # compute posterior median relationship, ignoring distance
 logpop.seq <- seq( from=6 , to=14 , length.out=30 )
+#lambda <- sapply( logpop.seq , function(lp) exp( post$a + post$b*lp) )
 #lambda <- sapply( logpop.seq , function(lp) exp( post$a + post$b*lp  - post$g) )
 lambda <- sapply( logpop.seq , function(lp) post$a*exp(lp)^post$b/post$g )
 

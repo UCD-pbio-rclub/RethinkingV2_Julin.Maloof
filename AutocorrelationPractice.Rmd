@@ -1,0 +1,41 @@
+---
+title: "Autocorrelation Problems"
+output: html_notebook
+---
+
+```{r}
+data("hopkins", package = "spData")
+head(hopkins)
+library(tidyverse)
+library(rethinking)
+```
+
+```{r}
+image(1:40, 1:40, hopkins)
+```
+
+```{r}
+hopkins.l <- hopkins %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var="ypos") %>%
+  pivot_longer(-ypos, names_to = "xpos", values_to = "count", names_prefix = "V") %>%
+  mutate(cell=str_c(xpos, "_", ypos)) %>%
+  mutate_at(vars(ends_with("pos")), as.numeric)
+hopkins.l
+```
+
+```{r}
+m1 <- ulam(alist(
+  count ~ dpois(lambda),
+  lambda <- log(a),
+  a ~ dnorm(1,1)),
+  data = hopkins.l,
+  chains = 4,
+  log_lik = TRUE,
+  cores = 4)
+```
+
+```{r}
+precis(m1)
+```
+
