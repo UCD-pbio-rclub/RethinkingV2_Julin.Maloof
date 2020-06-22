@@ -1131,6 +1131,76 @@ compare(mj4,mj5, mj4a, mj5a)
 ```
 
 
+## 14M4
+_Use WAIC to compare the Gaussian process model of Oceanic tools to the models fit to the same data in Chapter 11. Pay special attention to the effective numbers of parameters, as estimated by WAIC._
+
+
+### Chapter 14: Guassian process model
+
+
+```{r}
+## R code 14.36
+# load the distance matrix
+library(rethinking)
+data(islandsDistMatrix)
+
+# display (measured in thousands of km)
+Dmat <- islandsDistMatrix
+colnames(Dmat) <- c("Ml","Ti","SC","Ya","Fi","Tr","Ch","Mn","To","Ha")
+round(Dmat,1)
+```
+
+
+```{r}
+## R code 14.38
+data(Kline2) # load the ordinary data, now with coordinates
+d <- Kline2
+d$society <- 1:10 # index observations
+
+dat_list <- list(
+    T = d$total_tools,
+    P = d$population,
+    society = d$society,
+    Dmat=islandsDistMatrix )
+
+m14.7 <- ulam(
+    alist(
+        T ~ dpois(lambda),
+        lambda <- (a*P^b/g)*exp(k[society]),
+        vector[10]:k ~ multi_normal( 0 , SIGMA ),
+        matrix[10,10]:SIGMA <- cov_GPL2( Dmat , etasq , rhosq , 0.01 ),
+        c(a,b,g) ~ dexp( 1 ),
+        etasq ~ dexp( 2 ),
+        rhosq ~ dexp( 0.5 )
+    ), data=dat_list , chains=4 , cores=4 , iter=2000, log_lik = TRUE )
+```
+
+### Chapter 11
+```{r}
+d$contact_id <- ifelse( d$contact=="high" , 2 , 1 )
+dat2 <- list( T=d$total_tools, P=d$population, cid=d$contact_id )
+m11.11 <- ulam(
+    alist(
+        T ~ dpois( lambda ),
+        lambda <- exp(a[cid])*P^b[cid]/g,
+        a[cid] ~ dnorm(1,1),
+        b[cid] ~ dexp(1),
+        g ~ dexp(1)
+    ), data=dat2 , chains=4 , log_lik=TRUE )
+```
+
+The original data in chapter 11 used scaled log(P) but chapter 14 does not...
+
+```{r}
+precis(m11.11, depth = 2)
+precis(m14.7)
+```
+
+```{r}
+compare(m11.11, m14.7)
+```
+
+
 # Book
 
 Simulate some cafes
@@ -1633,7 +1703,10 @@ data(islandsDistMatrix)
 Dmat <- islandsDistMatrix
 colnames(Dmat) <- c("Ml","Ti","SC","Ya","Fi","Tr","Ch","Mn","To","Ha")
 round(Dmat,1)
+```
 
+
+```{r, eval=FALSE}
 ## R code 14.37
 # linear
 curve( exp(-1*x) , from=0 , to=4 , lty=2 ,
@@ -1641,7 +1714,10 @@ curve( exp(-1*x) , from=0 , to=4 , lty=2 ,
 
 # squared
 curve( exp(-1*x^2) , add=TRUE )
+```
 
+
+```{r, eval=FALSE}
 ## R code 14.38
 data(Kline2) # load the ordinary data, now with coordinates
 d <- Kline2
@@ -1663,10 +1739,16 @@ m14.7 <- ulam(
         etasq ~ dexp( 2 ),
         rhosq ~ dexp( 0.5 )
     ), data=dat_list , chains=4 , cores=4 , iter=2000 )
+```
 
+
+```{r, eval=FALSE}
 ## R code 14.39
 precis( m14.7 , depth=3 )
+```
 
+
+```{r, eval=FALSE}
 ## R code 14.40
 post <- extract.samples(m14.7)
 
@@ -1684,7 +1766,10 @@ lines( x_seq , pmcov_mu , lwd=2 )
 for ( i in 1:50 )
     curve( post$etasq[i]*exp(-post$rhosq[i]*x^2) , add=TRUE ,
         col=col.alpha("black",0.3) )
+```
 
+
+```{r, eval=FALSE}
 ## R code 14.41
 # compute posterior median covariance among societies
 K <- matrix(0,nrow=10,ncol=10)
@@ -1701,7 +1786,10 @@ Rho <- round( cov2cor(K) , 2 )
 colnames(Rho) <- c("Ml","Ti","SC","Ya","Fi","Tr","Ch","Mn","To","Ha")
 rownames(Rho) <- colnames(Rho)
 Rho
+```
 
+
+```{r, eval=FALSE}
 ## R code 14.43
 # scale point size to logpop
 psize <- d$logpop / max(d$logpop)
@@ -1719,17 +1807,24 @@ for( i in 1:10 )
         if ( i < j )
             lines( c( d$lon2[i],d$lon2[j] ) , c( d$lat[i],d$lat[j] ) ,
                 lwd=2 , col=col.alpha("black",Rho[i,j]^2) )
+```
 
+
+```{r, eval=FALSE}
 ## R code 14.44
 # compute posterior median relationship, ignoring distance
 logpop.seq <- seq( from=6 , to=14 , length.out=30 )
-lambda <- sapply( logpop.seq , function(lp) exp( post$a + post$bp*lp ) )
+#lambda <- sapply( logpop.seq , function(lp) exp( post$a + post$b*lp) )
+#lambda <- sapply( logpop.seq , function(lp) exp( post$a + post$b*lp  - post$g) )
+lambda <- sapply( logpop.seq , function(lp) post$a*exp(lp)^post$b/post$g )
+
+# why not (post$a*lp^post$b/post$g) ??
 lambda.median <- apply( lambda , 2 , median )
 lambda.PI80 <- apply( lambda , 2 , PI , prob=0.8 )
 
 # plot raw data and labels
 plot( d$logpop , d$total_tools , col=rangi2 , cex=psize , pch=16 ,
-    xlab="log population" , ylab="total tools" )
+    xlab="log population" , ylab="total tools" ,)
 text( d$logpop , d$total_tools , labels=labels , cex=0.7 ,
     pos=c(4,3,4,2,2,1,4,4,4,2) )
 
@@ -1745,7 +1840,10 @@ for( i in 1:10 )
             lines( c( d$logpop[i],d$logpop[j] ) ,
                    c( d$total_tools[i],d$total_tools[j] ) ,
                    lwd=2 , col=col.alpha("black",Rho[i,j]^2) )
+```
 
+
+```{r, eval=FALSE}
 ## R code 14.45
 m14.7nc <- ulam(
     alist(
