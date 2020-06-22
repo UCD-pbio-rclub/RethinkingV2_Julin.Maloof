@@ -543,7 +543,7 @@ drawdag(dagpdf2)
 
 ```{r}
 d <- with(bangladesh, 
-          list(use=use.contraception, d_id=d_id, urban=urban, age=age.centered, children=living.children))
+          list(use=use.contraception, d_id=d_id, urban=urban, age=standardize(age.centered), children=standardize(living.children)))
 str(d)
 ```
 
