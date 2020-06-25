@@ -1,10 +1,12 @@
 ---
 title: "Autocorrelation Problems"
-author: Julin N Maloof
-output: 
-  html_document: 
-    keep_md: yes
+author: "Julin N Maloof"
+output: html_notebook
 ---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
 
 ```{r}
 data("hopkins", package = "spData")
@@ -43,12 +45,13 @@ hopkins.l %>%
 
 
 ```{r}
+dat <- list(count=hopkins.l$count)
 m1 <- ulam(alist(
   count ~ dnorm(mu, sig),
   mu <- a,
   a ~ dnorm(2,1),
   sig ~ dexp(1)),
-  data = hopkins.l,
+  data = dat,
   chains = 4,
   log_lik = TRUE,
   cores = 4)
