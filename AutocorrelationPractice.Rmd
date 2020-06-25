@@ -1,6 +1,9 @@
 ---
 title: "Autocorrelation Problems"
-output: html_notebook
+author: Julin N Maloof
+output: 
+  html_document: 
+    keep_md: yes
 ---
 
 ```{r}
@@ -20,15 +23,31 @@ hopkins.l <- hopkins %>%
   rownames_to_column(var="ypos") %>%
   pivot_longer(-ypos, names_to = "xpos", values_to = "count", names_prefix = "V") %>%
   mutate(cell=str_c(xpos, "_", ypos)) %>%
-  mutate_at(vars(ends_with("pos")), as.numeric)
+  mutate_at(vars(ends_with("pos")), as.numeric) %>%
+  mutate(xbin=cut(xpos, breaks=10, labels = FALSE),
+         ybin=cut(ypos, breaks=10, labels = FALSE),
+         bin_label=str_c(str_pad(xbin,2,pad="0"),"_", str_pad(ybin, 2, pad="0"))) %>% 
+  group_by(bin_label) %>%
+  mutate(bin_mean=mean(count)) %>%
+  ungroup() %>%
+  arrange(bin_label)
 hopkins.l
 ```
 
 ```{r}
+hopkins.l %>%
+  ggplot(aes(x=xbin, y=ybin, fill=bin_mean)) +
+  geom_raster()
+  
+```
+
+
+```{r}
 m1 <- ulam(alist(
-  count ~ dpois(lambda),
-  lambda <- log(a),
-  a ~ dnorm(1,1)),
+  count ~ dnorm(mu, sig),
+  mu <- a,
+  a ~ dnorm(2,1),
+  sig ~ dexp(1)),
   data = hopkins.l,
   chains = 4,
   log_lik = TRUE,
@@ -38,4 +57,97 @@ m1 <- ulam(alist(
 ```{r}
 precis(m1)
 ```
+
+```{r}
+Dmat <- hopkins.l %>% 
+  filter(!duplicated(bin_label)) %>%
+  as.data.frame() %>% 
+  column_to_rownames("bin_label") %>% 
+  select(xbin, ybin) %>%
+  dist(diag = TRUE, upper = TRUE) %>%
+  as.matrix()
+dim(Dmat)
+Dmat
+```
+
+
+```{r}
+dat <- list(count=hopkins.l$count, bin_id=as.numeric(as.factor(hopkins.l$bin_label)), Dmat=Dmat )
+
+m3nc <- ulam(alist(
+  count ~ dnorm(mu, sig),
+  mu <- a*exp(k[bin_id]),
+  transpars> vector[100]:k <<- L_SIGMA*z,
+  vector[100]:z ~ normal(0, 1),
+  transpars> matrix[100, 100]: L_SIGMA <<-cholesky_decompose(SIGMA),
+  transpars> matrix[100, 100]: SIGMA <- cov_GPL2( Dmat , etasq , rhosq , 0.01 ),
+  a ~ dnorm(2,1),
+  sig ~ dexp(1),
+  etasq ~ dexp( 2 ),
+  rhosq ~ dexp( 0.5 )),
+  data = dat,
+  chains = 4,
+  log_lik = TRUE,
+  cores = 4#, control = list(adapt_delta=0.99)
+  )
+```
+
+```{r}
+precis(m3nc, depth = 2)
+```
+
+
+```{r}
+dat <- list(count=hopkins.l$count, bin_id=as.numeric(as.factor(hopkins.l$bin_label)), Dmat=Dmat )
+
+m4nc <- ulam(alist(
+  count ~ dnorm(mu, sig),
+  mu <- a + k[bin_id],
+  transpars> vector[100]:k <<- L_SIGMA*z,
+  vector[100]:z ~ normal(0, 1),
+  transpars> matrix[100, 100]: L_SIGMA <<-cholesky_decompose(SIGMA),
+  transpars> matrix[100, 100]: SIGMA <- cov_GPL2( Dmat , etasq , rhosq , 0.01 ),
+  a ~ dnorm(2,1),
+  sig ~ dexp(1),
+  etasq ~ dexp( 2 ),
+  rhosq ~ dexp( 0.5 )),
+  data = dat,
+  chains = 4,
+  log_lik = TRUE,
+  cores = 4#, control = list(adapt_delta=0.99)
+  )
+```
+
+```{r}
+precis(m4nc, depth=2)
+```
+
+```{r}
+dat <- list(count=hopkins.l$count, bin_id=as.numeric(as.factor(hopkins.l$bin_label)), Dmat=Dmat )
+
+m4c <- ulam(alist(
+  count ~ dnorm(mu, sig),
+  mu <- a + k[bin_id],
+  vector[100]:k ~ multi_normal( 0 , SIGMA ),
+  matrix[100,100]:SIGMA <- cov_GPL2( Dmat , etasq , rhosq , 0.01 ),
+  a ~ dnorm(2,1),
+  sig ~ dexp(1),
+  etasq ~ dexp( 2 ),
+  rhosq ~ dexp( 0.5 )),
+  data = dat,
+  chains = 4,
+  log_lik = TRUE,
+  cores = 4#, control = list(adapt_delta=0.99)
+  )
+```
+
+```{r}
+precis(m4c, depth=2)
+```
+
+
+```{r}
+compare(m1, m3nc, m4nc, m4c)
+```
+
 
