@@ -1860,7 +1860,10 @@ m14.7nc <- ulam(
         etasq ~ dexp( 2 ),
         rhosq ~ dexp( 0.5 )
     ), data=dat_list , chains=4 , cores=4 , iter=2000 )
+```
 
+
+```{r, eval=FALSE}
 ## R code 14.46
 library(rethinking)
 data(Primates301)
@@ -1870,7 +1873,10 @@ data(Primates301_nex)
 library(ape)
 plot( ladderize(Primates301_nex) , type="fan" , font=1 , no.margin=TRUE ,
     label.offset=1 , cex=0.5 )
+```
 
+
+```{r, eval=FALSE}
 ## R code 14.47
 d <- Primates301
 d$name <- as.character(d$name)
@@ -1896,7 +1902,10 @@ m14.8 <- ulam(
         sigma_sq ~ exponential( 1 )
     ), data=dat_list , chains=4 , cores=4 )
 precis( m14.8 )
+```
 
+
+```{r, eval=FALSE}
 ## R code 14.49
 library(ape)
 tree_trimmed <- keep.tip( Primates301_nex, spp_obs )
@@ -1904,7 +1913,10 @@ Rbm <- corBrownian( phy=tree_trimmed )
 V <- vcv(Rbm)
 Dmat <- cophenetic( tree_trimmed )
 plot( Dmat , V , xlab="phylogenetic distance" , ylab="covariance" )
+```
 
+
+```{r, eval=FALSE}
 ## R code 14.50
 # put species in right order
 dat_list$V <- V[ spp_obs , spp_obs ]
@@ -1922,7 +1934,10 @@ m14.9 <- ulam(
         sigma_sq ~ exponential( 1 )
     ), data=dat_list , chains=4 , cores=4 )
 precis( m14.9 )
+```
 
+
+```{r, eval=FALSE}
 ## R code 14.51
 # add scaled and reordered distance matrix
 dat_list$Dmat <- Dmat[ spp_obs , spp_obs ] / max(Dmat)
@@ -1938,7 +1953,10 @@ m14.10 <- ulam(
         rhosq ~ half_normal(3,0.25)
     ), data=dat_list , chains=4 , cores=4 )
 precis( m14.10 )
+```
 
+
+```{r, eval=FALSE}
 ## R code 14.52
 post <- extract.samples(m14.10)
 plot( NULL , xlim=c(0,max(dat_list$Dmat)) , ylim=c(0,1.5) ,
