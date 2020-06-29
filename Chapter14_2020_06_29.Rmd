@@ -105,12 +105,52 @@ plot(coeftab(M5.1, M5.2, M5.3))
 
 
 ## 14H2
-_Varying effects models are useful for modeling time series, as well as spatial clustering. In a time series, the observations cluster by entities that have continuity through time, such as individuals. Since observations within individuals are likely highly correlated, the multilevel structure can help quite a lot. You’ll use the data in data(Oxboys), which is 234 height measurements on 26 boys from an Oxford Boys Club (I think these were like youth athletic leagues?), at 9 different ages (centered and standardized) per boy. You’ll be interested in predicting height, using age, clustered by Subject (individual boy). Fit a model with varying intercepts and slopes (on age), clustered by Subject. Present and interpret the parameter estimates. Which varying effect contributes more variation to the heights, the intercept or the slope?_
+_Varying effects models are useful for modeling time series, as well as spatial clustering. In a time series, the observations cluster by entities that have continuity through time, such as individuals. Since observations within individuals are likely highly correlated, the multilevel structure can help quite a lot. You’ll use the data in data(Oxboys), which is 234 height measurements on 26 boys from an Oxford Boys Club (I think these were like youth athletic leagues?), at 9 different ages (centered and standardized) per boy. You’ll be interested in predicting height, using age, clustered by Subject (individual boy). Fit a model with varying intercepts and slopes (on age), clustered by Subject._
+
+```{r}
+data("Oxboys")
+Oxboys
+```
+
+```{r, results='hide', warning='hide', message='hide'}
+d <- list(boy = Oxboys$Subject, age=Oxboys$age, height=Oxboys$height)
+MH2 <- ulam(
+  alist(
+    height ~ dnorm(mu, sigma),
+    mu <- a_boy[boy] + b_boy[boy]*age,
+    c(a_boy,b_boy)[boy] ~ multi_normal(c(a,b), Rho, sigma_boy),
+    a ~ normal(150,10),
+    b ~ normal(5,3),
+    sigma_boy ~ dexp(1),
+    sigma ~ dexp(1),
+    Rho ~ lkj_corr(2)),
+    data=d, chains=4, cores=4, log_lik = TRUE) 
+```
+
+_Present and interpret the parameter estimates. Which varying effect contributes more variation to the heights, the intercept or the slope?_
+```{r}
+precis(MH2, depth = 2, pars = c("a", "b", "sigma_boy", "sigma"))
+```
+
+average height at average age is 149.3
+
+the average increase in height per unit (4.5 years?) is 6.5
+
+The variance in height across boys is 7.29
+
+The variance in slope across boys is 1.62
+
+### Plot estimates from pooled and unpooled
+
 
 
 
 ## 14H3. 
 _Now consider the correlation between the varying intercepts and slopes. Can you explain its value? How would this estimated correlation influence your predictions about a new sample of boys?_
 
+```{r}
+precis(MH2, depth = 3, pars = c("Rho"))
+```
 
+This tells is that there is a postive correlation (0.53) between the slopes and intercepts. That is that boys that were taller than average (intercept) also had a faster growth rate (slope).
 
