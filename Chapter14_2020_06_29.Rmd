@@ -143,6 +143,67 @@ The variance in slope across boys is 1.62
 ### Plot estimates from pooled and unpooled
 
 
+```{r}
+library(tidyverse)
+```
+
+Get unpooled estimates
+```{r}
+estimates <- d %>% as_tibble() %>%
+  group_by(boy) %>%
+  nest() %>%
+  mutate(lmfit = map(data, ~ lm(height ~ age, data = .))) %>%
+  mutate(a_noPool = map_dbl(lmfit, ~ coef(.)[1]),
+         b_noPool = map_dbl(lmfit, ~ coef(.)[2])) %>%
+  select(a_noPool, b_noPool)
+estimates
+```
+
+get pooled estimates
+
+```{r}
+post <- extract.samples(MH2)
+estimates$a_pool <- apply(post$a_boy, 2, mean)
+estimates$b_pool <- apply(post$b_boy, 2, mean)
+estimates
+```
+plot it
+```{r}
+pl <- estimates %>%
+  pivot_longer(-boy, names_to = c("estimate", "model"), names_sep = "_") %>%
+  pivot_wider(id_cols = c(boy, model), names_from = estimate, values_from = "value") %>%
+  ggplot(aes(x=a,y=b)) +
+  geom_point(aes(color=model, shape=model)) +
+  geom_line(aes(group=boy))
+pl
+```
+
+Add contours
+
+```{r}
+Mu_est <- c( mean(post$a) , mean(post$b) ) 
+rho_est <- mean( post$Rho[,1,2] )
+sa_est <- mean( post$sigma_boy[,1] ) 
+sb_est <- mean( post$sigma_boy[,2] ) 
+cov_ab <- sa_est*sb_est*rho_est
+Sigma_est <- matrix( c(sa_est^2,cov_ab,cov_ab,sb_est^2) , ncol=2 )
+```
+
+
+```{r}
+# compute contours
+library(ellipse)
+contours <- tibble(z = c(0.1,0.3,0.5,0.8,0.99) )
+
+contours <- contours %>% mutate(ellipses = map(z, ~ as_data_frame(ellipse(Sigma_est,centre=Mu_est,level=.)))) %>%
+  unnest(ellipses) %>% unique()
+
+contours
+```
+ 
+```{r, eval=FALSE}
+pl + geom_contour(aes(x=x, y=y, z=z), data = contours, inherit.aes = FALSE)
+```
 
 
 ## 14H3. 
@@ -152,5 +213,5 @@ _Now consider the correlation between the varying intercepts and slopes. Can you
 precis(MH2, depth = 3, pars = c("Rho"))
 ```
 
-This tells is that there is a postive correlation (0.53) between the slopes and intercepts. That is that boys that were taller than average (intercept) also had a faster growth rate (slope).
+This tells is that there is a positive correlation (0.53) between the slopes and intercepts. That is that boys that were taller than average (intercept) also had a faster growth rate (slope).
 
