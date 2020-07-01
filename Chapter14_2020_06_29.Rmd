@@ -93,6 +93,7 @@ M5.3 <- ulam(
         rhosq ~ half_normal(3,0.25)
     ), data=dat_list , chains=4 , cores=4 )
 precis( M5.3 )
+stancode(M5.3)
 ```
 
 with the OU model, neither brain size not body mass are predictors for group size.

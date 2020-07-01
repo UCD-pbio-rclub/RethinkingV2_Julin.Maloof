@@ -73,6 +73,37 @@ dim(Dmat)
 Dmat
 ```
 
+```{r}
+Dmat0 <- hopkins.l %>% 
+  as.data.frame() %>% 
+  column_to_rownames("cell") %>% 
+  select(xpos, ypos) %>%
+  dist(diag = TRUE, upper = TRUE) %>%
+  as.matrix()
+dim(Dmat0)
+Dmat0[1:10, 1:10]
+```
+
+
+```{r}
+
+dat <- list(count=hopkins.l$count, Dmat=Dmat0, N=nrow(Dmat0), bs=sample(c(1,2),size=1600, replace = TRUE) )
+
+mnewcent <- ulam(alist(
+  count ~ multi_normal(mu, SIGMA),
+  mu <- a + b*bs,
+  matrix[N, N]: SIGMA <- cov_GPL2( Dmat , etasq , rhosq , 0.01 ),
+  a ~ dnorm(2,1),
+  b ~ dnorm(0,1),
+  etasq ~ dexp( 2 ),
+  rhosq ~ dexp( 0.5 )),
+  data = dat,
+  chains = 4,
+  cores = 4#, control = list(adapt_delta=0.99)
+  ,sample=TRUE)
+
+stancode(mnewcent)
+```
 
 ```{r}
 dat <- list(count=hopkins.l$count, bin_id=as.numeric(as.factor(hopkins.l$bin_label)), Dmat=Dmat )
