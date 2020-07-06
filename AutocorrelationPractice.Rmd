@@ -20,17 +20,24 @@ image(1:40, 1:40, hopkins)
 ```
 
 ```{r}
-hopkins.l <- hopkins %>% 
+hopkins.s <- hopkins[31:40, 1:40]
+image(1:10, 1:40, hopkins.s)
+```
+
+
+```{r}
+hopkins.l <- hopkins.s %>% 
   as.data.frame() %>% 
   rownames_to_column(var="ypos") %>%
-  pivot_longer(-ypos, names_to = "xpos", values_to = "count", names_prefix = "V") %>%
-  mutate(cell=str_c(xpos, "_", ypos)) %>%
+  pivot_longer(-ypos, names_to = "xpos", values_to = "herb", names_prefix = "V") %>%
+  mutate(cell=str_c(xpos, "_", ypos),
+         dens=ifelse(herb==0,0,round(sqrt(herb)+abs(rnorm(length(herb))),2))) %>%
   mutate_at(vars(ends_with("pos")), as.numeric) %>%
   mutate(xbin=cut(xpos, breaks=10, labels = FALSE),
          ybin=cut(ypos, breaks=10, labels = FALSE),
          bin_label=str_c(str_pad(xbin,2,pad="0"),"_", str_pad(ybin, 2, pad="0"))) %>% 
   group_by(bin_label) %>%
-  mutate(bin_mean=mean(count)) %>%
+  mutate(bin_mean=mean(herb)) %>%
   ungroup() %>%
   arrange(bin_label)
 hopkins.l
@@ -45,9 +52,9 @@ hopkins.l %>%
 
 
 ```{r}
-dat <- list(count=hopkins.l$count)
+dat <- list(herb=hopkins.l$herb)
 m1 <- ulam(alist(
-  count ~ dnorm(mu, sig),
+  herb ~ dnorm(mu, sig),
   mu <- a,
   a ~ dnorm(2,1),
   sig ~ dexp(1)),
@@ -62,6 +69,66 @@ precis(m1)
 ```
 
 ```{r}
+dat <- list(herb=hopkins.l$herb, dens=hopkins.l$dens)
+m2 <- ulam(alist(
+  herb ~ dnorm(mu, sig),
+  mu <- a + b*dens,
+  a ~ dnorm(2,1),
+  b ~ dnorm(0,2),
+  sig ~ dexp(1)),
+  data = dat,
+  chains = 4,
+  log_lik = TRUE,
+  cores = 4)
+```
+
+```{r}
+precis(m2)
+```
+
+```{r}
+compare(m1,m2)
+```
+
+```{r}
+Dmat0 <- hopkins.l %>%
+  as.data.frame() %>% 
+  column_to_rownames("cell") %>% 
+  select(xpos, ypos) %>%
+  dist(diag = TRUE, upper = TRUE) %>%
+  as.matrix()
+dim(Dmat0)
+Dmat0[1:10, 1:10]
+```
+
+```{r}
+dat <- list(herb=hopkins.l$herb+.1, dens=hopkins.l$dens, Dmat0=Dmat0, N=nrow(Dmat0))
+
+system.time({m3 <- ulam(alist(
+  herb ~ multi_normal(mu, SIGMA),
+  mu  <- a + b*dens,
+  matrix[N, N]: SIGMA <- cov_GPL2( Dmat0 , etasq , rhosq , 0.01 ),
+  a ~ dnorm(2,1),
+  b ~ dnorm(0,2),
+  etasq ~ dexp( 2 ),
+  rhosq ~ dexp( 0.5 )),
+  data = dat,
+  chains = 4,
+  cores = 4
+  )
+})
+```
+
+```{r}
+precis(m3)
+```
+
+```{r}
+compare(m1,m2,m3)
+```
+
+
+```{r}
 Dmat <- hopkins.l %>% 
   filter(!duplicated(bin_label)) %>%
   as.data.frame() %>% 
@@ -73,115 +140,32 @@ dim(Dmat)
 Dmat
 ```
 
-```{r}
-Dmat0 <- hopkins.l %>% 
-  as.data.frame() %>% 
-  column_to_rownames("cell") %>% 
-  select(xpos, ypos) %>%
-  dist(diag = TRUE, upper = TRUE) %>%
-  as.matrix()
-dim(Dmat0)
-Dmat0[1:10, 1:10]
-```
-
 
 ```{r}
+dat <- list(herb=hopkins.l$count, dens=hopkins.l$dens, Dmat=Dmat, N=nrow(Dmat))
 
-dat <- list(count=hopkins.l$count, Dmat=Dmat0, N=nrow(Dmat0), bs=sample(c(1,2),size=1600, replace = TRUE) )
-
-mnewcent <- ulam(alist(
-  count ~ multi_normal(mu, SIGMA),
-  mu <- a + b*bs,
+m4 <- ulam(alist(
+  herb ~ multi_normal(mu, SIGMA),
+  vector[N]: mu  <- a + b*dens,
   matrix[N, N]: SIGMA <- cov_GPL2( Dmat , etasq , rhosq , 0.01 ),
   a ~ dnorm(2,1),
-  b ~ dnorm(0,1),
+  b ~ dnorm(0,2),
   etasq ~ dexp( 2 ),
   rhosq ~ dexp( 0.5 )),
   data = dat,
   chains = 4,
-  cores = 4#, control = list(adapt_delta=0.99)
-  ,sample=TRUE)
-
-stancode(mnewcent)
-```
-
-```{r}
-dat <- list(count=hopkins.l$count, bin_id=as.numeric(as.factor(hopkins.l$bin_label)), Dmat=Dmat )
-
-m3nc <- ulam(alist(
-  count ~ dnorm(mu, sig),
-  mu <- a*exp(k[bin_id]),
-  transpars> vector[100]:k <<- L_SIGMA*z,
-  vector[100]:z ~ normal(0, 1),
-  transpars> matrix[100, 100]: L_SIGMA <<-cholesky_decompose(SIGMA),
-  transpars> matrix[100, 100]: SIGMA <- cov_GPL2( Dmat , etasq , rhosq , 0.01 ),
-  a ~ dnorm(2,1),
-  sig ~ dexp(1),
-  etasq ~ dexp( 2 ),
-  rhosq ~ dexp( 0.5 )),
-  data = dat,
-  chains = 4,
-  log_lik = TRUE,
-  cores = 4#, control = list(adapt_delta=0.99)
+  cores = 4, 
+  log_lik = TRUE
   )
+
+stancode(m4)
 ```
 
 ```{r}
-precis(m3nc, depth = 2)
-```
-
-
-```{r}
-dat <- list(count=hopkins.l$count, bin_id=as.numeric(as.factor(hopkins.l$bin_label)), Dmat=Dmat )
-
-m4nc <- ulam(alist(
-  count ~ dnorm(mu, sig),
-  mu <- a + k[bin_id],
-  transpars> vector[100]:k <<- L_SIGMA*z,
-  vector[100]:z ~ normal(0, 1),
-  transpars> matrix[100, 100]: L_SIGMA <<-cholesky_decompose(SIGMA),
-  transpars> matrix[100, 100]: SIGMA <- cov_GPL2( Dmat , etasq , rhosq , 0.01 ),
-  a ~ dnorm(2,1),
-  sig ~ dexp(1),
-  etasq ~ dexp( 2 ),
-  rhosq ~ dexp( 0.5 )),
-  data = dat,
-  chains = 4,
-  log_lik = TRUE,
-  cores = 4#, control = list(adapt_delta=0.99)
-  )
+precis(m3)
 ```
 
 ```{r}
-precis(m4nc, depth=2)
+compare(m1, m2, m3)
 ```
-
-```{r}
-dat <- list(count=hopkins.l$count, bin_id=as.numeric(as.factor(hopkins.l$bin_label)), Dmat=Dmat )
-
-m4c <- ulam(alist(
-  count ~ dnorm(mu, sig),
-  mu <- a + k[bin_id],
-  vector[100]:k ~ multi_normal( 0 , SIGMA ),
-  matrix[100,100]:SIGMA <- cov_GPL2( Dmat , etasq , rhosq , 0.01 ),
-  a ~ dnorm(2,1),
-  sig ~ dexp(1),
-  etasq ~ dexp( 2 ),
-  rhosq ~ dexp( 0.5 )),
-  data = dat,
-  chains = 4,
-  log_lik = TRUE,
-  cores = 4#, control = list(adapt_delta=0.99)
-  )
-```
-
-```{r}
-precis(m4c, depth=2)
-```
-
-
-```{r}
-compare(m1, m3nc, m4nc, m4c)
-```
-
 

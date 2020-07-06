@@ -1,0 +1,117 @@
+---
+title: "Phylogenetic regression"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval=FALSE)
+```
+
+```{r}
+library(rethinking)
+library(ape)
+library(ade4)
+library(tidyverse)
+```
+
+```{r}
+data("carni70")
+tre <- read.tree(text=carni70$tre)
+d <- carni70$tab
+head(d)
+```
+
+
+```{r}
+spp_obs <- rownames(d)
+spp_obs <- str_replace(spp_obs, pattern="_", replacement = ".")
+tree_trimmed <- keep.tip( tre, spp_obs )
+```
+
+```{r}
+dat_list <- list(lsize=standardize(log(d$size)), range=standardize(d$range), N=nrow(d), Imat = diag( nrow(d)))
+
+Rbm <- corBrownian( phy=tree_trimmed )
+V <- vcv(Rbm)
+# put species in right order
+dat_list$V <- V[ spp_obs , spp_obs ]
+
+# convert to correlation matrix
+dat_list$R <- dat_list$V / max(V)
+
+# add scaled and reordered distance matrix
+Dmat <- cophenetic( tree_trimmed )
+dat_list$Dmat <- Dmat[ spp_obs , spp_obs ] / max(Dmat)
+```
+
+
+
+```{r}
+qplot(log(d$size), d$range)
+```
+
+no phylogenetic
+```{r}
+
+m1 <- ulam(alist(
+  range ~ multi_normal(mu, SIGMA),
+  mu <- a + b*lsize,
+  matrix[N, N]: SIGMA <- Imat*sigma_sq,
+  a ~ dnorm(0, 1),
+  b ~ dnorm(0, 1),
+  sigma_sq ~ exponential( 1 )),
+  chains = 4,
+  cores = 4,
+  data = dat_list
+)
+```
+
+```{r}
+precis(m1)
+```
+
+
+brownian motion
+
+```{r}
+m2 <- ulam(alist(
+  range ~ multi_normal(mu, SIGMA),
+  mu <- a + b*lsize,
+  matrix[N, N]: SIGMA <- R * sigma_sq,
+  a ~ dnorm(0, 1),
+  b ~ dnorm(0, 1),
+  sigma_sq ~ exponential( 1 )),
+  chains = 4,
+  cores = 4,
+  data = dat_list
+)
+```
+
+```{r}
+precis(m2)
+```
+
+
+OU
+
+```{r}
+m3 <- ulam(alist(
+  range ~ multi_normal(mu, SIGMA),
+  mu <- a + b*lsize,
+  matrix[N, N]: SIGMA <- cov_GPL1( Dmat , etasq , rhosq , 0.01 ),
+  a ~ dnorm(0, 1),
+  b ~ dnorm(0, 1),
+  etasq ~ half_normal(1,0.25),
+  rhosq ~ half_normal(3,0.25)),
+  chains = 4,
+  cores = 4,
+  data = dat_list
+)
+```
+
+
+```{r}
+precis(m3)
+```
+
+
