@@ -5,6 +5,7 @@ output: html_notebook
 
 ```{r}
 library(rethinking)
+library(tidyverse)
 ```
 
 # Problems
@@ -233,12 +234,113 @@ m15.1.2 <- ulam(
 ```
 
 ```{r}
-plot(coeftab(m15.1, m15.1.2))
+precis(m15.1)
+precis(m15.1.2)
+```
+
+Doubling the measurement standard error noticebly reduces sigma, because it allows the observations to get "shrunk" more.
+
+## 15H1
+
+_The data in data(elephants) are counts of matings observed for bull elephants of differing ages. There is a strong positive relationship between age and matings. However, age is not always assessed accurately. First, fit a Poisson model predicting MATINGS with AGE as a predictor. Second, assume that the observed AGE values are uncertain and have a standard error of ±5 years. Re-estimate the relationship between MATINGS and AGE, incorporating this measurement error. Compare the inferences of the two models._
+
+```{r}
+data("elephants")
+str(elephants)
+```
+
+```{r}
+plot(elephants$AGE, elephants$MATINGS)
+```
+
+```{r}
+d <- list(M = elephants$MATINGS, A = standardize(elephants$AGE))
+```
+
+check the priors
+```{r}
+age <- seq(min(d$A), max(d$A), by = .1)
+priorpred1 <- tibble(
+  id = 1:100,
+  a = rnorm(100, 0, 1),
+  b = rnorm(100, 0, 1))
+
+priorpred1 <- priorpred1 %>%
+  mutate(pred=map2(a,b, ~ exp(.x + .y*age)),
+         pred=map(pred, ~ tibble(M=.,A=age))) %>% # add age column
+  unnest(pred)
+priorpred1
+```
+
+```{r}
+priorpred1 %>%
+  ggplot(aes(x=A, y=M)) +
+  geom_line(aes(group=id), alpha=.1)+
+  geom_point(data=as.data.frame(d)) +
+  scale_y_log10()
 ```
 
 
-15H1
-15H2
+```{r}
+mh1.1 <- ulam(
+  alist(M ~ dpois(lambda),
+        log(lambda) <- a + bA*A,
+        a ~ dnorm(0,1),
+        bA ~ dnorm(0,1)),
+  data = d,
+  chains = 4,
+  cores = 4)
+```
+
+```{r}
+precis(mh1.1)
+```
+
+```{r}
+pred <- link(mh1.1, data=list(A=age))
+pred.plot <- tibble(
+  A=age,
+  M=apply(pred,2,mean),
+  lower=apply(pred,2,HPDI)[1,],
+  upper=apply(pred,2,HPDI)[2,],
+)
+```
+
+
+```{r}
+pred.plot %>% 
+  ggplot(aes(x=A,y=M)) +
+  geom_ribbon(aes(ymin=lower,ymax=upper),fill="gray80") +
+    geom_line() +
+  geom_point(data=as.data.frame(d))
+```
+
+### now with standard error
+
+```{r}
+d$N <- length(d$A)
+mh1.2 <- ulam(
+  alist(M ~ dpois(lambda),
+        log(lambda) <- a + bA*Aest[i],
+        A ~ dnorm(Aest, 5),
+        vector[N]:Aest ~ dnorm(0,1),
+        a ~ dnorm(0,1),
+        bA ~ dnorm(0,1)),
+  data = d,
+  chains = 4,
+  cores = 4)
+```
+
+
+```{r}
+precis(mh1.2)
+```
+
+```{r}
+plot(coeftab(mh1.1, mh1.2))
+```
+
+## 15H2
 
 # Book
 
