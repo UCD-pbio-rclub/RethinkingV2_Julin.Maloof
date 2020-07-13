@@ -37,151 +37,6 @@ P_{impute,i} \sim normal(\nu, \sigma_P)\\
 \sigma_P \sim exp(1)
 $$
 
-
-## 15M2
-_In earlier chapters, we threw away cases from the primate milk data, so we could use the neocortex variable. Now repeat the WAIC model comparison example from Chapter 6, but use imputation on the neocortex variable so that you can include all of the cases in the original data. The simplest form of imputation is acceptable. How are the model comparison results affected by being able to include all of the cases?_
-
-The models with complete cases:
-```{r}
-## R code 5.27
-data(milk)
-d <- milk
-str(d)
-
-## R code 5.28
-d$K <- standardize( d$kcal.per.g )
-d$N <- standardize( d$neocortex.perc )
-d$M <- standardize( log(d$mass) )
-
-d2 <- milk
-d2$K <- scale( d$kcal.per.g )
-d2$N <- scale( d$neocortex.perc )
-d2$M <- scale( log(d$mass) )
-
-## R code 5.31
-dcc <- d[ complete.cases(d$K,d$N,d$M) ,  c("K","N","M")]
-dcc2 <- d2[ complete.cases(d2$K,d2$N,d2$M) ,  c("K","N","M")]
-
-m5.x <- ulam( alist(
-        K ~ dnorm( mu , sigma ) ,
-        mu <- a  ,
-        a ~ dnorm( 0 , 0.2 ) ,
-        sigma ~ dexp( 1 )
-    ) , data=dcc, log_lik = TRUE, chains = 4, cores = 4 )
-```
-
-
-```{r}
-## R code 5.34
-m5.5 <- ulam(
-    alist(
-        K ~ dnorm( mu , sigma ) ,
-        mu <- a + bN*N ,
-        a ~ dnorm( 0 , 0.2 ) ,
-        bN ~ dnorm( 0 , 0.5 ) ,
-        sigma ~ dexp( 1 )
-    ) , data=dcc, log_lik = TRUE, chains = 4, cores = 4 )
-```
-
-```{r}
-## R code 5.34
-m5.5 <- ulam(
-    alist(
-        K ~ dnorm( mu , sigma ) ,
-        mu <- a + bN*N ,
-        a ~ dnorm( 0 , 0.2 ) ,
-        bN ~ dnorm( 0 , 0.5 ) ,
-        sigma ~ dexp( 1 )
-    ) , data=dcc2, log_lik = TRUE, chains = 4, cores = 4 )
-```
-
-```{r}
-d <- milk
-d$neocortex.prop <- d$neocortex.perc / 100
-d$logmass <- log(d$mass)
-dat_list <- list(
-    K = standardize( d$kcal.per.g ),
-    B = standardize( d$neocortex.prop ),
-    M = standardize( d$logmass )
-)
-m15.3 <- ulam(
-    alist(
-        K ~ dnorm( mu , sigma ),
-        mu <- a + bB*B + bM*M,
-        B ~ dnorm( nu , sigma_B ),
-        c(a,nu) ~ dnorm( 0 , 0.5 ),
-        c(bB,bM) ~ dnorm( 0, 0.5 ),
-        sigma_B ~ dexp( 1 ),
-        sigma ~ dexp( 1 )
-    ) , data=dat_list , chains=4 , cores=4 )
-```
-
-
-```{r}
-## R code 5.37
-m5.6 <- ulam(
-    alist(
-        K ~ dnorm( mu , sigma ) ,
-        mu <- a + bM*M ,
-        a ~ dnorm( 0 , 0.2 ) ,
-        bM ~ dnorm( 0 , 0.5 ) ,
-        sigma ~ dexp( 1 )
-    ) , data=dcc, log_lik = TRUE, chains = 4, cores = 4 )
-
-## R code 5.38
-m5.7 <- ulam(
-    alist(
-        K ~ dnorm( mu , sigma ) ,
-        mu <- a + bN*N + bM*M ,
-        a ~ dnorm( 0 , 0.2 ) ,
-        bN ~ dnorm( 0 , 0.5 ) ,
-        bM ~ dnorm( 0 , 0.5 ) ,
-        sigma ~ dexp( 1 )
-    ) , data=dcc, log_lik = TRUE, chains = 4, cores = 4 )
-
-```
-
-```{r}
-dall <- d[,c("K","N","M")]
-m5.x <- ulam( alist(
-        K ~ dnorm( a , sigma ) ,
-        a ~ dnorm( 0 , 0.2 ) ,
-        sigma ~ dexp( 1 )
-    ) , data=dall, log_lik = TRUE, chains = 4, cores = 4 )
-
-## R code 5.34
-m5.5 <- ulam(
-    alist(
-        K ~ dnorm( mu , sigma ) ,
-        mu <- a + bN*N ,
-        a ~ dnorm( 0 , 0.2 ) ,
-        bN ~ dnorm( 0 , 0.5 ) ,
-        sigma ~ dexp( 1 )
-    ) , data=dall, log_lik = TRUE, chains = 4, cores = 4 )
-
-## R code 5.37
-m5.6 <- ulam(
-    alist(
-        K ~ dnorm( mu , sigma ) ,
-        mu <- a + bM*M ,
-        a ~ dnorm( 0 , 0.2 ) ,
-        bM ~ dnorm( 0 , 0.5 ) ,
-        sigma ~ dexp( 1 )
-    ) , data=dall, log_lik = TRUE, chains = 4, cores = 4 )
-
-## R code 5.38
-m5.7 <- ulam(
-    alist(
-        K ~ dnorm( mu , sigma ) ,
-        mu <- a + bN*N + bM*M ,
-        a ~ dnorm( 0 , 0.2 ) ,
-        bN ~ dnorm( 0 , 0.5 ) ,
-        bM ~ dnorm( 0 , 0.5 ) ,
-        sigma ~ dexp( 1 )
-    ) , data=dall, log_lik = TRUE, chains = 4, cores = 4 )
-
-```
-
 ## 15M3. 
 _Repeatthedivorcedatameasurementerrormodels,butthistimedoublethestandarderrors. Can you explain how doubling the standard errors impacts inference?_
 
@@ -297,18 +152,19 @@ precis(mh1.1)
 ```
 
 ```{r}
-pred <- link(mh1.1, data=list(A=age))
-pred.plot <- tibble(
+pred1 <- link(mh1.1, data=list(A=age))
+dim(pred1)
+pred.plot1 <- tibble(
   A=age,
-  M=apply(pred,2,mean),
-  lower=apply(pred,2,HPDI)[1,],
-  upper=apply(pred,2,HPDI)[2,],
+  M=apply(pred1,2,mean),
+  lower=apply(pred1,2,HPDI)[1,],
+  upper=apply(pred1,2,HPDI)[2,],
 )
 ```
 
 
 ```{r}
-pred.plot %>% 
+pred.plot1 %>% 
   ggplot(aes(x=A,y=M)) +
   geom_ribbon(aes(ymin=lower,ymax=upper),fill="gray80") +
     geom_line() +
@@ -317,13 +173,14 @@ pred.plot %>%
 
 ### now with standard error
 
-NEED TO STANDARDIZE 5 YEARS!!
 ```{r}
+sem_std <- 5/sd(elephants$AGE)
 d$N <- length(d$A)
+d$sem_std <- sem_std
 mh1.2 <- ulam(
   alist(M ~ dpois(lambda),
         log(lambda) <- a + bA*Aest[i],
-        A ~ dnorm(Aest, 5),
+        A ~ dnorm(Aest, sem_std),
         vector[N]:Aest ~ dnorm(0,1),
         a ~ dnorm(0,1),
         bA ~ dnorm(0,1)),
@@ -334,14 +191,73 @@ mh1.2 <- ulam(
 
 
 ```{r}
+precis(mh1.1)
 precis(mh1.2)
 ```
 
+bA somewhat larger; and larger error
+
 ```{r}
-plot(coeftab(mh1.1, mh1.2))
+pred2 <- link(mh1.2, data=list(A=age))
+dim(pred2)
+pred.plot2 <- tibble(
+  A=age,
+  M=apply(pred2,2,mean),
+  lower=apply(pred2,2,HPDI)[1,],
+  upper=apply(pred2,2,HPDI)[2,],
+)
+
+pred.plot2 %>% 
+  ggplot(aes(x=A,y=M)) +
+  geom_ribbon(aes(ymin=lower,ymax=upper),fill="gray80") +
+    geom_line() +
+  geom_point(data=as.data.frame(d))
 ```
 
+Not working well; because of variation due to SE?  Maybe need to pull out coefficents and make predictions from that?
+
+```{r}
+post <- extract.samples(mh1.2)
+```
+
+
 ## 15H2
+
+_Repeatthemodelfittingproblemabove,nowincreasingtheassumedstandarderroronAGE. How large does the standard error have to get before the posterior mean for the coefficient on AGE reaches zero?_
+
+```{r}
+dofit <- function(SE, dtmp=d )
+{
+  sem_std <- SE/sd(elephants$AGE)
+dtmp$N <- length(d$A)
+dtmp$sem_std <- sem_std
+m.tmp <- ulam(
+  alist(M ~ dpois(lambda),
+        log(lambda) <- a + bA*Aest[i],
+        A ~ dnorm(Aest, sem_std),
+        vector[N]:Aest ~ dnorm(0,1),
+        a ~ dnorm(0,1),
+        bA ~ dnorm(0,1)),
+  data = dtmp,
+  chains = 4,
+  cores = 4)
+p.tmp <- precis(m.tmp) %>% data.frame() %>% rownames_to_column("coef")
+return(p.tmp)
+}
+
+H2.table <- tibble(SE=c(5, 10, 15, 20, 25, 50, 100))
+```
+
+
+```{r}
+H2.table <- H2.table %>%
+  mutate(results=map(SE, dofit))
+```
+
+```{r}
+H2.table %>%  unnest(results) %>% arrange(desc(coef), SE)
+```
+Things start to fall about by SE of about 20.
 
 # Book
 
