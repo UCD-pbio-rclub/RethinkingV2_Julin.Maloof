@@ -218,6 +218,7 @@ Not working well; because of variation due to SE?  Maybe need to pull out coeffi
 
 ```{r}
 post <- extract.samples(mh1.2)
+str(post)
 ```
 
 
