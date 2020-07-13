@@ -317,6 +317,7 @@ pred.plot %>%
 
 ### now with standard error
 
+NEED TO STANDARDIZE 5 YEARS!!
 ```{r}
 d$N <- length(d$A)
 mh1.2 <- ulam(
