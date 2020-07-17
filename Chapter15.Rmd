@@ -563,7 +563,10 @@ table( gods=dmg$moralizing_gods , literacy=dmg$writing , useNA="always" )
 dmg <- Moralizing_gods
 haw <- which( dmg$polity=="Big Island Hawaii" )
 t( dmg[ haw , c("year","population","writing","moralizing_gods") ] )
+```
 
+
+```{r, eval=FALSE}
 ## R code 15.29
 set.seed(9)
 N_houses <- 100L
@@ -576,13 +579,18 @@ notes <- rpois( N_houses , alpha + beta*cat )
 R_C <- rbern( N_houses , r )
 cat_obs <- cat
 cat_obs[R_C==1] <- (-9L)
+```
 
+
+```{r, eval=FALSE}
 ## R code 15.30
 dat <- list(
     notes = notes,
     cat = cat_obs,
     RC = R_C,
     N = as.integer(N_houses) )
+
+dat
 
 m15.6 <- ulam(
     alist(
@@ -604,7 +612,10 @@ m15.6 <- ulam(
         cat|RC==0 ~ bernoulli(k),
         k ~ beta(2,2)
     ), data=dat , chains=4 , cores=4 )
+```
 
+
+```{r, eval=FALSE}
 ## R code 15.31
 m15.7 <- ulam(
     alist(
@@ -627,7 +638,15 @@ m15.7 <- ulam(
         gq> vector[N]:lpC1 <- log(k) + poisson_lpmf( notes[i] | exp(a+b) ),
         gq> vector[N]:lpC0 <- log(1-k) + poisson_lpmf( notes[i] | exp(a) )
     ), data=dat , chains=4 , cores=4 )
+```
 
+
+```{r, eval=FALSE}
+m15.7
+```
+
+
+```{r, eval=FALSE}
 ## R code 15.32
 set.seed(100)
 x <- c( rnorm(10) , NA )
