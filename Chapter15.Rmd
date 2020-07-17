@@ -260,6 +260,102 @@ H2.table %>%  unnest(results) %>% arrange(desc(coef), SE)
 ```
 Things start to fall about by SE of about 20.
 
+## PDF1
+
+```{r}
+library(rethinking)
+data(Primates301)
+d <- Primates301
+cc <- complete.cases( d$brain , d$body )
+B <- d$brain[cc]
+M <- d$body[cc]
+B <- B / max(B)
+M <- M / max(M)
+
+# make up some SE
+ Bse <- B*0.1
+ Mse <- M*0.1
+```
+
+model with out SE info:
+
+```{r}
+dat_list <- list( B=B, M=M)
+
+m1.1 <- ulam( alist(
+  B ~ dlnorm( mu , sigma ),
+  mu <- a + b*log(M),
+  a ~ normal(0,1),
+  b ~ normal(0,1),
+  sigma ~ exponential(1)),
+  data=dat_list, chains = 4, cores = 4 )
+```
+
+```{r}
+precis(m1.1)
+```
+
+now add SE into the model
+
+```{r}
+dat_list <- list( Bobs=B, Mobs=M, Bse=Bse, Mse=Mse, N=length(B))
+
+m1.2 <- ulam( alist(
+  vector[N]:Btrue ~ dlnorm( mu , sigma ),
+  mu <- a + b*log(Mtrue[i]),
+  Mobs ~ dnorm(Mtrue, Mse),
+  Bobs ~ dnorm(Btrue, Bse),
+  vector[N]:Mtrue ~ dnorm(0.5,0.25),
+  a ~ normal(0,1),
+  b ~ normal(0,1),
+  sigma ~ exponential(1)),
+  data=dat_list,
+  start=list( Mtrue=dat_list$Mobs , Btrue=dat_list$Bobs ),
+  chains = 4,
+  cores = 4, 
+  control = list(max_treedepth=25))
+```
+
+```{r}
+precis(m1.1)
+```
+
+```{r}
+precis(m1.2)
+```
+
+The parameter estimates for a and b are almost exactly the same.  sigma for the model with SE is a bit lower, presumably because the estimated true values are shrunk.
+
+
+
+## PDF2
+
+```{r}
+data(Primates301) 
+d <- Primates301
+colSums( is.na(d) )
+```
+
+```{r}
+cc <- complete.cases( d$body )
+M <- d$body[cc]
+M <- M / max(M)
+B <- d$brain[cc]
+B <- B / max( B , na.rm=TRUE )
+```
+
+_First, consider whether there is a pattern to the missing values. Does it look like missing values are associated with particular values of body mass? Draw a DAG that represents how missingness works in this case. Which type (MCAR, MAR, MNAR) is this?_
+
+### complete cases only
+
+### with imputation
+```{r}
+ start=list( B_impute=rep(0.5,56) )
+```
+
+
+## 15H4 (optional)
+
 # Book
 
 ```{r, eval=FALSE}
