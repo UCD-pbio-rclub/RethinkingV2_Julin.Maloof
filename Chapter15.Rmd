@@ -330,6 +330,7 @@ The parameter estimates for a and b are almost exactly the same.  sigma for the 
 
 ## PDF2
 
+missing data.  focus on when missing values in the brain data set
 ```{r}
 data(Primates301) 
 d <- Primates301
@@ -344,15 +345,92 @@ B <- d$brain[cc]
 B <- B / max( B , na.rm=TRUE )
 ```
 
+
+
+
 _First, consider whether there is a pattern to the missing values. Does it look like missing values are associated with particular values of body mass? Draw a DAG that represents how missingness works in this case. Which type (MCAR, MAR, MNAR) is this?_
+
+```{r}
+tibble(B=B, M=M, missing=is.na(B)) %>%
+  mutate(B=ifelse(is.na(B),-.1,B)) %>%
+  ggplot(aes(x=M, y=B, shape=missing, color=missing)) +
+  geom_point()
+```
+
+```{r}
+tibble(B=B, M=M, missing=is.na(B)) %>%
+  ggplot(aes(x=M, fill=missing)) +
+  geom_density(alpha=.6)
+```
+
+more missing brain data at low M
+
+```{r}
+library(ggdag)
+```
+
+```{r}
+set.seed(3)
+dagify(B ~ M,
+       Bobs ~ B + Rb,
+       Rb ~ M) %>%
+  ggdag()
+
+
+```
+
+This is MAR
+
+### Compare complete cases and imputed
 
 ### complete cases only
 
-### with imputation
 ```{r}
- start=list( B_impute=rep(0.5,56) )
+dat_df <- data.frame( B=B, M=M)
+dat_df_cc <- na.omit(dat_df)
+
+m2.1 <- ulam( alist(
+  B ~ dlnorm( mu , sigma ),
+  mu <- a + b*log(M),
+  a ~ normal(0,1),
+  b ~ normal(0,1),
+  sigma ~ exponential(1)),
+  data=dat_df_cc, chains = 4, cores = 4 )
 ```
 
+```{r}
+precis(m2.1)
+```
+
+
+### with imputation
+```{r}
+dat_list <- list( B=B, M=M, N=length(M))
+
+m2.2 <- ulam( alist(
+  B_merge ~ dlnorm( mu , sigma ),
+  mu <- a + b*log(M),
+  a ~ normal(0,1),
+  b ~ normal(0,1),
+  vector[N]:B_merge <- merge_missing(B, B_impute),
+  sigma ~ exponential(1)),
+  data=dat_list, chains = 4, cores = 4,
+ start=list( B_impute=rep(0.5,56) ))
+```
+
+```{r}
+stancode(m2.2)
+```
+
+```{r}
+precis(m2.2, depth = 2)
+```
+
+```{r}
+precis(m2.1)
+```
+
+Same!
 
 ## 15H4 (optional)
 
