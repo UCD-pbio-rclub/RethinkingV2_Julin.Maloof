@@ -378,7 +378,10 @@ plot( precis(m16.2,2) , labels=p_labels )
 ## R code 16.9
 library(rethinking)
 data(Panda_nuts)
+```
 
+
+```{r, eval=FALSE}
 ## R code 16.10
 N <- 1e4
 phi <- rlnorm( N , log(1) , 0.1 )
@@ -399,7 +402,15 @@ at <- c(0,0.25,0.5,0.75,1,1.25,1.5)
 axis( 1 , at=at , labels=round(at*max(Panda_nuts$age)) )
 for ( i in 1:20 ) curve( phi[i]*(1-exp(-k[i]*x))^theta[i] , add=TRUE ,
                          col=grau() , lwd=1.5 )
+```
+```{r, eval=FALSE}
+dens(phi)
+dens(k)
+dens(theta)
+```
 
+
+```{r, eval=FALSE}
 ## R code 16.11
 dat_list <- list(
     n = as.integer( Panda_nuts$nuts_opened ),
@@ -414,7 +425,33 @@ m16.4 <- ulam(
         k ~ lognormal( log(2) , 0.25 ),
         theta ~ lognormal( log(5) , 0.25 )
     ), data=dat_list , chains=4 )
+```
+```{r}
+precis(m16.4)
+```
 
+```{r, eval=FALSE}
+## R code 16.11 JM
+dat_list <- list(
+    n = as.integer( Panda_nuts$nuts_opened ),
+    age = Panda_nuts$age ,
+    seconds = Panda_nuts$seconds )
+
+m16.4JM <- ulam(
+    alist(
+        n ~ poisson( lambda ),
+        lambda <- seconds*phi*(1-exp(-k*age))^theta,
+        phi ~ lognormal( log(1) , 0.1 ),
+        k ~ lognormal( log(2) , 0.25 ),
+        theta ~ lognormal( log(5) , 0.25 )
+    ), data=dat_list , chains=4 )
+```
+
+```{r}
+precis(m16.4JM)
+```
+
+```{r, eval=FALSE}
 ## R code 16.12
 post <- extract.samples(m16.4)
 plot( NULL , xlim=c(0,1) , ylim=c(0,1.5) , xlab="age" ,
@@ -430,7 +467,10 @@ points( jitter(dat_list$age) , pts , col=rangi2 , lwd=2 , cex=point_size*3 )
 # 30 posterior curves
 for ( i in 1:30 ) with( post ,
                         curve( phi[i]*(1-exp(-k[i]*x))^theta[i] , add=TRUE , col=grau() ) )
+```
 
+
+```{r, eval=FALSE}
 ## R code 16.13
 library(rethinking)
 data(Lynx_Hare)
