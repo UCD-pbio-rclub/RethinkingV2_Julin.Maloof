@@ -244,6 +244,9 @@ d %>% ggplot(aes(x=x,y=y, group=prior, color=as.factor(prior))) +
     geom_line()
 ```
 
+6M3, 16H1, 16H2, 16H3
+
+(and feel free to try 16H4 and 16H5 if you have time)
 
 ## Book
 
