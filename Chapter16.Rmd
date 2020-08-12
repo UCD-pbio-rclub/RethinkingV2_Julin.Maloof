@@ -291,23 +291,16 @@ sim_lynx_hare <- function( n_steps=1e4 , init , theta , sigma, p, dt=0.002 ) {
     Hobs <- rep(NA, n_steps)
     L[1] <- init[1]
     H[1] <- init[2]
-    Lobs[1] <- rlnorm(1, ifelse(p[1]*L[1] < 0, 0, log(p[1]*L[1])), sigma[1])
-    Hobs[1] <- rlnorm(1, ifelse(p[2]*H[1] < 0, 0, log(p[2]*H[1])), sigma[2])
+    Lobs[1] <- rlnorm(1, ifelse(p[1]*L[1] < 0, log(0), log(p[1]*L[1])), sigma[1])
+    Hobs[1] <- rlnorm(1, ifelse(p[2]*H[1] < 0, log(0), log(p[2]*H[1])), sigma[2])
     for ( i in 2:n_steps ) {
         H[i] <- H[i-1] + dt*H[i-1]*( theta[1] - theta[2]*L[i-1] )
         L[i] <- L[i-1] + dt*L[i-1]*( theta[3]*H[i-1] - theta[4] )
-        Lobs[i] <- rlnorm(1, ifelse(p[1]*L[i] < 0, 0, log(p[1]*L[i])), sigma[1])
-        Hobs[i] <- rlnorm(1, ifelse(p[2]*H[i] < 0, 0, log(p[2]*H[i])), sigma[2])
+        Lobs[i] <- rlnorm(1, ifelse(p[1]*L[i] < 0, log(0), log(p[1]*L[i])), sigma[1])
+        Hobs[i] <- rlnorm(1, ifelse(p[2]*H[i] < 0, log(0), log(p[2]*H[i])), sigma[2])
     }
     return( tibble(L_pop=L,H_pop=H,L_obs=Lobs,H_obs=Hobs,step=1:n_steps) )
 }
-```
-
-```{r}
-init <- c(12.12, 3.81)
-p <- c(0.174, 0.127)
-sigma <- c(0.705, 1.74)
-theta <- c(1.323, 0, 0.104, 0.299)
 ```
 
 
@@ -353,6 +346,33 @@ pred %>% unnest(dat) %>% pivot_longer(c(-trial,-step), names_to=c("species", "se
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank())
 ```
 
+```{r}
+x <- seq(0,10,.1)
+plot(x,dexp(x,1))
+```
+
+obs larger than pop?  sigma too high?
+
+```{r, fig.height=7}
+priorpred <- function() {
+  init <- rlnorm(2, log(10), 1)
+  theta <- rnorm(4, c(1, 0.05, 0.05, 1), c(.5, .05, .05, .5)) #bh, mh, bl, ml
+  theta <- ifelse(theta<0,0,theta)
+  sigma <- rexp(2,10)
+  p <- rbeta(2, 40, 200)
+  z <- sim_lynx_hare( 1e4 , init , theta, sigma, p ) 
+}
+
+pred <- tibble(trial=1:10)
+pred <- pred %>% 
+  mutate(dat=map(trial, ~ priorpred()))
+
+pred %>% unnest(dat) %>% pivot_longer(c(-trial,-step), names_to=c("species", "set"), names_sep="_") %>%
+  ggplot(aes(x=step, y=value, lty=set, color=species)) +
+  geom_line() +
+  facet_wrap(trial ~ set, scales="free_y", ncol=4) +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank())
+```
 
 16M3, 16H1, 16H2, 16H3
 
