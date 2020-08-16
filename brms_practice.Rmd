@@ -1,0 +1,138 @@
+---
+title: "brms_practice"
+author: "Julin Maloof"
+date: "8/16/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(rethinking)
+library(brms)
+library(tidyverse)
+```
+
+## Assignment
+
+Revisit the following homework problems and try to fit the with brms.  Make your first attempt without looking at the rethinking to brms translation, but if you get stuck definitely look!  Compare the coefficients or predictions that you obtain with brms and those with quap or ulam.
+
+* 4H1, 4H2 (you probably need the function `posterior_predict()`)
+* From chapter 8 I assigned a tomato problem from my data "Use the tomato.csv data set and evaluate whether hypocotyl length ("hyp") is affected by shade ("trt"), species ("species") and their interaction."
+* From chapter 9: 8M1 (remember that the problem numbers were offset it is actually called 9M1 in the Nov 24 PDF)
+
+## 4H1
+
+### original answer
+
+_The weights listed below were recorded in the !Kung census, but heights were not recorded for these individuals. Provide predicted heights and 89% intervals (either HPDI or PI) for each of these individuals. That is, fill in the table below, using model-based predictions._
+
+```{r}
+weights <- c(46.95,43.72,64.78,32.59,54.63)
+```
+
+These all seem to be adult weights, so I am going to use the simple regression model on adults
+
+```{r}
+#4.42
+data(Howell1)
+d <- Howell1
+d2 <- d[ d$age >= 18 , ]
+
+# define the average weight, x-bar
+xbar <- mean(d2$weight)
+
+d2 <- c(d2, xbar=xbar)
+str(d2)
+
+# fit model
+m4.3 <- ulam(
+    alist(
+        height ~ dnorm( mu , sigma ) ,
+        mu <- a + b*( weight - xbar ) ,
+        a ~ dnorm( 178 , 20 ) ,
+        b ~ dlnorm( 0 , 1 ) ,
+        sigma ~ dexp(1)
+    ) , chains = 4, cores = 4, refresh=0,
+    data=d2 )
+
+```
+
+
+```{r}
+sim.heights <- sim(fit = m4.3,
+                   data = data.frame(weight=weights),
+                   n=1e4)
+dim(sim.heights)
+head(sim.heights)
+```
+
+```{r}
+resultsulam <- tibble(
+  individual=1:5,
+  weight=weights,
+  predicted.height=apply(sim.heights,2,mean)
+  )
+resultsulam <- cbind(resultsulam,t(apply(sim.heights, 2, HPDI)))
+knitr::kable(resultsulam,digits=2)
+```
+
+### brms
+
+```{r}
+get_prior(height ~ ( weight - xbar ), data = d2)
+```
+
+
+```{r}
+d2$weight2 <-d2$weight-d2$xbar
+m4.3brms <- brm(
+  height ~ weight2  ,
+  prior = c(set_prior("normal(178,20)", class="Intercept"),
+            set_prior("lognormal(0, 1)", class="b", lb = 0),
+            set_prior("exponential(1)", class="sigma")),
+    data=d2, refresh=0 )
+```
+```{r}
+precis(m4.3)
+```
+
+
+```{r}
+summary(m4.3brms, prob=0.89)
+```
+
+now make predictions...
+```{r}
+brmspost <- posterior_predict(m4.3brms, newdata = data.frame(weight2=(weights-xbar)))
+
+brmsresults <- tibble(
+  individual=1:5,
+  weight=weights,
+  predicted.height=apply(brmspost,2,mean)
+  )
+brmsresults <- cbind(results,t(apply(brmspost, 2, HPDI)))
+knitr::kable(results,digits=2)
+```
+
+alternative
+```{r}
+predict(m4.3brms, 
+        newdata = data.frame(weight2=(weights-xbar)),
+        probs = c(0.055, 0.945)) %>% 
+  knitr::kable(digits = 2)
+```
+
+compare to ulam
+```{r}
+knitr::kable(resultsulam,digits=2)
+```
+
+
+## 4H2
+
+## Tomato
+
+## 9M1
