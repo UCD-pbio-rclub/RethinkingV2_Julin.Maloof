@@ -113,8 +113,8 @@ brmsresults <- tibble(
   weight=weights,
   predicted.height=apply(brmspost,2,mean)
   )
-brmsresults <- cbind(results,t(apply(brmspost, 2, HPDI)))
-knitr::kable(results,digits=2)
+brmsresults <- cbind(brmsresults,t(apply(brmspost, 2, HPDI)))
+knitr::kable(brmsresults,digits=2)
 ```
 
 alternative
@@ -291,6 +291,7 @@ d <- d %>%
 
 fit non interaction model
 ```{r}
+d2 <- d %>% select(hyp, species_i, trt_i)
 m1 <- ulam(flist = alist(
   hyp ~ dnorm(mu, sigma),
   mu <- a[species_i] + b*trt_i, # one beta coefficient
@@ -298,7 +299,7 @@ m1 <- ulam(flist = alist(
   b ~ dnorm(0, 5),
   sigma ~ dexp(1)),
   log_lik = TRUE,
-  data=d, chains = 4, cores = 4)
+  data=d2, chains = 4, cores = 4)
 ```
 
 
@@ -411,3 +412,4 @@ print(loo_compare(m1brms, m1brmsalt, m2brms, criterion = "waic"), simplify=FALSE
 
 
 ## 9M1
+
