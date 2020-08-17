@@ -256,8 +256,157 @@ plot.data %>%
   geom_point(aes(y=height), data=obs.plot.data,color="blue", alpha=.3) +
   ylab("height")
 ```
-            
-
 ## Tomato
+_Use the tomato.csv (attached) data set and evaluate whether hypocotyl length ("hyp") is affected by shade ("trt"), species ("species") and their interaction._
+
+### original
+
+```{r}
+d <- read_csv("Tomato.csv") %>%
+  select(hyp, trt, species) %>%
+  na.omit()
+d
+```
+
+Make a plot
+```{r}
+d %>%
+  group_by(species,trt) %>%
+  summarize(mean=mean(hyp), 
+            sem=sd(hyp)/sqrt(n()), 
+            ymax=mean+sem,
+            ymin=mean-sem) %>%
+  ggplot(aes(x=species, y=mean, ymax=ymax, ymin=ymin, fill=trt)) +
+  geom_col(position = "dodge") +
+  geom_errorbar(position = position_dodge(width=.9), width=.5)
+```
+
+make indices for the factors:
+```{r}
+d <- d %>%
+  mutate(species_i = as.integer(as.factor(species)),
+         trt_i = as.integer(as.factor(trt))-1)
+```
+
+
+fit non interaction model
+```{r}
+m1 <- ulam(flist = alist(
+  hyp ~ dnorm(mu, sigma),
+  mu <- a[species_i] + b*trt_i, # one beta coefficient
+  a[species_i] ~ dnorm(25, 5),
+  b ~ dnorm(0, 5),
+  sigma ~ dexp(1)),
+  log_lik = TRUE,
+  data=d, chains = 4, cores = 4)
+```
+
+
+```{r}
+precis(m1, depth=2)
+```
+
+now the interaction model:
+```{r}
+m2 <- ulam(flist = alist(
+  hyp ~ dnorm(mu, sigma),
+  mu <- a[species_i] + b_int[species_i]*trt_i, # a beta coefficent for each species
+  a[species_i] ~ dnorm(25, 5),
+  b_int[species_i] ~ dnorm(0, 1),
+  sigma ~ dexp(1)),
+  data=d, chains = 4, cores = 4,
+  log_lik = TRUE,
+  refresh=0)
+```
+
+```{r}
+precis(m2, depth = 2)
+```
+```{r}
+compare(m1, m2)
+```
+
+non interaction model preferred
+
+```{r}
+plot(coeftab(m2))
+```
+
+
+### brms
+
+non-interaction
+```{r}
+get_prior(hyp~-1 + species + trt, data=d)
+```
+
+
+```{r}
+m1brms <- brm(hyp ~ -1 + species + trt,
+              prior = c(set_prior("normal(25, 5)",class  = "b"),
+                        set_prior("normal(0, 5)", class="b", coef="trtL"),
+                        set_prior("exponential(1)", class="sigma")),
+              data = d)
+m1brms <- add_criterion(m1brms, "waic")
+
+```
+
+make sure prior as what we think:
+
+```{r}
+prior_summary(m1brms)
+```
+
+yes
+
+```{r}
+precis(m1, depth = 2)
+```
+
+
+```{r}
+summary(m1brms)
+```
+
+```{r}
+get_prior(hyp ~ -1 + species*trt, data = d)
+```
+Hmm, this is still fitting a main "trtL" term and I am not sure how to get rid of that.  So I think I will do the default parameterization...
+
+```{r}
+get_prior(hyp ~ species*trt, data = d)
+```
+
+```{r}
+m2brms <- brm(hyp ~ species * trt,
+              prior = c(set_prior("normal(25, 5)", class="Intercept"),
+                        set_prior("normal(0, 5)",class  = "b"),
+                        set_prior("exponential(1)", class="sigma")),
+              data = d)
+m2brms <- add_criterion(m2brms, "waic")
+```
+
+```{r}
+summary(m2brms, prob=.89)
+```
+
+```{r}
+print(loo_compare(m1brms, m2brms, criterion="waic"), simplify=FALSE)
+```
+better try normal paramteriazation for m1
+
+```{r}
+m1brmsalt <- brm(hyp ~ species + trt,
+              prior = c(set_prior("normal(25, 5)", class="Intercept"),
+                        set_prior("normal(0, 5)",class  = "b"),
+                        set_prior("exponential(1)", class="sigma")),
+              data = d)
+m1brmsalt <- add_criterion(m1brmsalt, criterion = "waic")
+```
+
+```{r}
+print(loo_compare(m1brms, m1brmsalt, m2brms, criterion = "waic"), simplify=FALSE)
+```
+
 
 ## 9M1
