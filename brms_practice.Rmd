@@ -2,7 +2,9 @@
 title: "brms_practice"
 author: "Julin Maloof"
 date: "8/16/2020"
-output: html_document
+output: 
+  html_document: 
+    keep_md: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -138,7 +140,7 @@ _Select out all the rows in the Howell1 data with ages below 18 years of age. If
 
 ```{r}
 d3 <- Howell1 %>% as_tibble() %>% filter(age < 18)
-d3
+head(d3)
 ```
 
 
@@ -217,7 +219,7 @@ plot it
 ```{r}
 plot.data <- as_tibble(cbind(weight.seq, mu.mean, t(mu.HPDI), t(sim.HPDI))) %>%
   rename(weight=weight.seq, mu.89l=`|0.89`, mu.89u=`0.89|`, sim.89l=V5, sim.89u=V6)
-plot.data
+head(plot.data)
 ```
 
 ```{r}
@@ -244,7 +246,7 @@ plot it
 ```{r}
 plot.data <- as_tibble(cbind(weight.seq, mu.mean.brms, t(mu.HPDI.brms), pred[,c("Q5.5", "Q94.5")])) %>%
   rename(weight=weight.seq, mu.89l=`|0.89`, mu.89u=`0.89|`)
-plot.data
+head(plot.data)
 ```
 
 ```{r}
@@ -265,7 +267,7 @@ _Use the tomato.csv (attached) data set and evaluate whether hypocotyl length ("
 d <- read_csv("Tomato.csv") %>%
   select(hyp, trt, species) %>%
   na.omit()
-d
+head(d)
 ```
 
 Make a plot
@@ -299,7 +301,7 @@ m1 <- ulam(flist = alist(
   b ~ dnorm(0, 5),
   sigma ~ dexp(1)),
   log_lik = TRUE,
-  data=d2, chains = 4, cores = 4)
+  data=d2, chains = 4, cores = 4, refresh = 0)
 ```
 
 
@@ -348,7 +350,8 @@ m1brms <- brm(hyp ~ -1 + species + trt,
               prior = c(set_prior("normal(25, 5)",class  = "b"),
                         set_prior("normal(0, 5)", class="b", coef="trtL"),
                         set_prior("exponential(1)", class="sigma")),
-              data = d)
+              data = d,
+              refresh = 0)
 m1brms <- add_criterion(m1brms, "waic")
 
 ```
@@ -384,7 +387,8 @@ m2brms <- brm(hyp ~ species * trt,
               prior = c(set_prior("normal(25, 5)", class="Intercept"),
                         set_prior("normal(0, 5)",class  = "b"),
                         set_prior("exponential(1)", class="sigma")),
-              data = d)
+              data = d,
+              refresh = 0)
 m2brms <- add_criterion(m2brms, "waic")
 ```
 
@@ -402,7 +406,8 @@ m1brmsalt <- brm(hyp ~ species + trt,
               prior = c(set_prior("normal(25, 5)", class="Intercept"),
                         set_prior("normal(0, 5)",class  = "b"),
                         set_prior("exponential(1)", class="sigma")),
-              data = d)
+              data = d,
+              refresh = 0)
 m1brmsalt <- add_criterion(m1brmsalt, criterion = "waic")
 ```
 
