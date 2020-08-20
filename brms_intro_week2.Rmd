@@ -1,0 +1,231 @@
+---
+title: "BRMS week 2"
+output: html_notebook
+---
+
+```{r}
+library(rethinking)
+library(brms)
+library(tidyverse)
+```
+
+This week I would like to explore how to fit "partial pooling" aka "hierarchical" aka "mixed effect" models on brms.  And also binomial and Poisson.
+
+## Partial Pooling: intercept
+
+I will illustrate partial pooling using the tomato data set.  Let's fit a model with partial pooling for intercepts per species:
+
+### rethinking
+
+```{r}
+d <- read_csv("Tomato.csv") %>%
+  select(hyp, trt, species) %>%
+  na.omit()
+head(d)
+```
+
+make indices for the factors:
+```{r}
+d <- d %>%
+  mutate(species_i = as.integer(as.factor(species)),
+         trt_i = as.integer(as.factor(trt))-1L)
+```
+
+no pooling
+```{r}
+d2 <- d %>% select(hyp, species_i, trt_i)
+m1 <- ulam(flist = alist(
+  hyp ~ dnorm(mu, sigma),
+  mu <- a[species_i] + b*trt_i, # one beta coefficient
+  a[species_i] ~ dnorm(25, 5),
+  b ~ dnorm(0, 5),
+  sigma ~ dexp(1)),
+  log_lik = TRUE,
+  data=d2, chains = 4, cores = 4, refresh = 0)
+```
+
+```{r}
+precis(m1, depth=2)
+```
+
+partial pooling for intercepts
+```{r}
+d2 <- d %>% select(hyp, species_i, trt_i)
+m2 <- ulam(flist = alist(
+  hyp ~ dnorm(mu, sigma),
+  mu <- a[species_i] + b*trt_i, # one beta coefficient
+  a[species_i] ~ dnorm(a_bar, a_sigma),
+  a_bar ~ dnorm(25, 5),
+  a_sigma ~ dexp(1),
+  b ~ dnorm(0, 5),
+  sigma ~ dexp(1)),
+  log_lik = TRUE,
+  data=d2, chains = 4, cores = 4, refresh = 0)
+```
+
+```{r}
+precis(m2, depth=2)
+```
+
+```{r}
+compare(m1, m2)
+```
+
+not much gain...
+
+### brms
+
+no pooling (same as last week):
+```{r}
+m1brms <- brm(hyp ~ -1 + species + trt,
+              prior = c(set_prior("normal(25, 5)",class  = "b"),
+                        set_prior("normal(0, 5)", class="b", coef="trtL"),
+                        set_prior("exponential(1)", class="sigma")),
+              data = d,
+              refresh = 0)
+m1brms <- add_criterion(m1brms, "waic")
+```
+
+in brms, partial pooling on an intercept term is written as `(1|species)`.  in brms language, species is now a grouping factor.
+
+We can't parameterize this quite the same as for rethinking (or at least I can't figure out how to).  Instead we will fit an overal Intercept and then each species will have a deviation from that.
+
+partial pooling, species intercept:
+
+check priors:
+
+```{r}
+get_prior(hyp ~ (1|species) + trt, data = d)
+```
+
+```{r}
+m2brms <- brm(hyp ~  (1|species) + trt ,
+              prior = c(set_prior("exponential(1)", class = "sd"), # a_sigma
+                        set_prior("normal(25, 5)", class="Intercept"), # Overall mean
+                        set_prior("normal(0, 5)", class="b", coef="trtL"),
+                        set_prior("exponential(1)", class="sigma")),
+              data = d,
+              refresh = 0)
+
+m2brms <- add_criterion(m2brms, "waic")
+```
+
+```{r}
+summary(m1brms)
+```
+
+```{r}
+summary(m2brms)
+```
+
+To get the random effect estimates:
+
+```{r}
+ranef(m2brms, probs=c(0.055, 0.945))
+```
+
+estimates including intercept
+```{r}
+coef(m2brms, probs=c(0.055, 0.945))
+```
+
+compare to rethinking:
+
+```{r}
+precis(m2, depth=2)
+```
+
+Compare the two brms fits
+```{r}
+print(loo_compare(m1brms, m2brms,criterion = "waic"), simplify = FALSE)
+```
+
+## partial pooling, intercept and slope
+
+### rethinking
+
+interaction model, no pooling
+```{r}
+d2 <- d %>% select(hyp, species_i, trt_i)
+m3 <- ulam(flist = alist(
+  hyp ~ dnorm(mu, sigma),
+  mu <- a[species_i] + b_int[species_i]*trt_i, # a beta coefficent for each species
+  a[species_i] ~ dnorm(25, 5),
+  b_int[species_i] ~ dnorm(0, 1),
+  sigma ~ dexp(1)),
+  data=d2, chains = 4, cores = 4,
+  log_lik = TRUE,
+  refresh=0)
+```
+
+
+interaction model, partial pooling intercept and slope:
+```{r}
+d2 <- d %>% select(hyp, species_i, trt_i)
+m4 <- ulam(flist = alist(
+  hyp ~ dnorm(mu, sigma),
+  mu <- a[species_i] + b[species_i]*trt_i, # one beta coefficient
+  a[species_i] ~ dnorm(a_bar, a_sigma),
+  b[species_i] ~ dnorm(b_bar, b_sigma),
+  a_bar ~ dnorm(25, 5),
+  c(a_sigma, b_sigma) ~ dexp(1),
+  b_bar ~ dnorm(0, 5),
+  sigma ~ dexp(1)),
+  log_lik = TRUE,
+  data=d2, chains = 4, cores = 4, refresh = 0)
+```
+
+```{r}
+compare(m3, m4)
+```
+
+now partial pooling starts to help.
+
+```{r}
+precis(m3, depth=2)
+```
+
+```{r}
+precis(m4, depth = 2)
+```
+
+
+### brms
+
+Interaction model, no pooling.  I am not reparameterizing to match rethinking because that is a PITA and defeats the advantage of brms.
+
+```{r}
+m3brms <- brm(hyp ~ species * trt,
+              prior = c(set_prior("normal(25, 5)", class="Intercept"),
+                        set_prior("normal(0, 5)",class  = "b"),
+                        set_prior("exponential(1)", class="sigma")),
+              data = d,
+              refresh = 0)
+m3brms <- add_criterion(m2brms, "waic")
+```
+
+
+Interaction model, partial pooling on intercept and slope.
+
+what priors?
+```{r}
+get_prior(hyp ~  trt + (trt|species), data=d)
+```
+
+```{r}
+m4brms <- brm(hyp ~  trt + (trt|species) , #(trt|species) is shorthand for (1 + trt | species))
+              prior = c(set_prior("exponential(1)", class = "sd"), # a_sigma and b_sigma
+                        set_prior("normal(25, 5)", class="Intercept"), # Overall mean ~ a_bar
+                        set_prior("normal(0, 5)", class="b", coef="trtL"), # Overall trt response ~ b_bar
+                        set_prior("exponential(1)", class="sigma")),
+              data = d,
+              refresh = 0)
+
+m4brms <- add_criterion(m2brms, "waic")
+```
+
+```{r}
+
+```
+
+ADD LKJ FOR RETHINKING
