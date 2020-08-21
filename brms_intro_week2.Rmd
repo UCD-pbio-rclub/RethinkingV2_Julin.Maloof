@@ -1,7 +1,14 @@
 ---
 title: "BRMS week 2"
-output: html_notebook
+author: "Julin Maloof"
+date: "8/20/2020"
+output: html_document
 ---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+```
+
 
 ```{r}
 library(rethinking)
@@ -10,6 +17,40 @@ library(tidyverse)
 ```
 
 This week I would like to explore how to fit "partial pooling" aka "hierarchical" aka "mixed effect" models on brms.  And also binomial and Poisson.
+
+## Resources
+
+I add a couple of new ones in addition to what I have last week:
+
+### brms help functions
+The brms help functions are *very* detailed and helpful:
+```{r}
+?brm
+?brmsformula
+?set_prior
+?brmsfamily # NEW
+```
+
+### brms vignettes
+The vignettes may be a bit much too swallow at once but they can also be helpful.
+```{r}
+vignette(package="brms")
+vignette("brms_multilevel") # NEW, check out the examples
+```
+
+### online tutorial
+Rens Van de Schoot has a series of online tutorials that look quite accessible and helpful:
+
+[getting started](https://www.rensvandeschoot.com/tutorials/brms-started/)  
+[priors](https://www.rensvandeschoot.com/tutorials/brms-priors/)  
+[when to worry](https://www.rensvandeschoot.com/brms-wambs/)  
+[glm](https://www.rensvandeschoot.com/tutorials/generalised-linear-models-with-brms/)
+
+### brms and rethinking
+
+The second edition of rethinking has been [partially translated into brms](https://bookdown.org/content/4857/)
+
+The first edition of rethinking has been [translated into brms](https://bookdown.org/connect/#/apps/1850/access)
 
 ## Partial Pooling: intercept
 
@@ -111,11 +152,11 @@ m2brms <- add_criterion(m2brms, "waic")
 ```
 
 ```{r}
-summary(m1brms)
+summary(m1brms, prob=.89)
 ```
 
 ```{r}
-summary(m2brms)
+summary(m2brms, prob=.89)
 ```
 
 To get the random effect estimates:
@@ -164,13 +205,13 @@ interaction model, partial pooling intercept and slope:
 d2 <- d %>% select(hyp, species_i, trt_i)
 m4 <- ulam(flist = alist(
   hyp ~ dnorm(mu, sigma),
-  mu <- a[species_i] + b[species_i]*trt_i, # one beta coefficient
-  a[species_i] ~ dnorm(a_bar, a_sigma),
-  b[species_i] ~ dnorm(b_bar, b_sigma),
+  mu <- a[species_i] + b[species_i]*trt_i, 
+  c(a, b)[species_i] ~ multi_normal( c(a_bar, b_bar), Rho, sigma_species),
   a_bar ~ dnorm(25, 5),
-  c(a_sigma, b_sigma) ~ dexp(1),
   b_bar ~ dnorm(0, 5),
-  sigma ~ dexp(1)),
+  sigma_species ~ dexp(1),
+  sigma ~ dexp(1),
+  Rho ~ lkj_corr(2)),
   log_lik = TRUE,
   data=d2, chains = 4, cores = 4, refresh = 0)
 ```
@@ -179,7 +220,7 @@ m4 <- ulam(flist = alist(
 compare(m3, m4)
 ```
 
-now partial pooling starts to help.
+now partial pooling helps!
 
 ```{r}
 precis(m3, depth=2)
@@ -201,7 +242,7 @@ m3brms <- brm(hyp ~ species * trt,
                         set_prior("exponential(1)", class="sigma")),
               data = d,
               refresh = 0)
-m3brms <- add_criterion(m2brms, "waic")
+m3brms <- add_criterion(m3brms, "waic")
 ```
 
 
@@ -217,15 +258,65 @@ m4brms <- brm(hyp ~  trt + (trt|species) , #(trt|species) is shorthand for (1 + 
               prior = c(set_prior("exponential(1)", class = "sd"), # a_sigma and b_sigma
                         set_prior("normal(25, 5)", class="Intercept"), # Overall mean ~ a_bar
                         set_prior("normal(0, 5)", class="b", coef="trtL"), # Overall trt response ~ b_bar
-                        set_prior("exponential(1)", class="sigma")),
+                        set_prior("exponential(1)", class="sigma"),
+                        set_prior("lkj(2)", class="cor")),
               data = d,
               refresh = 0)
 
-m4brms <- add_criterion(m2brms, "waic")
+m4brms <- add_criterion(m4brms, "waic")
 ```
 
 ```{r}
-
+summary(m3brms, prob=.89)
 ```
 
-ADD LKJ FOR RETHINKING
+```{r}
+summary(m4brms, prob=.89)
+```
+
+```{r}
+print(loo_compare(m3brms, m4brms, criterion = "waic"), simplify = FALSE)
+```
+not a big difference here.  I think because m3brms fit much better than m3(rethinking).  Compare the WAICs:
+
+```{r}
+compare(m3, m4)
+```
+
+compare the estimates between brms and rethinking for model 4:
+```{r}
+coef(m4brms, probs=c(0.055, 0.945))
+```
+
+```{r}
+precis(m4, depth = 2)
+```
+
+## Assignment
+
+Redo Megan's Clarkia assignment using brms.  We did this for Feb 14.  I paste her email below:
+
+I've attached some data from a common garden experiment, where plants from 15 different populations were planted out (locations are shown in Figure 1 here if you're curious). One goal for the experiment was to see if temperature of origin affected performance of plants in the common garden. Here are some practice questions, very similar to Julin's from last week. The data set is big-ish. I've already sub-sampled it, but there are still 3250 observations. The models are still running quickly on my computer, but if that's not the case for you, feel free to sub-sample it further. Please let me know if you have any questions.
+
+1. Fit a simple model with effects of temperature difference (temperature_diff_fall) on November germination (nov_germ). Temperature difference is already centered and scaled (i.e., negative values are the smallest temperature differences). Make sure to use the appropriate likelihood for the germination data (0 = no germ, 1  = germ). 
+
+2. Simulate from your priors to see if you've chosen reasonable priors, adjust them if necessary. 
+
+These blocks were set up in the field, and had differences in soil depth, slope, and competitive environment. So maybe a model that includes block will describe the data better. 
+
+3. Fit a model that includes an effect of block (blk), with no pooling.
+
+4. Fit a model that includes block, and allows partial pooling. 
+
+The experiment included many individuals from each of the 15 populations. So, each individual is not an independent representative of a given temperature, but might be similar to other plants from that population for reasons besides temperature. 
+
+5. Build a model that accounts for this by including population (pop) and allowing partial pooling between populations A) without block, and B) with block included as in the model above. How does including population affect the temperature estimate?
+
+6. Compare the five models you built using WAIC. Which fits best?
+
+7. Plot effects of temperature difference for the average block, and also make a plot that includes the variability across blocks.
+
+There are other complexities to this data. For example, there is also some family structure within populations (dam and sire) which could be included as hierarchical effects. There are also other response variables (November size, March survival and size, first flower date, last flower date, fruit number, estimated seed production) that might require different likelihoods (and in some cases treatment for over-dispersion or zero inflation). So if the above problems were too easy and you feel adventurous, you could try analyzing one of these responses instead of germination (you will need to filter out missing observations). 
+
+
+
