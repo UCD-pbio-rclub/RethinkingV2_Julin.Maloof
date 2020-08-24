@@ -151,8 +151,13 @@ fm2.brms.priors <- brm(nov_germ ~ 0 + Intercept + temperature_diff_fall,
 ```
 
 ```{r}
-posterior_epred(fm2.brms.priors, newdata = prior.data, nsamples = 100) %>% 
-  as_tibble() %>%
+priorpred <- posterior_epred(fm2.brms.priors, newdata = prior.data, nsamples = 100) %>% 
+  as_tibble()
+```
+
+
+```{r}
+priorpred %>%
   magrittr::set_colnames(prior.data$temperature_diff_fall) %>% 
   mutate(sample=1:n()) %>%
   pivot_longer(cols=-sample, names_to="temperature_diff_fall", values_to = "nov_germ", names_transform=list(temperature_diff_fall=as.numeric)) %>%
@@ -592,7 +597,6 @@ avg.pred.df %>%
 
 For variability in new blocks
 
-
 ```{r}
 newdata <- expand_grid(
   temperature_diff_fall=seq(
@@ -617,6 +621,4 @@ avg.pred.df %>%
   geom_ribbon(alpha=.3)+
   geom_line()
 ```
-Hmmm, not what I expected for the new blocks...
-
-There are other complexities to this data. For example, there is also some family structure within populations (dam and sire) which could be included as hierarchical effects. There are also other response variables (November size, March survival and size, first flower date, last flower date, fruit number, estimated seed production) that might require different likelihoods (and in some cases treatment for over-dispersion or zero inflation). So if the above problems were too easy and you feel adventurous, you could try analyzing one of these responses instead of germination (you will need to filter out missing observations). 
+Hmmm, not what I expected for the new blocks.  Something isn't working, or I don't understand...
