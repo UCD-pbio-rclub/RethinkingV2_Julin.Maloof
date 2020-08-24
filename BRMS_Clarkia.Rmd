@@ -1,0 +1,382 @@
+---
+title: "Brms Clarkia"
+author: "Julin Maloof"
+date: "8/23/2020"
+output: 
+  html_document: 
+    keep_md: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(rethinking)
+library(tidyverse)
+library(brms)
+```
+
+
+```{r}
+data <- read_csv("clarkia_transplant_data.csv")
+data %>% arrange(pop)
+```
+
+## Assignment
+
+Redo Megan's Clarkia assignment using brms.  We did this for Feb 14.  I paste her email below:
+
+I've attached some data from a common garden experiment, where plants from 15 different populations were planted out (locations are shown in Figure 1 here if you're curious). One goal for the experiment was to see if temperature of origin affected performance of plants in the common garden. Here are some practice questions, very similar to Julin's from last week. The data set is big-ish. I've already sub-sampled it, but there are still 3250 observations. The models are still running quickly on my computer, but if that's not the case for you, feel free to sub-sample it further. Please let me know if you have any questions.
+
+## 1
+_Fit a simple model with effects of temperature difference (temperature_diff_fall) on November germination (nov_germ). Temperature difference is already centered and scaled (i.e., negative values are the smallest temperature differences). Make sure to use the appropriate likelihood for the germination data (0 = no germ, 1  = germ). _
+
+
+First let's take a look
+```{r}
+data %>%
+  group_by(pop) %>%
+  summarize(temp_diff_fall=unique(temperature_diff_fall), germ.prop=mean(nov_germ)) %>%
+  ggplot(aes(x=temp_diff_fall, y=germ.prop, color=pop)) +
+  geom_point()
+```
+
+### rethinking
+fit a model
+```{r}
+datsmall <- data %>% select(nov_germ, temperature_diff_fall)
+fm1 <- ulam(alist(nov_germ ~ dbinom(size=1, prob = p),
+                  logit(p) <- a + b_temp*temperature_diff_fall,
+                  a ~ dnorm(0, 2),
+                  b_temp ~dnorm(0, 2)),
+            data=datsmall,
+            chains = 4,
+            cores = 4,
+            log_lik = TRUE,
+            refresh = 0)
+```
+
+```{r}
+precis(fm1)
+```
+
+### brms
+
+```{r}
+get_prior(nov_germ ~ temperature_diff_fall, data=data, family=bernoulli())
+```
+
+```{r}
+fm1.brms <- brm(nov_germ ~ temperature_diff_fall,
+                 family = bernoulli(), 
+                prior = c(set_prior("normal(0, 2)", class="Intercept"),
+                          set_prior("normal(0, 2)", class = "b")),
+                data=data,
+                refresh=1000)
+                 
+```
+
+```{r}
+summary(fm1.brms, prob = 0.89)
+```
+
+## 2
+_2. Simulate from your priors to see if you've chosen reasonable priors, adjust them if necessary._
+
+### rethinking
+
+
+```{r}
+prior <- extract.prior(fm1, n=100)
+str(prior)
+```
+
+
+```{r}
+pred.df <- data.frame(temperature_diff_fall=seq(-2,2,.1))
+prior.pred <- link(fm1, data=pred.df, post=prior)
+dim(prior.pred)
+head(prior.pred[,1:10])
+#reality check:
+inv_logit(prior$a[1] + prior$b_temp[1]*-2)
+```
+
+```{r}
+colnames(prior.pred) <- pred.df$temperature_diff_fall
+prior.pred %>% as_tibble() %>%
+  mutate(sample=1:nrow(.)) %>%
+  gather(key="temp", value="germ", -sample) %>%
+  mutate(temp=as.numeric(temp)) %>%
+  ggplot(aes(x=temp, y=germ, group=sample)) +
+  geom_line(alpha=.2)
+```
+
+### brms
+
+To do this we can use sample_prior = "only" and create a data frame with some fake response data
+```{r}
+prior.data <- tibble(nov_germ=.1, temperature_diff_fall=seq(min(data$temperature_diff_fall), max(data$temperature_diff_fall), length.out = 50))
+
+fm1.brms.priors <- brm(nov_germ ~ 0 + Intercept + temperature_diff_fall,
+                 family = bernoulli(), 
+                prior = c(set_prior("normal(0, 2)", coef="Intercept"),
+                          set_prior("normal(0, 2)", class = "b")),
+                data=prior.data,
+                sample_prior = "only")
+```
+
+```{r}
+prior_predict_samples <- posterior_epred(fm1.brms.priors, newdata = prior.data, nsamples = 100)
+str(prior_predict_samples)
+```
+```{r}
+prior_predict_samples %>% as_tibble() %>%
+  magrittr::set_colnames(prior.data$temperature_diff_fall) %>% 
+  mutate(sample=1:n()) %>%
+  pivot_longer(cols=-sample, names_to="temperature_diff_fall", values_to = "nov_germ", names_transform=list(temperature_diff_fall=as.numeric)) %>%
+  ggplot(aes(x=temperature_diff_fall, y = nov_germ, group=sample)) +
+  geom_line(alpha=.2)
+```
+Most of these have the temperature response going all the way from 0 to full germination.  Would like more in the middle, so try narrowing the priors on slope to .5 and alpha to 1.5.
+
+
+```{r}
+fm2.brms.priors <- brm(nov_germ ~ 0 + Intercept + temperature_diff_fall,
+                 family = bernoulli(), 
+                prior = c(set_prior("normal(0, 1.5)", coef="Intercept"),
+                          set_prior("normal(0, .5)", class = "b")),
+                data=prior.data,
+                sample_prior = "only")
+```
+
+```{r}
+posterior_epred(fm2.brms.priors, newdata = prior.data, nsamples = 100) %>% 
+  as_tibble() %>%
+  magrittr::set_colnames(prior.data$temperature_diff_fall) %>% 
+  mutate(sample=1:n()) %>%
+  pivot_longer(cols=-sample, names_to="temperature_diff_fall", values_to = "nov_germ", names_transform=list(temperature_diff_fall=as.numeric)) %>%
+  ggplot(aes(x=temperature_diff_fall, y = nov_germ, group=sample)) +
+  geom_line(alpha=.2)
+```
+better...
+
+## 3.
+_These blocks were set up in the field, and had differences in soil depth, slope, and competitive environment. So maybe a model that includes block will describe the data better. _
+
+_Fit a model that includes an effect of block (blk), with no pooling._
+
+### rethinking
+
+```{r}
+datsmall <- data %>% select(nov_germ, temperature_diff_fall, blk)
+sort(unique(datsmall$blk))
+
+fm3 <- ulam(alist(nov_germ ~ dbinom(size=1, prob = p),
+                  logit(p) <- a[blk] + b_temp*temperature_diff_fall,
+                  a[blk] ~ dnorm(0, 1.5),
+                  b_temp ~ dnorm(0, .5)),
+            data=datsmall,
+            chains = 4,
+            cores = 4,
+            log_lik = TRUE,
+            refresh=0)
+```
+
+```{r}
+precis(fm3, depth=2)
+```
+
+### brms
+
+```{r}
+data$blk2 <- as.character(data$blk)
+fm3.brms <- brm(nov_germ ~ 0 + blk2 + temperature_diff_fall,
+                 family = bernoulli(), 
+                prior = c(set_prior("normal(0, 1.5)"),
+                          set_prior("normal(0, .5)", coef = "temperature_diff_fall")),
+                data=data,
+                refresh=0)
+```
+
+```{r}
+summary(fm3.brms)
+```
+
+```{r}
+prior_summary(fm3.brms)
+```
+
+## 4. 
+_Fit a model that includes block, and allows partial pooling._
+
+### rethinking
+
+```{r}
+datsmall <- data %>% select(nov_germ, temperature_diff_fall, blk)
+sort(unique(datsmall$blk))
+
+fm4 <- ulam(alist(nov_germ ~ dbinom(size=1, prob = p),
+                  logit(p) <- a[blk] + b_temp*temperature_diff_fall,
+                  a[blk] ~ dnorm(ablk_bar, sigma),
+                  b_temp ~ dnorm(0, .5),
+                  ablk_bar ~ dnorm(0, 1.5),
+                  sigma ~ dexp(1)),
+            data=datsmall,
+            chains = 4,
+            cores = 4,
+            log_lik = TRUE,
+            refresh=0)
+```
+
+
+```{r}
+precis(fm4, depth=2)
+```
+
+### brms
+
+```{r}
+get_prior(nov_germ ~ (1|blk2) + temperature_diff_fall,
+                 family = bernoulli(),
+                data=data)
+```
+
+
+```{r}
+fm4.brms <-  brm(nov_germ ~ (1|blk2) + temperature_diff_fall,
+                 family = bernoulli(), 
+                prior = c(set_prior("normal(0, 1.5)", class="Intercept"),
+                          set_prior("normal(0, .5)", coef = "temperature_diff_fall"),
+                          set_prior("exponential(1)", class="sd")),
+                control = list(adapt_delta=0.9),
+                iter = 4000,
+                data=data,
+                refresh=0)
+```
+
+```{r}
+summary(fm4.brms)
+coef(fm4.brms)
+```
+
+
+The experiment included many individuals from each of the 15 populations. So, each individual is not an independent representative of a given temperature, but might be similar to other plants from that population for reasons besides temperature. 
+
+5. Build a model that accounts for this by including population (pop) and allowing partial pooling between populations A) without block, and B) with block included as in the model above. How does including population affect the temperature estimate?
+
+### rethinking
+
+```{r}
+datsmall <- data %>% 
+  mutate(pop_i = as.numeric(as.factor(pop))) %>%
+  select(nov_germ, temperature_diff_fall, pop_i)
+
+fm5a <- ulam(alist(nov_germ ~ dbinom(size=1, prob = p),
+                   logit(p) <- a[pop_i] + b_temp*temperature_diff_fall,
+                   a[pop_i] ~ dnorm(apop_bar, sigma_pop),
+                   apop_bar ~ dnorm(0,1.5),
+                   sigma_pop ~ dexp(1),
+                   b_temp ~ dnorm(0, .5)),
+             data=datsmall,
+             chains = 4,
+             cores = 4,
+             iter=2000,
+             log_lik = TRUE,
+             refresh = 0)
+```
+
+```{r}
+precis(fm5a, depth=2)
+```
+temp estimate the same, but confidence interval much wider
+
+with block.  had to adjust sigma_pop and sigma_blk for narrower priors, and increase iter
+```{r}
+datsmall <- data %>% 
+  mutate(pop_i = as.numeric(as.factor(pop))) %>%
+  select(nov_germ, temperature_diff_fall, pop_i, blk)
+
+fm5b <- ulam(alist(nov_germ ~ dbinom(size=1, prob = p),
+                   logit(p) <- a[pop_i] + b_temp*temperature_diff_fall + b_blk[blk],
+                   a[pop_i] ~ dnorm(apop_bar, sigma_pop),
+                   b_blk[blk] ~ dnorm(0, sigma_blk),
+                   apop_bar ~ dnorm(0, .5),
+                   sigma_pop ~ dcauchy(0, .25),
+                   sigma_blk ~ dcauchy(0, .25),
+                   b_temp ~ dnorm(0, .5)),
+             data=datsmall,
+             chains = 4,
+             cores = 4,
+             iter=4000,
+             log_lik = TRUE,
+             refresh = 0)
+```
+
+```{r}
+precis(fm5b, depth=2)
+extract.samples(fm5b) %>%
+  as.data.frame() %>%
+  cor() %>%
+  round(2)
+```
+
+### brms
+
+```{r}
+fm5a.brms <-  brm(nov_germ ~ (1|pop) + temperature_diff_fall,
+                 family = bernoulli(), 
+                prior = c(set_prior("normal(0, 1.5)", class="Intercept"),
+                          set_prior("normal(0, .5)", coef = "temperature_diff_fall"),
+                          set_prior("exponential(1)", class="sd")),
+                control = list(adapt_delta=0.9),
+                iter = 4000,
+                data=data,
+                refresh=0)
+```
+```{r}
+summary(fm5a.brms, prob=.89)
+coef(fm5a.brms, probs=c(0.045, 0.955))$pop[,,"Intercept"] %>% round(3)
+```
+
+```{r}
+precis(fm5a, depth = 2)
+```
+
+
+```{r}
+fm5b.brms <-  brm(nov_germ ~ (1|pop) + (1|blk2) + temperature_diff_fall,
+                 family = bernoulli(), 
+                prior = c(set_prior("normal(0, .5)", class="Intercept"),
+                          set_prior("normal(0, .5)", coef = "temperature_diff_fall"),
+                          set_prior("cauchy(0.25)", class="sd")),
+                control = list(adapt_delta=0.9),
+                iter = 4000,
+                data=data,
+                refresh=0)
+```
+
+```{r}
+summary(fm5b.brms, prob=.89)
+coef(fm5b.brms, probs=c(0.045, 0.955))$pop[,,"Intercept"]
+coef(fm5b.brms, probs=c(0.045, 0.955))$blk2[,,"Intercept"]
+```
+
+```{r}
+precis(fm5b, depth = 2)
+```
+
+
+
+
+
+6. Compare the five models you built using WAIC. Which fits best?
+
+```{r}
+?loo_compare
+```
+
+
+7. Plot effects of temperature difference for the average block, and also make a plot that includes the variability across blocks.
+
+There are other complexities to this data. For example, there is also some family structure within populations (dam and sire) which could be included as hierarchical effects. There are also other response variables (November size, March survival and size, first flower date, last flower date, fruit number, estimated seed production) that might require different likelihoods (and in some cases treatment for over-dispersion or zero inflation). So if the above problems were too easy and you feel adventurous, you could try analyzing one of these responses instead of germination (you will need to filter out missing observations). 
