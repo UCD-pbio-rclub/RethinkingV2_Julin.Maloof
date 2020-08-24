@@ -384,6 +384,165 @@ print(loo_compare(fm1.brms, fm3.brms, fm4.brms, fm5a.brms, fm5b.brms, criterion 
 
 7. Plot effects of temperature difference for the average block, and also make a plot that includes the variability across blocks.
 
+### rethinking
+
+
+Should I do this for the different populations?
+
+first, average block, all pops:
+
+```{r}
+post <- extract.samples(fm5b)
+str(post)
+```
+
+```{r}
+link_avg_blk <- function(post, temp) {
+  m <- with(post, inv_logit(a + as.vector(b_temp*temp)))
+  m
+}
+```
+
+```{r}
+pred.df <- tibble(temp = seq(-2,2,.1))
+
+pred.df <- pred.df %>%
+  mutate(posterior.pred=map(temp, ~ link_avg_blk(post, temp=.)))
+
+pred.df # a tibble of tables
+```
+
+now compute mean and hpdi for each temperature
+```{r}
+pred.df <- pred.df %>%
+  mutate(mean=map(posterior.pred, ~ apply(., 2, mean)),
+         low89=map(posterior.pred, ~ apply(., 2, HPDI)[1,]),
+         high89=map(posterior.pred, ~ apply(., 2, HPDI)[2,]),
+  )
+pred.df
+```
+
+```{r}
+plot.df <- pred.df %>% select(-posterior.pred) %>% 
+  unnest(mean, low89, high89) %>%
+  mutate(pop=rep_along(mean, levels(factor(data$pop)) )) # an unsatisfying way to handle this
+plot.df
+```
+
+```{r}
+plot.df %>%
+  ggplot(aes(x=temp, y=mean, ymin=low89, ymax=high89, color=pop, group=pop)) +
+  geom_line() 
+```
+
+alternative:
+
+```{r}
+plot.df %>%
+  ggplot(aes(x=temp, y=mean, ymin=low89, ymax=high89)) +
+  geom_ribbon(alpha=.2) +
+  geom_line() +
+  facet_wrap(~pop, nrow=3)
+```
+
+
+### average block, average pop:
+
+```{r}
+link_avg_blk_avg_pop <- function(post, temp) {
+  m <- with(post, inv_logit(rowMeans(a) + as.vector(b_temp*temp)))
+  m
+}
+```
+
+```{r}
+pred.df <- tibble(temp = seq(-2,2,.1))
+
+pred.df <- pred.df %>%
+  mutate(posterior.pred=map(temp, ~ link_avg_blk_avg_pop(post, temp=.)))
+
+pred.df # a tibble of tables
+```
+
+now compute mean and hpdi for each temperature
+```{r}
+pred.df <- pred.df %>%
+  mutate(mean=map_dbl(posterior.pred, ~ mean(.)),
+         low89=map_dbl(posterior.pred, ~ HPDI(.)[1]),
+         high89=map_dbl(posterior.pred, ~ HPDI(.)[2]),
+  )
+pred.df
+```
+
+
+```{r}
+pred.df %>%
+  select(-posterior.pred) %>%
+  ggplot(aes(x=temp, y=mean, ymin=low89, ymax=high89)) +
+  geom_ribbon(alpha=.2) +
+  geom_line() 
+```
+
+### include uncertainity about block
+
+```{r}
+pickOnePerRow <- function(m) { # pick one value from each row of a matrix and return as vector
+                               # is there a better way to do this?
+  result <- vector(mode=mode(m), length=nrow(m))
+  for(i in 1:nrow(m)) result[i] <- m[i, sample(ncol(m), size=1)]
+  return(result)
+}
+
+link_blk <- function(post, temp) {
+  m <- with(post, 
+            inv_logit(
+              a + 
+                as.vector(b_temp*temp) + 
+                pickOnePerRow(b_blk) # pick a flat at random
+            )
+  )
+  return(m)
+}
+```
+
+```{r}
+pred.df <- tibble(temp = seq(-2,2,.1)) 
+
+pred.df <- pred.df %>%
+  mutate(posterior.pred=map(temp, ~ link_blk(post, temp=.)))
+
+pred.df # a tibble of tables
+```
+
+now compute mean and hpdi for each temperature
+```{r}
+pred.df <- pred.df %>%
+  mutate(mean=map(posterior.pred, ~ apply(., 2, mean)), 
+         low89=map(posterior.pred, ~ apply(., 2, HPDI)[1,]),
+         high89=map(posterior.pred, ~ apply(., 2, HPDI)[2,]),
+  )
+pred.df
+```
+
+
+```{r}
+plot.df <- pred.df %>% select(-posterior.pred) %>%  
+  unnest(c(mean, low89, high89)) %>%
+  mutate(pop=rep_along(mean, levels(factor(data$pop)) )) # an unsatisfying way to handle this
+plot.df
+```
+
+
+```{r}
+plot.df %>% 
+  ggplot(aes(x=temp, y=mean, ymin=low89, ymax=high89)) +
+  geom_ribbon(alpha=.2) +
+  geom_line() +
+  facet_wrap(~pop, nrow=3)
+```
+
+### brms
+
 ```{r}
 newdata <- tibble(temperature_diff_fall=seq(min(data$temperature_diff_fall), 
                                             max(data$temperature_diff_fall), length.out=25))
