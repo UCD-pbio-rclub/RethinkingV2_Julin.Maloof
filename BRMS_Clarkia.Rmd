@@ -69,12 +69,12 @@ get_prior(nov_germ ~ temperature_diff_fall, data=data, family=bernoulli())
 
 ```{r}
 fm1.brms <- brm(nov_germ ~ temperature_diff_fall,
-                 family = bernoulli(), 
+                family = bernoulli(), 
                 prior = c(set_prior("normal(0, 2)", class="Intercept"),
                           set_prior("normal(0, 2)", class = "b")),
                 data=data,
                 refresh=1000)
-                 
+
 ```
 
 ```{r}
@@ -119,11 +119,11 @@ To do this we can use sample_prior = "only" and create a data frame with some fa
 prior.data <- tibble(nov_germ=.1, temperature_diff_fall=seq(min(data$temperature_diff_fall), max(data$temperature_diff_fall), length.out = 50))
 
 fm1.brms.priors <- brm(nov_germ ~ 0 + Intercept + temperature_diff_fall,
-                 family = bernoulli(), 
-                prior = c(set_prior("normal(0, 2)", coef="Intercept"),
-                          set_prior("normal(0, 2)", class = "b")),
-                data=prior.data,
-                sample_prior = "only")
+                       family = bernoulli(), 
+                       prior = c(set_prior("normal(0, 2)", coef="Intercept"),
+                                 set_prior("normal(0, 2)", class = "b")),
+                       data=prior.data,
+                       sample_prior = "only")
 ```
 
 ```{r}
@@ -143,11 +143,11 @@ Most of these have the temperature response going all the way from 0 to full ger
 
 ```{r}
 fm2.brms.priors <- brm(nov_germ ~ 0 + Intercept + temperature_diff_fall,
-                 family = bernoulli(), 
-                prior = c(set_prior("normal(0, 1.5)", coef="Intercept"),
-                          set_prior("normal(0, .5)", class = "b")),
-                data=prior.data,
-                sample_prior = "only")
+                       family = bernoulli(), 
+                       prior = c(set_prior("normal(0, 1.5)", coef="Intercept"),
+                                 set_prior("normal(0, .5)", class = "b")),
+                       data=prior.data,
+                       sample_prior = "only")
 ```
 
 ```{r}
@@ -192,7 +192,7 @@ precis(fm3, depth=2)
 ```{r}
 data$blk2 <- as.character(data$blk)
 fm3.brms <- brm(nov_germ ~ 0 + blk2 + temperature_diff_fall,
-                 family = bernoulli(), 
+                family = bernoulli(), 
                 prior = c(set_prior("normal(0, 1.5)"),
                           set_prior("normal(0, .5)", coef = "temperature_diff_fall")),
                 data=data,
@@ -238,21 +238,21 @@ precis(fm4, depth=2)
 
 ```{r}
 get_prior(nov_germ ~ (1|blk2) + temperature_diff_fall,
-                 family = bernoulli(),
-                data=data)
+          family = bernoulli(),
+          data=data)
 ```
 
 
 ```{r}
 fm4.brms <-  brm(nov_germ ~ (1|blk2) + temperature_diff_fall,
                  family = bernoulli(), 
-                prior = c(set_prior("normal(0, 1.5)", class="Intercept"),
-                          set_prior("normal(0, .5)", coef = "temperature_diff_fall"),
-                          set_prior("exponential(1)", class="sd")),
-                control = list(adapt_delta=0.9),
-                iter = 4000,
-                data=data,
-                refresh=0)
+                 prior = c(set_prior("normal(0, 1.5)", class="Intercept"),
+                           set_prior("normal(0, .5)", coef = "temperature_diff_fall"),
+                           set_prior("exponential(1)", class="sd")),
+                 control = list(adapt_delta=0.9),
+                 iter = 4000,
+                 data=data,
+                 refresh=0)
 ```
 
 ```{r}
@@ -325,14 +325,14 @@ extract.samples(fm5b) %>%
 
 ```{r}
 fm5a.brms <-  brm(nov_germ ~ (1|pop) + temperature_diff_fall,
-                 family = bernoulli(), 
-                prior = c(set_prior("normal(0, 1.5)", class="Intercept"),
-                          set_prior("normal(0, .5)", coef = "temperature_diff_fall"),
-                          set_prior("exponential(1)", class="sd")),
-                control = list(adapt_delta=0.9),
-                iter = 4000,
-                data=data,
-                refresh=0)
+                  family = bernoulli(), 
+                  prior = c(set_prior("normal(0, 1.5)", class="Intercept"),
+                            set_prior("normal(0, .5)", coef = "temperature_diff_fall"),
+                            set_prior("exponential(1)", class="sd")),
+                  control = list(adapt_delta=0.9),
+                  iter = 4000,
+                  data=data,
+                  refresh=0)
 ```
 ```{r}
 summary(fm5a.brms, prob=.89)
@@ -346,14 +346,14 @@ precis(fm5a, depth = 2)
 
 ```{r}
 fm5b.brms <-  brm(nov_germ ~ (1|pop) + (1|blk2) + temperature_diff_fall,
-                 family = bernoulli(), 
-                prior = c(set_prior("normal(0, .5)", class="Intercept"),
-                          set_prior("normal(0, .5)", coef = "temperature_diff_fall"),
-                          set_prior("cauchy(0.25)", class="sd")),
-                control = list(adapt_delta=0.9),
-                iter = 4000,
-                data=data,
-                refresh=0)
+                  family = bernoulli(), 
+                  prior = c(set_prior("normal(0, .5)", class="Intercept"),
+                            set_prior("normal(0, .5)", coef = "temperature_diff_fall"),
+                            set_prior("cauchy(0, 0.25)", class="sd")),
+                  control = list(adapt_delta=0.9),
+                  iter = 4000,
+                  data=data,
+                  refresh=0)
 ```
 
 ```{r}
@@ -365,18 +365,99 @@ coef(fm5b.brms, probs=c(0.045, 0.955))$blk2[,,"Intercept"]
 ```{r}
 precis(fm5b, depth = 2)
 ```
-
-
-
-
-
 6. Compare the five models you built using WAIC. Which fits best?
 
 ```{r}
-?loo_compare
+compare(fm1, fm3, fm4, fm5a, fm5b)
 ```
 
 
+```{r}
+for (b in ls(pattern="brms$")) {
+  assign(b, add_criterion(get(b), "waic"))
+}
+```
+
+```{r}
+print(loo_compare(fm1.brms, fm3.brms, fm4.brms, fm5a.brms, fm5b.brms, criterion = "waic"), simplify = FALSE)
+```
+
 7. Plot effects of temperature difference for the average block, and also make a plot that includes the variability across blocks.
+
+```{r}
+newdata <- tibble(temperature_diff_fall=seq(min(data$temperature_diff_fall), 
+                                            max(data$temperature_diff_fall), length.out=25))
+
+avg.pred <- posterior_epred(fm5b.brms, newdata = newdata, re_formula=NA)
+
+dim(avg.pred)
+```
+
+```{r}
+avg.pred.df <- tibble(newdata,
+                      nov_germ=apply(avg.pred,2,mean),
+                      lower=apply(avg.pred,2,HPDI)[1,],
+                      upper=apply(avg.pred,2,HPDI)[2,])
+avg.pred.df
+avg.pred.df %>% 
+  ggplot(aes(x=temperature_diff_fall, y=nov_germ, ymin=lower, ymax=upper)) +
+  geom_ribbon(fill="gray70")+
+  geom_line()
+```
+
+For variability in our blks
+
+```{r}
+newdata <- expand_grid(
+  temperature_diff_fall=seq(
+    min(data$temperature_diff_fall), 
+    max(data$temperature_diff_fall), length.out=25),
+  blk2=unique(data$blk2))
+
+avg.pred <- posterior_epred(fm5b.brms, newdata = newdata, re_formula=~(1|blk2))
+
+dim(avg.pred)
+```
+
+```{r}
+avg.pred.df <- tibble(newdata,
+                      nov_germ=apply(avg.pred,2,mean),
+                      lower=apply(avg.pred,2,HPDI)[1,],
+                      upper=apply(avg.pred,2,HPDI)[2,])
+avg.pred.df
+avg.pred.df %>% 
+  ggplot(aes(x=temperature_diff_fall, y=nov_germ, ymin=lower, ymax=upper, group=blk2, fill=blk2)) +
+  geom_ribbon(alpha=.3)+
+  geom_line()
+```
+
+For variability in new blocks
+
+
+```{r}
+newdata <- expand_grid(
+  temperature_diff_fall=seq(
+    min(data$temperature_diff_fall), 
+    max(data$temperature_diff_fall), length.out=25),
+  blk2=as.character(1:10))
+
+avg.pred <- posterior_epred(fm5b.brms, newdata = newdata, re_formula=~(1|blk2),
+                            allow_new_levels=TRUE)
+
+dim(avg.pred)
+```
+
+```{r}
+avg.pred.df <- tibble(newdata,
+                      nov_germ=apply(avg.pred,2,mean),
+                      lower=apply(avg.pred,2,HPDI)[1,],
+                      upper=apply(avg.pred,2,HPDI)[2,])
+avg.pred.df
+avg.pred.df %>% 
+  ggplot(aes(x=temperature_diff_fall, y=nov_germ, ymin=lower, ymax=upper, group=blk2, fill=blk2)) +
+  geom_ribbon(alpha=.3)+
+  geom_line()
+```
+Hmmm, not what I expected for the new blocks...
 
 There are other complexities to this data. For example, there is also some family structure within populations (dam and sire) which could be included as hierarchical effects. There are also other response variables (November size, March survival and size, first flower date, last flower date, fruit number, estimated seed production) that might require different likelihoods (and in some cases treatment for over-dispersion or zero inflation). So if the above problems were too easy and you feel adventurous, you could try analyzing one of these responses instead of germination (you will need to filter out missing observations). 
