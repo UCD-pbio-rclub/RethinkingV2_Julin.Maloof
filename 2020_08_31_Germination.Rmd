@@ -1,0 +1,160 @@
+---
+title: "germination"
+output: html_notebook
+---
+
+```{r}
+library(rethinking)
+library(brms)
+library(tidyverse)
+```
+
+```{r}
+germ <- read_csv("../Dimensions/hydrothermal-all-species/data/light_round1_tall.csv") %>% filter(wps==0) %>%
+  select(pops, temps, total_seeds, germ, day, cumulative_germ)
+germ
+```
+
+what if need one event per row:
+
+```{r}
+one_per_row <- function(df) {
+  total_seed <- max(df$total_seeds, sum(df$germ))
+  newdata <- tibble(id=1:total_seed, germ=0, day=max(df$day))
+  df <- df %>% filter(germ>0)
+  count <- 1
+  if (nrow(df) > 0) {
+    for (i in 1:nrow(df)) { # we look at each row of the df where germination occured
+      for (j in 1:df$germ[i]) { # now update the newdata to reflect the germiantion of each seed
+        newdata$germ[count] <- 1
+        newdata$day[count]=df$day[i]
+        count <- count+1 # count keeps track of which individual we are at in the new data
+      } # for j
+    } # for i
+  } # if 
+  return(newdata)
+}
+
+germone <- germ %>% group_by(pops, temps) %>%
+  select(-cumulative_germ) %>% # not needed in this encoding (I think...in any case would need to be recalculated)
+  nest() %>%
+  mutate(newdata=map(data, one_per_row)) %>%
+  select(-data) %>%
+  unnest(newdata)
+
+germone
+```
+
+##1
+
+Is effect of temp ~linear on cum germ?
+
+```{r}
+germ %>% filter(pops=="STDI", day==28) %>%
+  ggplot(aes(x=temps,y=cumulative_germ)) +
+  geom_col()
+```
+no, so we can't treat temp as a continuous linear predictor
+
+```{r}
+germ.stdi <- germone %>% filter(pops=="STDI") %>% select(-pops)
+germ.stdi
+```
+Try a censored lambda model
+```{r}
+d <- list(germ=germ.stdi$germ, temps=as.numeric(as.factor(germ.stdi$temps)), day=germ.stdi$day)
+m1.1 <- ulam(
+  alist(
+    day | germ==1 ~ exponential( lambda),
+    day | germ==0 ~ custom(exponential_lccdf( !Y | lambda)),
+    lambda <- 1.0 / mu,
+    log(mu) <- a[temps],
+    a[temps] ~ normal(0,1)),
+  data=d,
+  chains=4,
+  cores = 4
+)
+```
+
+```{r}
+precis(m1.1, depth = 2)
+```
+
+posterior
+```{r}
+preddata <- expand_grid(temps=1:8, day=1:28)
+pred <- link(m1.1, data = preddata)
+str(pred)
+```
+
+mu is average days to germ, lambda is rate parameter.  neither change over time, of course, so having days doesn't really make sense.
+
+```{r}
+preddata$mu <- apply(pred$mu,2,mean)
+preddata$low <- apply(pred$mu,2,HPDI)[1,]
+preddata$high <- apply(pred$mu, 2, HPDI)[2,]
+```
+
+Single temp.  Don't need day
+posterior
+```{r}
+preddata <- expand_grid(temps=3)
+pred <- link(m1.1, data = preddata)
+str(pred)
+```
+
+how to convert to probs? use pexp.
+
+```{r}
+predprobs <- pexp(1:28,rate=pred$lambda[1])
+plot(x=1:28,y=predprobs, type="l")
+```
+
+even thought it isn't using day, including day in the prediction data frame will help me keep data in the correct format.  Maybe.
+
+```{r}
+preddata <- expand_grid(temps=1:8, day=1:28)
+pred <- link(m1.1, data = preddata)
+str(pred)
+```
+
+```{r}
+predresults <- preddata %>%
+  mutate(lambda=as.list(as.data.frame(pred$lambda)))
+predresults
+```
+```{r}
+predresults <- predresults %>%
+  mutate(probs=map2(day, lambda, ~ pexp(.x, .y)),
+         mu=map_dbl(probs, mean),
+         lower=map_dbl(probs, ~ HPDI(.)[1] %>% unlist()),
+         upper=map_dbl(probs, ~ HPDI(.)[2]) %>% unlist())
+predresults
+```
+
+
+```{r}
+predresults %>% select(-lambda, -probs) %>%
+  mutate(temps=factor(temps, labels=as.character(sort(unique(germ.stdi$temps))))) %>%
+  ggplot(aes(x=day,y=mu,color=temps,group=temps)) +
+  geom_line() 
+```
+
+Add realdata:
+
+```{r}
+stdi.plot <- germ %>% filter(pops=="STDI") %>% 
+  select(day, temps, cumulative_germ, total_seeds) %>%
+  mutate(temps=as.factor(temps),
+         prop.germ=cumulative_germ/total_seeds)
+
+predresults %>% select(-lambda, -probs) %>%
+  mutate(temps=factor(temps, labels=as.character(sort(unique(germ.stdi$temps))))) %>%
+  ggplot(aes(x=day,y=mu,color=temps,group=temps)) +
+  geom_line() +
+  geom_point(aes(y=prop.germ), data=stdi.plot)
+```
+
+Poor!
+
+
