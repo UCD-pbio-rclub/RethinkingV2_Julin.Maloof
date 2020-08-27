@@ -79,6 +79,13 @@ m1.1 <- ulam(
 ```{r}
 precis(m1.1, depth = 2)
 ```
+The above represent log(mean time to germination)
+
+```{r}
+exp(5.45)
+exp(2.48)
+```
+
 
 posterior
 ```{r}
@@ -157,4 +164,75 @@ predresults %>% select(-lambda, -probs) %>%
 
 Poor!
 
+### brms
+
+need to set up indicator for censoring.
+```{r}
+germ.stdi <- germ.stdi %>%
+  mutate(cens=ifelse(germ==0, "right", "none"),
+         tempsc=as.character(temps) %>% str_pad(width=2, pad="0"))
+germ.stdi
+```
+
+```{r}
+get_prior(day | cens(cens) ~ 0 + tempsc, family = exponential, data=germ.stdi)
+```
+
+
+```{r}
+m1.2 <- brm(day | cens(cens) ~ 0 + tempsc,
+            family = exponential(),
+            set_prior("normal(0,1)", class="b"),
+            data = germ.stdi)
+```
+```{r}
+summary(m1.2)
+```
+
+
+```{r}
+predict(m1.2)
+```
+what are these?  the average number of days?
+
+```{r}
+predict(m1.2, newdata = expand_grid(tempsc=unique(germ.stdi$tempsc), cens=c("none", "right")))
+```
+
+
+```{r}
+precis(m1.1, depth = 2)
+```
+again, these are log(mean time to germination)
+
+lambda should be 1/mu, so
+
+```{r}
+plot(1:28,pexp(1:28, 1/exp(2.48)), type="l", col="red")
+lines(1:28,pexp(1:28, 1/exp(5.60)), type="l", col="blue")
+```
+
+
+```{r}
+get_prior( day | cens(cens) ~ 0 + tempsc,
+            family = Gamma(),
+            data = germ.stdi)
+```
+
+
+```{r}
+m1.3 <- brm(day | cens(cens) ~ 0 + tempsc,
+            family = Gamma(),
+            set_prior("normal(0,1)", class="b", lb=0),
+            data = germ.stdi)
+```
+
+```{r}
+summary(m1.3)
+```
+
+```{r}
+newdata <- expand_grid(tempsc=unique(germ.stdi$tempsc), cens=c("none", "right"))
+cbind(newdata, predict(m1.3, newdata = newdata))
+```
 
