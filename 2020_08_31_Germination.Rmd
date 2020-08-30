@@ -10,7 +10,8 @@ library(tidyverse)
 ```
 
 ```{r}
-germ <- read_csv("../Dimensions/hydrothermal-all-species/data/light_round1_tall.csv") %>% filter(wps==0) %>%
+germ <- read_csv("../Dimensions/hydrothermal-all-species/data/light_round1_tall.csv") %>%
+  filter(wps == 0) %>%
   select(pops, temps, total_seeds, germ, day, cumulative_germ)
 germ
 ```
