@@ -500,7 +500,7 @@ model{
     vector[N] mu;
     a ~ normal( 0 , .5 ); //narrow priors to overcome divergent transitions
     ap ~ normal( 0, 1.5 ); 
-    shape ~ normal(0, .5 ); //narrow priors to overcome divergent transitions
+    shape ~ normal(0, .5); //narrow priors to overcome divergent transitions
     for (i in 1:N) {
         p[i] = ap[temps[i]];
         p[i] = inv_logit(p[i]);
@@ -578,101 +578,6 @@ post_plot %>%
   
 ```
 
-## redo model 1.5
-
-```{r}
-d <- list(N=nrow(germ.stdi),
-          germ=germ.stdi$germ,
-          temps=as.numeric(as.factor(germ.stdi$temps)),
-          day=germ.stdi$day)
-
-stanmodel1.5alt <-
-  "
-data{
-    int<lower=1> N;  // number of observations
-    int germ[N];
-    vector[N] day;
-    int temps[N];
-}
-parameters{
-    vector[8] a; // alpha for the exponential curve, one for each temp
-    vector[8] ap; // alpha for the proportion dormant, one for each temp
-}
-model{
-    vector[N] p;
-    vector[N] lambda;
-    vector[N] mu;
-    a ~ normal( 0 , 1 );
-    ap ~ normal( 0, 1 );
-    for (i in 1:N) {
-        p[i] = ap[temps[i]];
-        p[i] = inv_logit(p[i]);
-    }
-    for ( i in 1:N ) {
-        mu[i] = a[temps[i]];
-        mu[i] = exp(mu[i]);
-    }
-    for ( i in 1:N ) {
-        lambda[i] = 1/mu[i];
-    }
-    for ( i in 1:N ) 
-        if ( germ[i] == 0 ) target += log_mix(p[i], bernoulli_lpmf(1 | p[i]), bernoulli_lpmf(0 | p[i]) + exponential_lccdf(day[i] | lambda[i]));
-    for ( i in 1:N ) 
-        if ( germ[i] == 1 ) target += bernoulli_lpmf(0 | p[i]) +  exponential_lpdf(day[i] | lambda[i]);
-    for ( i in 1:N ) 
-        if ( germ[i] == 1 ) day[i] ~ exponential( lambda[i] );
-}
-"
-m1.5alt <- stan(model_code=stanmodel1.5alt, data=d)
-```
-
-```{r}
-precis(m1.5alt, depth = 2)
-```
-
-```{r}
-post <- as.data.frame(m1.5alt)
-head(post)
-```
-
-now need to make predictions
-
-```{r}
-post_logavgdays <- post %>% select(starts_with("a["
-)) # these are the log(mean(avg time to germinate))
-mu_lambda <- post_logavgdays %>% 
-  summarise_all(mean) %>% # posterior mean
-  mutate_all(~ 1/exp(.)) # convert to lambda (inverse link)
-mu_lambda
-```
-
-```{r}
-post_logitp <- post %>% select(starts_with("ap")) #logit p dormant
-mu_p <- post_logitp %>%
-  summarize_all(mean) %>%
-  mutate_all(inv_logit)
-mu_p
-```
-
-```{r}
-posterior_coef <- tibble(temps=as.factor(unique(germ.stdi$temps)),
-                        lambda=t(mu_lambda),
-                        p=t(mu_p))
-```
-
-plot, include original data
-```{r}
-stdi.plot <- germ %>% filter(pops=="STDI") %>% 
-  select(day, temps, cumulative_germ, total_seeds) %>%
-  mutate(temps=as.factor(temps),
-         prop_germ=cumulative_germ/total_seeds)
-
-post_plot %>% 
-  ggplot(aes(x=day,y=prop_germ,color=temps,group=temps)) +
-  geom_line() +
-  geom_point(data=stdi.plot)
-  
-```
 
 ### brms hurdle gamma
 
