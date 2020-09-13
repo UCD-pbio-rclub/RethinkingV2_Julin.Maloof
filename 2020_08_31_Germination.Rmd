@@ -58,7 +58,7 @@ germ %>% filter(pops=="STDI", day==28) %>%
 no, so we can't treat temp as a continuous linear predictor
 
 ```{r}
-germ.stdi <- germone %>% filter(pops=="STDI") %>% select(-pops)
+germ.stdi <- germone %>% filter(pops=="STDI") %>% dplyr::select(-pops)
 germ.stdi
 ```
 
@@ -414,6 +414,13 @@ shinystan::launch_shinystan(m1.5)
 post <- as.data.frame(m1.5)
 head(post)
 ```
+
+```{r}
+post.cor <- cor(post) %>% round(2)
+post.cor[abs(post.cor)<.25] <- NA
+post.cor
+```
+
 
 now need to make predictions
 
@@ -1144,6 +1151,240 @@ post_plot %>%
   geom_point(data=stdi.plot)
   
 ```
+
+# week2
+
+## mv norm for rate and p?
+
+Look at Stancode from chapter 14 mvnorm
+```{r}
+## R code 14.1
+a <- 3.5            # average morning wait time
+b <- (-1)           # average difference afternoon wait time
+sigma_a <- 1        # std dev in intercepts
+sigma_b <- 0.5      # std dev in slopes
+rho <- (-0.7)       # correlation between intercepts and slopes
+
+## R code 14.2
+Mu <- c( a , b )
+
+## R code 14.3
+cov_ab <- sigma_a*sigma_b*rho
+Sigma <- matrix( c(sigma_a^2,cov_ab,cov_ab,sigma_b^2) , ncol=2 )
+
+
+## R code 14.5
+sigmas <- c(sigma_a,sigma_b) # standard deviations
+Rho <- matrix( c(1,rho,rho,1) , nrow=2 ) # correlation matrix
+
+# now matrix multiply to get covariance matrix
+Sigma <- diag(sigmas) %*% Rho %*% diag(sigmas)
+
+## R code 14.6
+N_cafes <- 20
+
+## R code 14.7
+set.seed(5) # used to replicate example
+vary_effects <- MASS::mvrnorm( N_cafes , Mu , Sigma )
+
+## R code 14.8
+a_cafe <- vary_effects[,1]
+b_cafe <- vary_effects[,2]
+
+## R code 14.10
+set.seed(22)
+N_visits <- 10
+afternoon <- rep(0:1,N_visits*N_cafes/2)
+cafe_id <- rep( 1:N_cafes , each=N_visits )
+mu <- a_cafe[cafe_id] + b_cafe[cafe_id]*afternoon
+sigma <- 0.5  # std dev within cafes
+wait <- rnorm( N_visits*N_cafes , mu , sigma )
+d <- data.frame( cafe=cafe_id , afternoon=afternoon , wait=wait )
+
+
+rethinking::stancode(ulam(
+    alist(
+        wait ~ normal( mu , sigma ),
+        mu <- a_cafe[cafe] + b_cafe[cafe]*afternoon,
+        c(a_cafe,b_cafe)[cafe] ~ multi_normal( c(a,b) , Rho , sigma_cafe ),
+        a ~ normal(5,2),
+        b ~ normal(-1,0.5),
+        sigma_cafe ~ exponential(1),
+        sigma ~ exponential(1),
+        Rho ~ lkj_corr(2)
+    ) , data=d , sample = FALSE ))
+```
+
+
+
+Make shape exponential
+```{r}
+d <- list(N=nrow(germ.stdi),
+          germ=germ.stdi$germ,
+          temps=as.numeric(as.factor(germ.stdi$temps)),
+          day=germ.stdi$day)
+
+stanmodel1.7mv <-
+  "
+data{
+    int<lower=1> N;  // number of observations
+    int germ[N];
+    vector[N] day;
+    int temps[N];
+}
+parameters{
+    real<lower=0> shape; // should set lower bound
+    vector[8] a_temp; // alpha for the gamma curve, one for each temp
+    vector[8] ap_temp; // alpha for the proportion dormant, one for each temp
+    real a;
+    real ap;
+    vector<lower=0>[2] sigma_temp;
+    corr_matrix[2] Rho;
+}
+model{
+    vector[N] p;
+    vector[N] mu;
+    Rho ~ lkj_corr(2);
+    sigma_temp ~ exponential(1);
+    
+    a ~ normal( 0 , .5 ); //narrow priors to overcome divergent transitions
+    ap ~ normal( 0, 1.5 ); 
+    shape ~ exponential(.5); 
+{
+    vector[2] YY[8];
+    vector[2] MU;
+    MU = [a, ap]';
+    for (j in 1:8) YY[j] = [a_temp[j], ap_temp[j]]';
+    YY ~ multi_normal(MU, quad_form_diag(Rho, sigma_temp));
+}
+    for (i in 1:N) {
+        p[i] = ap_temp[temps[i]];
+        p[i] = inv_logit(p[i]);
+    }
+    for ( i in 1:N ) {
+        mu[i] = a_temp[temps[i]];
+         // apply the inverse link function
+        mu[i] = shape * exp(-(mu[i]));
+    }
+    for ( i in 1:N ) 
+       if ( germ[i] == 0 ) target += log_mix(p[i], 0, gamma_lccdf(day[i] | shape, mu[i]));
+    for ( i in 1:N ) 
+       if ( germ[i] == 1 ) target += log1m(p[i]) + gamma_lpdf(day[i] | shape, mu[i]);
+    for ( i in 1:N ) 
+       if ( germ[i] == 1 ) day[i] ~ gamma( shape, mu[i] );
+}
+"
+m1.7mv <- stan(model_code=stanmodel1.7mv, data=d, chains=4, cores=4, control=list(adapt_delta=.99))
+``` 
+
+100 divergent transitions...
+
+```{r}
+precis(m1.7mv, depth = 3)
+```
+
+
+```{r}
+post <- as.data.frame(m1.7mv)
+
+post_logavgdays <- post %>% select(shape, starts_with("a_"
+)) # these are the shape and the log(mean(avg time to germinate))
+mu_rate <- post_logavgdays %>% 
+  mutate(across(-shape, ~ shape*exp(-(.))) ) %>%
+  summarize(across(everything(), mean)) %>% select(-shape) # posterior mean
+mu_rate
+mu_shape <- mean(post$shape)
+
+post_logitp <- post %>% select(starts_with("ap_")) #logit p dormant
+mu_p <- post_logitp %>%
+  summarize_all(mean) %>%
+  mutate_all(inv_logit)
+mu_p
+
+posterior_coef <- tibble(shape=mu_shape, temps=as.factor(unique(germ.stdi$temps)),
+                        rate=t(mu_rate),
+                        p=t(mu_p))
+
+post_plot1.7mv <- expand_grid(posterior_coef, day=1:28) %>%
+  mutate(prop_germ=pgamma(day, shape=mu_shape, rate=rate) * (1-p))
+
+stdi.plot <- germ %>% filter(pops=="STDI") %>% 
+  select(day, temps, cumulative_germ, total_seeds) %>%
+  mutate(temps=as.factor(temps),
+         prop_germ=cumulative_germ/total_seeds)
+
+post_plot1.7mv %>% 
+  ggplot(aes(x=day,y=prop_germ,color=temps,group=temps)) +
+  geom_line() +
+  geom_point(data=stdi.plot)
+  
+```
+
+make a comparison plot
+
+```{r}
+post_plot_compare <- bind_rows(old=post_plot1.7, new=post_plot1.7mv, .id = "fit") 
+post_plot_compare %>%
+  ggplot(aes(x=day,y=prop_germ,color=temps,group=str_c(temps,fit),linetype=fit)) +
+  geom_line() +
+  geom_point(data=stdi.plot, aes(x=day,y=prop_germ,color=temps), inherit.aes = FALSE)
+  
+```
+overall not as good
+
+## extend to multiple species/pops
+
+modify model 1.7a
+
+```{r}
+length(unique(germone$pops)) #24 pops
+
+d <- list(N=nrow(germone),
+          germ=germone$germ,
+          temps=as.numeric(as.factor(germ.stdi$temps)),
+          pops=as.numeric(as.factor(germone$pops)),
+          day=germ.stdi$day)
+
+stanmodel2.1 <-
+  "
+data{
+    int<lower=1> N;  // number of observations
+    int germ[N];
+    vector[N] day;
+    int temps[N];
+}
+parameters{
+    real<lower=0> shape; // should set lower bound
+    vector[8] a; // alpha for the gamma curve, one for each temp
+    vector[8] ap; // alpha for the proportion dormant, one for each temp
+}
+model{
+    vector[N] p;
+    vector[N] mu;
+    a ~ normal( 0 , .5 ); //narrow priors to overcome divergent transitions
+    ap ~ normal( 0, 1.5 ); 
+    shape ~ exponential(.5); 
+    for (i in 1:N) {
+        p[i] = ap[temps[i]];
+        p[i] = inv_logit(p[i]);
+    }
+    for ( i in 1:N ) {
+        mu[i] = a[temps[i]];
+         // apply the inverse link function
+        mu[i] = shape * exp(-(mu[i]));
+    }
+    for ( i in 1:N ) 
+       if ( germ[i] == 0 ) target += log_mix(p[i], 0, gamma_lccdf(day[i] | shape, mu[i]));
+    for ( i in 1:N ) 
+       if ( germ[i] == 1 ) target += log1m(p[i]) + gamma_lpdf(day[i] | shape, mu[i]);
+    for ( i in 1:N ) 
+       if ( germ[i] == 1 ) day[i] ~ gamma( shape, mu[i] );
+}
+"
+m1.7a <- stan(model_code=stanmodel1.7a, data=d, chains=4, cores=4, control=list(adapt_delta=.99))
+```
+
+
 
 
 ## how can we switch this around to use day as a predictor?
