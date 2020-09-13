@@ -1279,6 +1279,11 @@ m1.7mv <- stan(model_code=stanmodel1.7mv, data=d, chains=4, cores=4, control=lis
 
 100 divergent transitions...
 
+```{r, eval=FALSE}
+shinystan::launch_shinystan(m1.7mv)
+```
+
+
 ```{r}
 precis(m1.7mv, depth = 3)
 ```
@@ -1286,7 +1291,14 @@ precis(m1.7mv, depth = 3)
 
 ```{r}
 post <- as.data.frame(m1.7mv)
+postcor <- cor(post) %>% round(2)
+postcor[abs(postcor)<.5] <- NA
+postcor
+```
 
+
+
+```{r}
 post_logavgdays <- post %>% select(shape, starts_with("a_"
 )) # these are the shape and the log(mean(avg time to germinate))
 mu_rate <- post_logavgdays %>% 
