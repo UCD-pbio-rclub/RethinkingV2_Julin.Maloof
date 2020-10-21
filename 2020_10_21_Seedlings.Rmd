@@ -1,0 +1,81 @@
+---
+title: "Seedlings"
+author: "Julin Maloof"
+date: "10/21/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(rethinking)
+library(brms)
+```
+
+```{r}
+blue <- read_csv("Blue.csv")
+```
+
+```{r}
+
+sem <- function(x) {
+  x <- na.omit(x) 
+  sd(x)/sqrt(length(x)-1)
+}
+
+blue %>% group_by(genotype, concentration) %>%
+  summarize(mlength=mean(length, na.rm=TRUE), 
+            sem=sem(length),
+            ymin=mlength-sem, 
+            ymax=mlength+sem) %>%  
+  rename(length=mlength) %>%
+  ggplot(aes(x=concentration, y=length, color=genotype) ) +
+  geom_line() +
+  geom_errorbar(aes(ymin=ymin, ymax=ymax), width=.1) +
+  scale_x_log10() +
+  geom_point(alpha=.1, data=blue)
+```
+
+```{r}
+blue.small <- blue %>% filter(concentration >0)
+blue.small %>% group_by(genotype, concentration) %>%
+  summarize(mlength=mean(length, na.rm=TRUE), 
+            sem=sem(length),
+            ymin=mlength-sem, 
+            ymax=mlength+sem) %>%  
+  rename(length=mlength) %>%
+  ggplot(aes(x=concentration, y=length, color=genotype) ) +
+  geom_line() +
+  geom_errorbar(aes(ymin=ymin, ymax=ymax), width=.1) +
+  scale_x_log10() +
+  geom_point(alpha=.1, data=blue.small)
+```
+
+## with brms
+```{r}
+blue.small <- blue.small %>% mutate(lc = log10(concentration))
+m1 <- brm(length ~ genotype*lc,
+          prior = set_prior("normal(0,1)"),
+          data = blue.small,
+          cores = 4)
+```
+
+```{r}
+summary(m1)
+```
+
+```{r}
+get_prior(length ~ 0 + (concentration|genotype),
+          data = blue.small,
+          cores=4)
+```
+
+
+```{r}
+m2 <- brm(length ~ 0 + (concentration|genotype),
+          data = blue.small)
+```
+```{r}
+summary(m2)
+```
+
